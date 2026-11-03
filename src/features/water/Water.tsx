@@ -12,6 +12,7 @@ import {
 } from '@/ui/icons';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
 import { isWaterClosed } from '@/domain/devotion/prayer';
+import { archivedDayKey, applyLateGlass } from '@/domain/water';
 import { buildPeriodReports, periodMultiplier, type ReportView } from '@/domain/report';
 import { DotMatrixText } from '@/ui/DotMatrixText';
 
@@ -22,7 +23,8 @@ interface WaterProps {
 
 export const Water: React.FC<WaterProps> = ({ navigate }) => {
   const [glasses, setGlasses] = useFirebaseSync<number>('hydration_glasses', 0);
-  const [history] = useFirebaseSync<Record<string, number>>('hydration_history', {});
+  const [history, setHistory] = useFirebaseSync<Record<string, number>>('hydration_history', {});
+  const [lastResetDate] = useFirebaseSync<string>('system_last_reset_date', '');
   const [reportView, setReportView] = useState<ReportView>('week');
   const goal = 12;
 
@@ -48,6 +50,17 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
     setGlasses(glasses + 1);
   };
 
+  // A glass drunk while water is closed still belongs to the day that just closed out.
+  const closedDayKey = archivedDayKey(times, now);
+  // While water is closed the live counter is zeroed and the day's tally sits in history.
+  const shownGlasses = isLocked ? glasses + (history[closedDayKey] || 0) : glasses;
+  const addLateGlass = () => {
+    if (!isLocked || fridayLocked) return;
+    const next = applyLateGlass({ glasses, history }, lastResetDate, closedDayKey);
+    setGlasses(next.glasses);
+    setHistory(next.history);
+  };
+
   const reset = () => {
     if (isLocked) return;
     setGlasses(0);
@@ -60,11 +73,9 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   };
 
   // --- ANALYTICS ---
-  // Once the 6pm reset archives today's tally into history and zeroes the live counter,
-  // "today" needs the higher of the two — otherwise the chart shows 0 for the rest of
-  // the night even though the day's data is safely archived.
-  const todayGlasses = Math.max(history[new Date().toDateString()] || 0, glasses);
-  const reports = buildPeriodReports(history, todayGlasses);
+  // buildPeriodReports adds today's archived tally (history) to the live counter itself, so it is
+  // given the live counter alone — passing the archived value too would count it twice.
+  const reports = buildPeriodReports(history, glasses);
   const target = goal * periodMultiplier(reportView);
 
   return (
@@ -96,7 +107,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
         <div className="brutalist-dashed-card no-lift flex flex-col md:flex-row md:items-center md:justify-between gap-10">
           <div className="flex-grow flex flex-col sm:flex-row sm:items-center gap-8">
             <div className="flex items-center gap-6">
-              <DotMatrixText text={String(glasses)} />
+              <DotMatrixText text={String(shownGlasses)} />
               <div className="flex items-center gap-4 self-end pb-1">
                 <span className="font-mono-main text-4xl font-black text-ink/20">/</span>
                 <DotMatrixText
@@ -119,11 +130,19 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
               >
                 It's Jumu'ah — count today anyway?
               </button>
+            ) : isLocked ? (
+              <button
+                onClick={addLateGlass}
+                data-tip="Water is closed — this counts toward the day that just ended"
+                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm"
+              >
+                <Plus size={16} />
+                Late Glass
+              </button>
             ) : (
               <button
                 onClick={addGlass}
-                disabled={isLocked}
-                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm"
               >
                 <Plus size={16} />
                 Add Glass

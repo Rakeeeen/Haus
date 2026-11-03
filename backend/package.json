@@ -10,6 +10,7 @@
     "report:send": "node scripts/report-send.js"
   },
   "dependencies": {
+    "@slack/bolt": "^5.1.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "express": "^4.22.2",

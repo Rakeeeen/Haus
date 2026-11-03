@@ -1,7 +1,7 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { commands } from './commands.js';
 import { buildHubView } from '../features/hub.js';
-import { buildWaterView, addGlass, undoGlass, optInFriday } from '../features/water.js';
+import { buildWaterView, addGlass, undoGlass, addLateGlass, optInFriday } from '../features/water.js';
 import {
   buildFocusView, startFocusRemote, pauseFocusRemote, resumeFocusRemote,
   doneFocusRemote, discardFocusRemote, skipBreakFocusRemote, buildSessionLoggedNotice,
@@ -49,6 +49,12 @@ async function handleButton(interaction) {
   if (id === 'bommy:finance') return updateView(interaction, await buildFinanceHomeView());
 
   if (id === 'water:add') { await addGlass(); return updateView(interaction, await buildWaterView()); }
+  if (id === 'water:late') {
+    const result = await addLateGlass();
+    await updateView(interaction, await buildWaterView());
+    if (!result.ok) await interaction.followUp({ content: result.message, ephemeral: true });
+    return;
+  }
   if (id === 'water:undo') { await undoGlass(); return updateView(interaction, await buildWaterView()); }
   if (id === 'water:fridayoptin') { await optInFriday(); return updateView(interaction, await buildWaterView()); }
 
@@ -116,7 +122,7 @@ async function handleModal(interaction) {
     await interaction.reply({ content: result.message, ephemeral: true });
     return;
   }
-  await interaction.update(result.view);
+  await interaction.update(await buildBankView(bankKey));
 }
 
 const OUR_NAMESPACES = ['bommy:', 'water:', 'focus:', 'finance:'];

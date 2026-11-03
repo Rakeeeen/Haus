@@ -61,7 +61,8 @@ function writeCheckpoint(state) {
   return setDashboardValue('pomodoro_checkpoint', state === null ? null : { ...state, writtenBy: WRITER });
 }
 
-export async function buildFocusView() {
+/** What the Focus card shows, independent of how a chat platform draws it. */
+export async function readFocusState() {
   const [week, sessions, checkpoint, blockedReason] = await Promise.all([
     getDashboardValue('pomodoro_week', DEFAULT_WEEK),
     getDashboardValue('pomodoro_sessions', 0),
@@ -92,12 +93,17 @@ export async function buildFocusView() {
     }
   }
   if (idle && blockedReason) status = blockedReason;
+  return { status, liveBig, minutesToday, sessions: sessions || 0, idle, checkpoint, blockedReason };
+}
+
+export async function buildFocusView() {
+  const { status, liveBig, minutesToday, sessions, idle, checkpoint, blockedReason } = await readFocusState();
 
   // "Live" means current as of this snapshot — an open tab heartbeats its
   // state here every ~3s (immediately on any action), so this is seconds-
   // fresh, not the up-to-45s-stale reading it used to be. Discord still can't
   // animate a sent message on its own, so hit Refresh to re-pull the number.
-  const rows = [['Sessions today', String(sessions || 0), true]];
+  const rows = [['Sessions today', String(sessions), true]];
   if (!liveBig) rows.push(['Focused today', formatDurationText(minutesToday), true]);
 
   const primary = [];

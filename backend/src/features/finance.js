@@ -15,11 +15,34 @@ const sum = (obj) => Object.values(obj).reduce((a, b) => a + (b || 0), 0);
 const sumBuckets = (buckets) => Object.keys(BUCKET_LABELS)
   .reduce((total, key) => total + (Number(buckets?.[key]) || 0), 0);
 
-export async function buildHomeView() {
+/** Platform-neutral readers — the Discord and Slack cards both draw from these. */
+export async function readFinanceSummary() {
   const [banks, buckets] = await Promise.all([
     getDashboardValue('finance_banks', DEFAULT_BANKS),
     getDashboardValue('finance_buckets', DEFAULT_BUCKETS),
   ]);
+  return { banks, buckets, total: sum(banks), allocated: sumBuckets(buckets) };
+}
+
+export async function readBanks() {
+  return getDashboardValue('finance_banks', DEFAULT_BANKS);
+}
+
+export async function readBucketsDetail() {
+  const [buckets, gold, goldPrices, thndr, thndrFlows] = await Promise.all([
+    getDashboardValue('finance_buckets', DEFAULT_BUCKETS),
+    getDashboardValue('finance_gold', []),
+    getDashboardValue('gold_prices', null),
+    getDashboardValue('finance_thndr', []),
+    getDashboardValue('finance_thndr_flows', []),
+  ]);
+  // The Future bucket holds cash only; the fund as a whole also counts the gold and Thndr —
+  // the same total the Finance screen shows beside it.
+  return { buckets, future: futureFundOf({ buckets, gold, goldPrices, thndr, thndrFlows }) };
+}
+
+export async function buildHomeView() {
+  const { total, allocated } = await readFinanceSummary();
   // Buckets are a virtual split of the same bank money, not money on top of
   // it — the real balance is the banks total; buckets just show how it's
   // allocated. Matches Finance.tsx, which shows these as two separate
@@ -28,8 +51,8 @@ export async function buildHomeView() {
     embeds: [card({
       domain: 'finance',
       headline: 'Real balance (banks) — buckets are how it\'s split, not extra money',
-      big: formatEGP(sum(banks)),
-      rows: [['Allocated across buckets', formatEGP(sumBuckets(buckets)), true]],
+      big: formatEGP(total),
+      rows: [['Allocated across buckets', formatEGP(allocated), true]],
     })],
     components: [row([
       { id: 'finance:banks', label: 'Banks', style: ButtonStyle.Primary },
@@ -40,7 +63,7 @@ export async function buildHomeView() {
 }
 
 export async function buildBanksView() {
-  const banks = await getDashboardValue('finance_banks', DEFAULT_BANKS);
+  const banks = await readBanks();
   const keys = Object.keys(BANK_LABELS);
   return {
     embeds: [card({
@@ -56,7 +79,7 @@ export async function buildBanksView() {
 }
 
 export async function buildBankView(bankKey) {
-  const banks = await getDashboardValue('finance_banks', DEFAULT_BANKS);
+  const banks = await readBanks();
   return {
     embeds: [card({
       domain: 'finance',
@@ -72,17 +95,8 @@ export async function buildBankView(bankKey) {
 }
 
 export async function buildBucketsView() {
-  const [buckets, gold, goldPrices, thndr, thndrFlows] = await Promise.all([
-    getDashboardValue('finance_buckets', DEFAULT_BUCKETS),
-    getDashboardValue('finance_gold', []),
-    getDashboardValue('gold_prices', null),
-    getDashboardValue('finance_thndr', []),
-    getDashboardValue('finance_thndr_flows', []),
-  ]);
+  const { buckets, future } = await readBucketsDetail();
   const keys = Object.keys(BUCKET_LABELS);
-  // The Future bucket holds cash only; the fund as a whole also counts the gold and Thndr —
-  // the same total the Finance screen shows beside it.
-  const future = futureFundOf({ buckets, gold, goldPrices, thndr, thndrFlows });
   return {
     embeds: [card({
       domain: 'finance',
@@ -121,7 +135,7 @@ export async function buildBucketChoiceView(action, bankKey) {
 /**
  * @param {'deposit'|'withdraw'} type
  * @param {string|null} bucketKey
- * @returns {{ ok: true, view: object } | { ok: false, message: string }}
+ * @returns {{ ok: true } | { ok: false, message: string }}
  */
 export async function applyBankChange(bankKey, type, amount, bucketKey = null) {
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -172,7 +186,7 @@ export async function applyBankChange(bankKey, type, amount, bucketKey = null) {
     ]);
   }
 
-  return { ok: true, view: await buildBankView(bankKey) };
+  return { ok: true };
 }
 
 export function isKnownBank(key) {

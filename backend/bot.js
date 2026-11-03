@@ -9,6 +9,7 @@ import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
 import { startServer } from './src/server.js';
+import { startSlack } from './src/slack/app.js';
 
 const CHANNEL_ID = CONTROL_CHANNEL_ID;
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'PUT_YOUR_BOT_TOKEN_HERE';
@@ -69,4 +70,14 @@ try {
   watchFocusNotifications(process.env.DISCORD_POMODORO_WEBHOOK_URL);
 } catch (error) {
   console.error('❌ Could not watch the focus timer:', error.message);
+}
+
+// The Slack control panel (/firmus) — an alternative to the Discord one, started only when its tokens are set.
+if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
+  startSlack({
+    botToken: process.env.SLACK_BOT_TOKEN,
+    appToken: process.env.SLACK_APP_TOKEN,
+    ownerId: process.env.SLACK_OWNER_USER_ID,
+    controlChannelId: process.env.SLACK_CONTROL_CHANNEL_ID,
+  }).catch((error) => console.error('❌ Could not start the Slack control panel:', error.message));
 }

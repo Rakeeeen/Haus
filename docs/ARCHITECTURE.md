@@ -174,6 +174,19 @@ timer's messages; `report`), `src/lib/` (`alerts`,
 Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
 Their pure parts are tested from the root `npm run test:run`.
 
+`backend/src/slack/` is the same control panel (hub, Water, Focus, Finance) for Slack: `/firmus` or
+`/firmus water|focus|finance`, over Socket Mode (no public URL). `views.js` draws the Block Kit cards from the same
+readers the Discord cards use (`readState`, `readFocusState`, `readFinanceSummary`…); `app.js` routes the buttons and
+the amount form. Cards are ephemeral and edited in place. It starts only when `SLACK_BOT_TOKEN` (xoxb-),
+`SLACK_APP_TOKEN` (xapp-) are in `backend/.env`; only `SLACK_OWNER_USER_ID` may use it, and only in the channel
+`SLACK_CONTROL_CHANNEL_ID` (matched by id — Slack hides a private channel's name). A card deletes itself a minute
+after the last press, except Focus.
+
+**Late glass.** Water closes at Maghrib (the day is archived, the counter zeroed). A glass drunk after that is added to
+the day that just closed: `domain/water.ts` (`archivedDayKey`, `applyLateGlass`) on the web, ported to
+`backend/src/lib/lateGlass.js` for both bots. If the Maghrib reset hasn't run yet it goes on the live counter, because
+the reset overwrites that day's history entry.
+
 `backend/src/features/report/` builds the **daily report**
 (20:00 Cairo, `bot.js`): `collect.js` reads the dashboard values from Firestore, `data.js` turns them into
 the report (pure — the finance, focus and subscription rules are ported by hand from `src/domain/`, and

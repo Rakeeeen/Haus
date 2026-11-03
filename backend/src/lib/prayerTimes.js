@@ -48,3 +48,8 @@ export async function isWaterLocked(now = new Date()) {
 export async function isFocusLocked(now = new Date()) {
   return isInNightWindow('Isha', '19:00', now);
 }
+
+/** Today's Maghrib as "HH:MM" — what the late-glass rule needs to name the day that just closed. */
+export async function getMaghrib() {
+  return (await getTodayTimings()).Maghrib || '18:00';
+}
