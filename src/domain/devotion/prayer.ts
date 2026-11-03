@@ -52,20 +52,6 @@ export function computeNextPrayer(times: PrayerTimes, now: Date = new Date()): N
   return { name: 'Fajr', time: timeStr, countdown: '--:--', remainingMinutes: 999, totalRemainingSeconds: 0 };
 }
 
-/**
- * The "wind down for the night" window: from the real Isha adhan until the real
- * Fajr adhan the next morning. Falls back to 21:00 / 04:00 before times load.
- */
-export function isSleepWindow(times: PrayerTimes | undefined, now: Date = new Date()): boolean {
-  const [fajrH, fajrM] = (times?.Fajr || '04:00').split(':').map(Number);
-  const fajr = new Date(now); fajr.setHours(fajrH, fajrM, 0, 0);
-
-  const [ishaH, ishaM] = (times?.Isha || '21:00').split(':').map(Number);
-  const isha = new Date(now); isha.setHours(ishaH, ishaM, 0, 0);
-
-  return now >= isha || now < fajr;
-}
-
 /** Water is closed from Maghrib (when the day is archived) until Fajr. */
 export function isWaterClosed(times: PrayerTimes | undefined, now: Date = new Date()): boolean {
   const { fajr, maghrib } = getDayMoments(times, now);

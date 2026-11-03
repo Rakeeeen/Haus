@@ -195,6 +195,11 @@ sending anything: `npm run report:preview` (writes a PDF to the temp folder); `n
 now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places — except the salary, which both
 read from `src/constants/finance.json`.
 
+**Running it.** `backend/` is started by the launchd agent `~/Library/LaunchAgents/com.firmus.bot.plist` (`start.sh`,
+kept alive, log in `~/Library/Logs/firmus-bot.log`). Restart it with `launchctl kickstart -k gui/$(id -u)/com.firmus.bot`;
+don't run `start.sh` by hand while the agent is loaded — that starts a second copy. The community Discord bot (a separate
+project) has its own agent, `com.bommy.bot`; both log in with the same Discord application.
+
 ## The website holds no secrets
 
 Everything compiled into the site is public, so nothing secret is a `VITE_` variable. When the app needs
