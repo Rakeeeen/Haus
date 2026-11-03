@@ -53,3 +53,10 @@ export async function isFocusLocked(now = new Date()) {
 export async function getMaghrib() {
   return (await getTodayTimings()).Maghrib || '18:00';
 }
+
+/** Whether `now` is the minute of today's Isha adhan — when the daily report goes out. */
+export async function isIshaNow(now = new Date()) {
+  const { Isha } = await getTodayTimings();
+  const [hours, minutes] = (Isha || '19:00').split(':').map(Number);
+  return now.getHours() === hours && now.getMinutes() === minutes;
+}

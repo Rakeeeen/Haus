@@ -1,4 +1,4 @@
-// Sends today's report to the dashboard channel right now — the same thing the 20:00 cron does.
+// Sends today's report to the dashboard channel right now — the same thing the Isha job does.
 //   node scripts/report-send.js
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';

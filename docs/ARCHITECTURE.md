@@ -188,7 +188,7 @@ the day that just closed: `domain/water.ts` (`archivedDayKey`, `applyLateGlass`)
 the reset overwrites that day's history entry.
 
 `backend/src/features/report/` builds the **daily report**
-(20:00 Cairo, `bot.js`): `collect.js` reads the dashboard values from Firestore, `data.js` turns them into
+(at Isha — `bot.js` checks each minute against today's Isha from the prayer API): `collect.js` reads the dashboard values from Firestore, `data.js` turns them into
 the report (pure — the finance, focus and subscription rules are ported by hand from `src/domain/`, and
 tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.js` posts it. Try it without
 sending anything: `npm run report:preview` (writes a PDF to the temp folder); `npm run report:send` sends it
