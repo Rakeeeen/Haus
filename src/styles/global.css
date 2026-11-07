@@ -288,7 +288,10 @@
     justify-content: center;
     gap: 0.5rem;
     min-height: 2.5rem;
-    padding: 0.55rem 1.5rem;
+    --pad: 1.5rem;
+    --reach-left: 0px;
+    --reach-right: 0px;
+    padding: 0.55rem calc(var(--pad) + var(--reach-right)) 0.55rem calc(var(--pad) + var(--reach-left));
     border: 1px solid transparent;
     border-radius: 9999px;
     font-family: var(--font-mono), monospace;
@@ -299,11 +302,8 @@
     transition:
       background-color 0.2s ease,
       border-color 0.2s ease,
-      color 0.2s ease,
-      transform var(--spring-duration) var(--spring);
+      color 0.2s ease;
   }
-  /* A press has weight, a hover doesn't: hovering still only changes the colour. */
-  [data-pressed] { transform: scale(1.03); }
   /* Off goes silver, never a washed-out purple. */
   .btn:disabled {
     background-color: color-mix(in srgb, var(--ink) 8%, transparent);
@@ -312,16 +312,23 @@
   }
 
   .btn-sm {
+    --pad: 1rem;
     min-height: 2rem;
-    padding: 0.35rem 1rem;
+    padding-block: 0.35rem;
     font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.2em;
   }
-  .btn-icon-sm, .btn-icon-md, .btn-icon-lg { padding: 0; flex-shrink: 0; }
-  .btn-icon-sm { width: 1.75rem; height: 1.75rem; min-height: 1.75rem; }
-  .btn-icon-md { width: 2.5rem; height: 2.5rem; }
-  .btn-icon-lg { width: 3rem; height: 3rem; }
+  .btn-icon-sm, .btn-icon-md, .btn-icon-lg {
+    padding: 0;
+    flex-shrink: 0;
+    width: calc(var(--size) + var(--reach-left) + var(--reach-right));
+    height: var(--size);
+    min-height: var(--size);
+  }
+  .btn-icon-sm { --size: 1.75rem; }
+  .btn-icon-md { --size: 2.5rem; }
+  .btn-icon-lg { --size: 3rem; }
 
   .btn-primary { background-color: var(--sepia); color: #FFFFFF; }
   .btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--sepia) 84%, #FFFFFF); }
@@ -377,18 +384,26 @@ body:not(.dark-theme) .silver-grain-on-dark {
   display: none;
 }
 
-/* Buttons side by side yield to each other: pressing one pushes its neighbours away. */
+/* Buttons side by side share their space, as in Material's button groups. A pressed button grows
+   only towards its neighbour and the neighbour gives up that edge, so the row keeps its length,
+   the far edges stay put and the labels don't move. A button with no neighbour has nothing to
+   push, so it just changes colour. */
 .spring-group > * {
-  transition-property: transform, background-color, border-color, color;
-  transition-duration: var(--spring-duration), 0.2s, 0.2s, 0.2s;
-  transition-timing-function: var(--spring), ease, ease, ease;
+  transition-property: padding-left, padding-right, width, flex-grow, background-color, border-color, color;
+  transition-duration: var(--spring-duration), var(--spring-duration), var(--spring-duration), var(--spring-duration), 0.2s, 0.2s, 0.2s;
+  transition-timing-function: var(--spring), var(--spring), var(--spring), var(--spring), ease, ease, ease;
 }
-.spring-group > :has(+ [data-pressed]) { transform: translateX(-4px); }
-.spring-group > [data-pressed] + * { transform: translateX(4px); }
-.spring-group > :has(+ * + [data-pressed]) { transform: translateX(-2px); }
-.spring-group > [data-pressed] + * + * { transform: translateX(2px); }
+.spring-group > [data-pressed]:has(+ *) { --reach-right: 8px; }
+.spring-group > * + [data-pressed] { --reach-left: 8px; }
+.spring-group > [data-pressed] + * { --reach-left: -8px; }
+.spring-group > :has(+ [data-pressed]) { --reach-right: -8px; }
+/* Buttons sharing a row equally take their share from flex, not from their padding. */
+.spring-group > .flex-1[data-pressed] { flex-grow: 1.1; }
+.spring-group > .flex-1:has(+ [data-pressed]),
+.spring-group > [data-pressed] + .flex-1 { flex-grow: 0.9; }
 @media (prefers-reduced-motion: reduce) {
-  [data-pressed], .spring-group > * { transform: none !important; }
+  .spring-group > * { --reach-left: 0px !important; --reach-right: 0px !important; }
+  .spring-group > .flex-1 { flex-grow: 1 !important; }
 }
 
 /* Hide native cursor globally — must be outside @layer to beat Tailwind utilities */

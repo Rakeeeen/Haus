@@ -80,7 +80,7 @@ export const DebtsTab: React.FC<{
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <p className={captionLabel}>{title}</p>
-        <div className="spring-group flex items-center gap-5">
+        <div className="flex items-center gap-5">
           <MaskedValue disabled={!privacyMode} className="font-mono-main text-sm font-black" align="end">{formatEGP(total)}</MaskedValue>
           <ActionButton onClick={() => onAdd(type)}>Add</ActionButton>
         </div>

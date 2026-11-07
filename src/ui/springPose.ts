@@ -4,8 +4,10 @@
  * Material's slow (200) and default (380) spatial springs, at about Apple's 0.4s pacing and 0.28
  * bounce, under the 0.4 where Apple says it starts to feel exaggerated.
  *
- * Only position and size use it. Colour and opacity never overshoot, so they keep plain easing.
- * The same curve for CSS is --spring in global.css.
+ * Nothing zooms. A touched thing stretches only towards what is next to it, so its text stays
+ * still and sharp, and what it reaches yields. Only position and size use the spring: colour and
+ * opacity never overshoot, so they keep plain easing. The same curve for CSS is --spring in
+ * global.css.
  */
 export const SPRING = { type: 'spring', stiffness: 240, damping: 22.3, mass: 1 } as const;
 
@@ -14,43 +16,64 @@ export const MIN_PRESS_MS = 140;
 
 export type SpringPhase = 'hover' | 'press';
 
-/** How far each neighbour yields, in px, by distance from the touched item. It fades with distance. */
-const PUSH: Record<SpringPhase, readonly number[]> = {
+/** How far each edge reaches out, in px. Negative pulls it in. */
+export interface Edges { top: number; right: number; bottom: number; left: number }
+
+const REST: Edges = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/** Towards the dock's other cards, and towards the big card across from them. */
+const DOCK_REACH: Record<SpringPhase, { along: number; across: number }> = {
+  hover: { along: 2, across: 4 },
+  press: { along: 5, across: 8 },
+};
+/** How far each neighbour yields, by distance from the touched card. It fades with distance. */
+const DOCK_PUSH: Record<SpringPhase, readonly number[]> = {
   hover: [2, 1, 0.4],
   press: [5, 2.5, 1],
 };
-const GROWTH: Record<SpringPhase, number> = { hover: 1.012, press: 1.04 };
-
-/** The big card weighs more: it grows less for its size but moves everything around it. */
-const STAGE_GROWTH: Record<SpringPhase, number> = { hover: 1.01, press: 1.02 };
-const STAGE_PUSH: Record<SpringPhase, number> = { hover: 6, press: 10 };
-const DOCK_PUSH: Record<SpringPhase, number> = { hover: 2, press: 4 };
+const STAGE_REACH: Record<SpringPhase, { side: number; vertical: number }> = {
+  hover: { side: 6, vertical: 3 },
+  press: { side: 10, vertical: 5 },
+};
 
 /**
- * The big card and the dock beside it, as neighbours. Touching the big card grows it and pushes
- * the dock left and the date below down; touching a dock card nudges the big card right.
+ * A dock card and where it sits while another one is touched. `stacked` is the desktop column:
+ * the cards reach up, down and right, never left, where nothing is. On a phone they sit in a row
+ * above the big card, so they reach left, right and down.
  */
-export function stagePose(stage: SpringPhase | null, dock: SpringPhase | null) {
-  const push = stage ? STAGE_PUSH[stage] : 0;
-  return {
-    scale: stage ? STAGE_GROWTH[stage] : 1,
-    stageShift: dock ? DOCK_PUSH[dock] : 0,
-    dockShift: push ? -push : 0,
-    footerShift: push / 2,
-  };
-}
-
-/**
- * Where an item in a row or stack sits while another one is touched: the touched item grows and
- * the items beside it are pushed away from it.
- */
-export function springPose(
+export function dockPose(
   index: number,
   touchedIndex: number | null,
   phase: SpringPhase,
-): { scale: number; shift: number } {
-  if (touchedIndex === null) return { scale: 1, shift: 0 };
-  if (index === touchedIndex) return { scale: GROWTH[phase], shift: 0 };
+  stacked: boolean,
+): { edges: Edges; shift: number } {
+  if (touchedIndex === null) return { edges: REST, shift: 0 };
+  if (index === touchedIndex) {
+    const { along, across } = DOCK_REACH[phase];
+    return {
+      edges: stacked
+        ? { top: along, right: across, bottom: along, left: 0 }
+        : { top: 0, right: along, bottom: across, left: along },
+      shift: 0,
+    };
+  }
   const distance = Math.abs(index - touchedIndex);
-  return { scale: 1, shift: Math.sign(index - touchedIndex) * (PUSH[phase][distance - 1] ?? 0) };
+  return { edges: REST, shift: Math.sign(index - touchedIndex) * (DOCK_PUSH[phase][distance - 1] ?? 0) };
+}
+
+/**
+ * The big card, and what it does to the dock and the date. Touched, it reaches towards them and
+ * pushes them away; its right edge is the page's, so it stays. When a dock card reaches for it,
+ * the near edge gives way instead of the whole card sliding.
+ */
+export function stagePose(stage: SpringPhase | null, dock: SpringPhase | null, beside: boolean) {
+  const give = dock ? DOCK_REACH[dock].across : 0;
+  const reach = stage ? STAGE_REACH[stage] : { side: 0, vertical: 0 };
+  return {
+    edges: beside
+      ? { top: reach.vertical, right: 0, bottom: reach.vertical, left: reach.side - give }
+      : { top: 0 - give, right: 0, bottom: reach.vertical, left: 0 },
+    dockShift: beside ? 0 - reach.side : 0,
+    footerShift: reach.vertical,
+  };
 }

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { IconButton } from '@/ui/Button';
 import { NAME_MARKED } from '@/constants/brand';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { MIN_PRESS_MS, SPRING, springPose, stagePose, type SpringPhase } from '@/ui/springPose';
+import { dockPose, MIN_PRESS_MS, SPRING, stagePose, type SpringPhase } from '@/ui/springPose';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { uploadImage } from '@/lib/cloudinary';
 import {
@@ -307,6 +307,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   const stage = stagePose(
     reduceMotion || zenActive ? null : stageTouch,
     reduceMotion || zenActive ? null : pressedCardId ? 'press' : hoveredCardId ? 'hover' : null,
+    isLgUp,
   );
 
   // The invisible edge strip that reveals the dock on hover (below) only starts listening
@@ -625,7 +626,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
                   transition={{ ...SPRING, opacity: { duration: 0.2 } }}
-                  className="absolute right-0 mt-2 z-50 bg-paper-dark border border-ink/14 rounded-full p-1.5 flex items-center gap-1.5"
+                  className="spring-group absolute right-0 mt-2 z-50 bg-paper-dark border border-ink/14 rounded-full p-1.5 flex items-center gap-1.5"
                 >
                   {/* Theme Button */}
                   <IconButton
@@ -723,12 +724,12 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             const { Vector } = card;
             const touchedId = reduceMotion ? null : pressedCardId ?? hoveredCardId;
             const touchedIndex = touchedId ? cards.findIndex((c) => c.id === touchedId) : -1;
-            const pose = springPose(index, touchedIndex < 0 ? null : touchedIndex, pressedCardId ? 'press' : 'hover');
+            const pose = dockPose(index, touchedIndex < 0 ? null : touchedIndex, pressedCardId ? 'press' : 'hover', isLgUp);
             return (
               <motion.div
                 key={card.id}
                 initial={false}
-                animate={isLgUp ? { scale: pose.scale, x: 0, y: pose.shift } : { scale: pose.scale, x: pose.shift, y: 0 }}
+                animate={isLgUp ? { x: 0, y: pose.shift } : { x: pose.shift, y: 0 }}
                 transition={SPRING}
                 onPointerDown={() => pressCard(card.id)}
                 onPointerUp={releaseCard}
@@ -744,15 +745,21 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                 }}
                 onMouseEnter={() => setHoveredCardId(card.id)}
                 onMouseLeave={() => { setHoveredCardId(null); if (pressedCardId) releaseCard(); }}
-                data-active={isActive || undefined}
-                className={`cursor-pointer transform-gpu relative select-none flex flex-col justify-between p-4 border bg-paper-dark rounded-card ${
-                  isActive ? 'border-ink text-ink' : 'border-ink/14 text-ink/55 hover:text-ink hover:border-ink/40'
-                } w-[160px] lg:w-[230px] h-[112px] lg:h-[124px] shrink-0`}
-                style={{
-                  zIndex: touchedId === card.id ? 1 : 0,
-                  transition: 'border-color 200ms ease, color 200ms ease',
-                }}
+                className="cursor-pointer relative select-none w-[160px] lg:w-[230px] h-[112px] lg:h-[124px] shrink-0"
+                style={{ zIndex: touchedId === card.id ? 1 : 0 }}
               >
+                {/* The slot above keeps the dock's layout; this surface is what stretches, so
+                    its edges can move without touching the text's size. */}
+                <motion.div
+                  data-active={isActive || undefined}
+                  initial={false}
+                  animate={{ top: -pose.edges.top, right: -pose.edges.right, bottom: -pose.edges.bottom, left: -pose.edges.left }}
+                  transition={SPRING}
+                  className={`absolute flex flex-col justify-between p-4 border bg-paper-dark rounded-card ${
+                    isActive ? 'border-ink text-ink' : 'border-ink/14 text-ink/55 hover:text-ink hover:border-ink/40'
+                  }`}
+                  style={{ transition: 'border-color 200ms ease, color 200ms ease' }}
+                >
                 <div className="flex justify-between items-start pointer-events-none">
                   <span className="font-sans-main text-xs font-black tracking-tight uppercase truncate mr-2">
                     {card.title}
@@ -791,6 +798,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                     {card.subText}
                   </span>
                 </div>
+                </motion.div>
               </motion.div>
             );
           })}
@@ -837,7 +845,11 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         >
           <motion.div
             initial={false}
-            animate={{ scale: stage.scale, x: isLgUp ? stage.stageShift : 0 }}
+            animate={{
+              marginTop: -stage.edges.top,
+              marginBottom: -stage.edges.bottom,
+              marginLeft: -stage.edges.left,
+            }}
             transition={SPRING}
             onMouseEnter={() => setStageTouch('hover')}
             onMouseLeave={() => setStageTouch(null)}

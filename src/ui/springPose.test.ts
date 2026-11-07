@@ -1,54 +1,70 @@
 import { describe, expect, it } from 'vitest';
-import { springPose, stagePose } from '@/ui/springPose';
+import { dockPose, stagePose } from '@/ui/springPose';
 
-describe('springPose', () => {
+describe('dockPose', () => {
   it('leaves everything at rest when nothing is touched', () => {
-    expect(springPose(2, null, 'hover')).toEqual({ scale: 1, shift: 0 });
+    expect(dockPose(2, null, 'hover', true)).toEqual({ edges: { top: 0, right: 0, bottom: 0, left: 0 }, shift: 0 });
   });
 
-  it('grows the touched item without moving it', () => {
-    const pose = springPose(1, 1, 'press');
-    expect(pose.scale).toBeGreaterThan(1);
-    expect(pose.shift).toBe(0);
+  it('reaches up, down and right in the desktop column, never left', () => {
+    const { edges, shift } = dockPose(1, 1, 'hover', true);
+    expect(edges.top).toBeGreaterThan(0);
+    expect(edges.bottom).toBeGreaterThan(0);
+    expect(edges.right).toBeGreaterThan(0);
+    expect(edges.left).toBe(0);
+    expect(shift).toBe(0);
   });
 
-  it('pushes neighbours away from the touched item, on both sides', () => {
-    expect(springPose(0, 1, 'press').shift).toBeLessThan(0);
-    expect(springPose(2, 1, 'press').shift).toBeGreaterThan(0);
+  it('reaches left, right and down in the phone row, never up', () => {
+    const { edges } = dockPose(1, 1, 'hover', false);
+    expect(edges.left).toBeGreaterThan(0);
+    expect(edges.right).toBeGreaterThan(0);
+    expect(edges.bottom).toBeGreaterThan(0);
+    expect(edges.top).toBe(0);
+  });
+
+  it('pushes neighbours away, on both sides, exactly as far as the edge reached', () => {
+    const { edges } = dockPose(1, 1, 'press', true);
+    expect(dockPose(0, 1, 'press', true).shift).toBe(-edges.top);
+    expect(dockPose(2, 1, 'press', true).shift).toBe(edges.bottom);
   });
 
   it('fades the push with distance', () => {
-    const near = Math.abs(springPose(1, 0, 'press').shift);
-    const far = Math.abs(springPose(3, 0, 'press').shift);
-    expect(far).toBeLessThan(near);
-  });
-
-  it('pushes harder on a press than on a hover', () => {
-    expect(springPose(1, 0, 'press').shift).toBeGreaterThan(springPose(1, 0, 'hover').shift);
+    expect(Math.abs(dockPose(3, 0, 'press', true).shift)).toBeLessThan(Math.abs(dockPose(1, 0, 'press', true).shift));
   });
 
   it('does not reach past three neighbours', () => {
-    expect(springPose(4, 0, 'press').shift).toBe(0);
+    expect(dockPose(4, 0, 'press', true).shift).toBe(0);
   });
 });
 
 describe('stagePose', () => {
   it('rests when nothing is touched', () => {
-    expect(stagePose(null, null)).toEqual({ scale: 1, stageShift: 0, dockShift: 0, footerShift: 0 });
+    expect(stagePose(null, null, true)).toEqual({
+      edges: { top: 0, right: 0, bottom: 0, left: 0 }, dockShift: 0, footerShift: 0,
+    });
   });
 
-  it('grows the big card and pushes the dock left and the date down', () => {
-    const pose = stagePose('hover', null);
-    expect(pose.scale).toBeGreaterThan(1);
-    expect(pose.dockShift).toBeLessThan(0);
-    expect(pose.footerShift).toBeGreaterThan(0);
+  it('reaches towards the dock and the date, and leaves the right edge alone', () => {
+    const pose = stagePose('hover', null, true);
+    expect(pose.edges.left).toBeGreaterThan(0);
+    expect(pose.edges.right).toBe(0);
+    expect(pose.dockShift).toBe(-pose.edges.left);
+    expect(pose.footerShift).toBe(pose.edges.bottom);
   });
 
   it('pushes harder on a press', () => {
-    expect(stagePose('press', null).dockShift).toBeLessThan(stagePose('hover', null).dockShift);
+    expect(stagePose('press', null, true).edges.left).toBeGreaterThan(stagePose('hover', null, true).edges.left);
   });
 
-  it('nudges the big card right when a dock card is touched', () => {
-    expect(stagePose(null, 'hover').stageShift).toBeGreaterThan(0);
+  it('gives way on its near edge by what a dock card reached', () => {
+    expect(stagePose(null, 'hover', true).edges.left).toBe(-dockPose(0, 0, 'hover', true).edges.right);
+  });
+
+  it('gives way on top when the dock sits above it on a phone', () => {
+    const pose = stagePose(null, 'hover', false);
+    expect(pose.edges.top).toBeLessThan(0);
+    expect(pose.edges.left).toBe(0);
+    expect(pose.dockShift).toBe(0);
   });
 });
