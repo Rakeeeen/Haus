@@ -54,9 +54,9 @@ export async function getMaghrib() {
   return (await getTodayTimings()).Maghrib || '18:00';
 }
 
-/** Whether `now` is the minute of today's Isha adhan — when the daily report goes out. */
-export async function isIshaNow(now = new Date()) {
-  const { Isha } = await getTodayTimings();
-  const [hours, minutes] = (Isha || '19:00').split(':').map(Number);
+/** Whether `now` is the minute of today's Maghrib adhan — when the daily report goes out. */
+export async function isMaghribNow(now = new Date()) {
+  const { Maghrib } = await getTodayTimings();
+  const [hours, minutes] = (Maghrib || '18:00').split(':').map(Number);
   return now.getHours() === hours && now.getMinutes() === minutes;
 }

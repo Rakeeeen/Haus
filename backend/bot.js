@@ -8,7 +8,7 @@ import { cleanChannel } from './src/features/cleanup.js';
 import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
-import { isIshaNow } from './src/lib/prayerTimes.js';
+import { isMaghribNow } from './src/lib/prayerTimes.js';
 import { startServer } from './src/server.js';
 import { startSlack } from './src/slack/app.js';
 
@@ -49,11 +49,11 @@ client.once('clientReady', async () => {
     console.log(`🧹 Cleaned the channel: ${await cleanChannel(channel)} messages removed`);
   }));
   cron.schedule('* * * * *', guarded('Payit reminders', () => remindDueSubscriptions(client, CHANNEL_ID)));
-  // Isha moves every day (from the prayer API, like the water and focus locks), so the report is checked each minute.
+  // Maghrib moves every day (from the prayer API, like the water and focus locks), so the report is checked each minute.
   cron.schedule('* * * * *', guarded('Daily report', async () => {
-    if (await isIshaNow()) await sendDailyReport(client, CHANNEL_ID);
+    if (await isMaghribNow()) await sendDailyReport(client, CHANNEL_ID);
   }), TIME_ZONE);
-  console.log('⏰ Scheduled: channel cleanup 02:00 · Payit reminders every minute · daily report at Isha');
+  console.log('⏰ Scheduled: channel cleanup 02:00 · Payit reminders every minute · daily report at Maghrib');
 });
 
 // A failed login used to be permanent — one transient timeout left the bot running but cut off from
