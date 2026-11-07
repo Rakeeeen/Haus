@@ -83,7 +83,7 @@ export function Segmented<T extends string | number>({ options, value, onChange 
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex gap-1 p-1 border border-ink/12 rounded-full">
+    <div className="spring-group flex gap-1 p-1 border border-ink/12 rounded-full">
       {options.map((o) => {
         const selected = value === o.value;
         return (

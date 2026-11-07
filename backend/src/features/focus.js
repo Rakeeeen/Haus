@@ -207,7 +207,7 @@ export async function doneFocusRemote() {
 // System, just without that file's emoji (kept out everywhere in this bot).
 export function buildSessionLoggedNotice(focusGained, overtimeSeconds) {
   return new EmbedBuilder()
-    .setColor(0x7ca982)
+    .setColor(0x9A9A9A)
     .setTitle('Focus Session Logged')
     .setDescription(`You've logged **${formatDurationText(focusGained)}** of deep work.`)
     .addFields(

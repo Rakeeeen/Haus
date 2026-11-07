@@ -1,4 +1,5 @@
 import React from 'react';
+import { FinanceIllustration } from '@/ui/illustrations';
 import { MaskedValue, FinanceVector } from '@/features/home/components/visuals';
 
 /** The big card's body for Finance: the physical total, masked like the Finance page itself. */
@@ -11,6 +12,11 @@ export const FinanceCardBody: React.FC<{ totalPhysical: number }> = ({ totalPhys
       <div className="text-ink opacity-60">
         <FinanceVector size={36} />
       </div>
+    </div>
+
+    {/* The drawing fills the quiet middle of the card; on small screens there's no room for it. */}
+    <div className="hidden md:flex flex-1 min-h-0 items-center justify-center py-4">
+      <FinanceIllustration className="h-full max-h-[240px] w-auto text-ink" />
     </div>
 
     <div className="flex items-end gap-4">

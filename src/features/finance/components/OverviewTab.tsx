@@ -62,7 +62,7 @@ export const OverviewTab: React.FC<{
           <p className={`${sectionLabel} mb-3`}>Total in banks</p>
           {masked(formatEGP(sumOf(banks)), 'font-mono-main text-4xl md:text-5xl font-black tracking-tight')}
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="spring-group flex flex-wrap items-center gap-2 shrink-0">
           <ActionButton onClick={() => onMove({ type: 'deposit', bank: null })}>Money in / out</ActionButton>
           <ActionButton tone="solid" onClick={() => onSplit('income')}>Split income</ActionButton>
         </div>

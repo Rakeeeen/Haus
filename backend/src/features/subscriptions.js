@@ -74,7 +74,7 @@ export async function sendSubscriptionAlert(client, channelId, sub, now = new Da
   const amount = `${sub.cost.toLocaleString('en-EG')} EGP`;
   await sendEmbed(client, channelId, {
     title: 'Payit Renewal Due',
-    color: 0xF0C040,
+    color: 0xE2583A,
     description: `**${sub.name}** is renewing today — make sure it's covered.`,
     fields: [
       { name: 'Amount', value: `\`${amount}\``, inline: true },

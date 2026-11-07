@@ -10,11 +10,12 @@ import { NAME_MARKED } from './brand.js';
  * (src/styles/global.css), so a card here reads as the same product, not a
  * reskin — kept in sync by hand since the two codebases don't share a build.
  */
+// Silver for the three areas, the brand purple only for Firmus itself, same as the web app.
 const BRAND = {
-  water:   { color: 0x5EC8B0, label: 'Water' },
-  focus:   { color: 0xD7EA6C, label: 'Focus' },
-  finance: { color: 0xE8C04A, label: 'Finance' },
-  system:  { color: 0xC2DC3F, label: NAME_MARKED },
+  water:   { color: 0x9A9A9A, label: 'Water' },
+  focus:   { color: 0x9A9A9A, label: 'Focus' },
+  finance: { color: 0x9A9A9A, label: 'Finance' },
+  system:  { color: 0x4D14A2, label: NAME_MARKED },
 };
 
 /**

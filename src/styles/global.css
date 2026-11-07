@@ -91,6 +91,8 @@
     --grain-page: url('./textures/grain-page-light.png');
     --grain-title: url('./textures/grain-title-on-light.png');
     --silver-high: #7C7C7C;
+    /* The illustrations' paper shape: the page's silver, set on a card. */
+    --icon-paper: #D6D6D6;
     --silver-low: #3C3C3C;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #E4E4E4 0%, transparent 70%),
@@ -102,8 +104,8 @@
   }
 
   body.dark-theme {
-    --bg: #0D0D0D;
-    --paper: #0D0D0D;
+    --bg: #0A0A0A;
+    --paper: #0A0A0A;
     --paper-dark: #000000;
     --ink: #EDEDED;
     --ink-faded: #9A9A9A;
@@ -116,6 +118,7 @@
     --grain-page: url('./textures/grain-page-dark.png');
     --grain-title: url('./textures/grain-title-on-dark.png');
     --silver-high: #F6F6F6;
+    --icon-paper: #2C2C2C;
     --silver-low: #8E8E8E;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #1E1E1E 0%, transparent 70%),

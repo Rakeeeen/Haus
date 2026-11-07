@@ -9,7 +9,8 @@ import { THNDR_PARTS, egp, signedEgp, duration, countdown } from './data.js';
 // (the lime) used sparingly. Built-in PDF fonts only — nothing to install.
 
 // The dashboard's dark palette (src/styles/global.css), kept in sync by hand.
-const C = { bg: '#0D0D0D', ink: '#E7E8E1', muted: '#7F8370', hair: '#2B2D25', accent: '#C2DC3F', warn: '#E2664A', soft: '#4A4D40' };
+// The web app's dark theme: neutral silver greys, the green and red only for money going up or down.
+const C = { bg: '#0A0A0A', ink: '#EDEDED', muted: '#9A9A9A', hair: '#222222', accent: '#B8B8B8', gain: '#3AE272', warn: '#E2583A', soft: '#3A3A3A' };
 
 const F = { sans: 'Helvetica', sansBold: 'Helvetica-Bold', mono: 'Courier', monoBold: 'Courier-Bold' };
 const PAGE = { w: 595.28, h: 841.89 };
@@ -219,7 +220,7 @@ function inBrief(doc, report, y) {
   const items = report.highlights.slice(0, 4);
   items.forEach((it, i) => {
     const ly = y + 22 + i * 20;
-    doc.save().circle(M + 2.5, ly + 5, 2.2).fill(it.tone === 'good' ? C.accent : it.tone === 'warn' ? C.warn : C.soft).restore();
+    doc.save().circle(M + 2.5, ly + 5, 2.2).fill(it.tone === 'good' ? C.gain : it.tone === 'warn' ? C.warn : C.soft).restore();
     doc.font(F.sans).fontSize(10).fillColor(C.ink).text(it.text, M + 16, ly, { lineBreak: false, width: W - 16 });
   });
   return y + 22 + items.length * 20 + 10;
@@ -278,7 +279,7 @@ function thndr(doc, report, y) {
   const move = t.sincePrevious;
   if (move) {
     const pct = move.percent === null ? '' : `  ${move.percent >= 0 ? '+' : '-'}${Math.abs(move.percent).toFixed(1)}%`;
-    note(doc, `${signedEgp(move.amount)}${pct}`, M, y + 8, { size: 9, color: move.amount >= 0 ? C.accent : C.warn, width: W, align: 'right' });
+    note(doc, `${signedEgp(move.amount)}${pct}`, M, y + 8, { size: 9, color: move.amount >= 0 ? C.gain : C.warn, width: W, align: 'right' });
   }
   const stamp = new Date(t.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const gainPct = t.gain.percent === null ? '' : `  ${t.gain.percent >= 0 ? '+' : '-'}${Math.abs(t.gain.percent).toFixed(1)}%`;
@@ -309,7 +310,7 @@ function subscriptions(doc, report, y) {
   });
   // The month in one line
   note(doc, `Per month  ${egp(s.monthlySubs)}   ·   salary ${egp(s.salary)}   ·   left`, M, y + 12, { size: 7.5 });
-  doc.font(F.sansBold).fontSize(9.5).fillColor(s.amount < 0 ? C.warn : C.accent).text(egp(s.amount), M, y + 10, { lineBreak: false, width: W, align: 'right' });
+  doc.font(F.sansBold).fontSize(9.5).fillColor(s.amount < 0 ? C.warn : C.gain).text(egp(s.amount), M, y + 10, { lineBreak: false, width: W, align: 'right' });
   return y + 34;
 }
 
@@ -332,7 +333,7 @@ function debts(doc, report, y) {
     doc.font(F.sansBold).fontSize(9.5).fillColor(color).text(egp(total), x, cy + 6, { lineBreak: false, width: w, align: 'right' });
     return cy + 26;
   };
-  return twoColumns(y, list('Owed to me', d.toMe, d.owedToMe, C.accent), list('I owe', d.byMe, d.owedByMe, d.owedByMe > 0 ? C.warn : C.ink));
+  return twoColumns(y, list('Owed to me', d.toMe, d.owedToMe, C.gain), list('I owe', d.byMe, d.owedByMe, d.owedByMe > 0 ? C.warn : C.ink));
 }
 
 function logs(doc, report, y) {
@@ -361,7 +362,7 @@ function logs(doc, report, y) {
       const out = l.type === 'withdraw';
       doc.font(F.mono).fontSize(8).fillColor(C.muted).text(`${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`, x, cy + 6, { lineBreak: false });
       doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(out ? 'Withdraw' : 'Deposit', x + 40, cy + 5, { lineBreak: false });
-      doc.font(F.sans).fontSize(9.5).fillColor(out ? C.warn : C.accent).text(`${out ? '-' : '+'}${egp(l.amount)}`, x, cy + 5, { lineBreak: false, width: w, align: 'right' });
+      doc.font(F.sans).fontSize(9.5).fillColor(out ? C.warn : C.gain).text(`${out ? '-' : '+'}${egp(l.amount)}`, x, cy + 5, { lineBreak: false, width: w, align: 'right' });
       line(doc, x, cy + ROW, x + w);
       cy += ROW;
     });
@@ -375,7 +376,7 @@ function thndrReadings(doc, report, y) {
   report.logs.thndr.forEach((r) => {
     const stamp = new Date(r.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     note(doc, stamp, M, y + 7, { size: 8 });
-    if (r.delta && r.delta.amount !== 0) note(doc, signedEgp(r.delta.amount), M + 120, y + 7, { size: 7.5, color: r.delta.amount >= 0 ? C.accent : C.warn });
+    if (r.delta && r.delta.amount !== 0) note(doc, signedEgp(r.delta.amount), M + 120, y + 7, { size: 7.5, color: r.delta.amount >= 0 ? C.gain : C.warn });
     doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(egp(r.value), M, y + 5, { lineBreak: false, width: W, align: 'right' });
     line(doc, M, y + ROW, M + W);
     y += ROW;

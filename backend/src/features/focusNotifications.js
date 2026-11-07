@@ -11,8 +11,9 @@ const KEY = 'focus_notification';
 /** An event older than this is not announced — e.g. one written while the bot was off. */
 const FRESH_FOR_MS = 2 * 60 * 1000;
 const FOOTER = { text: `${NAME_MARKED} Productivity System` };
-const GREEN = 0x7ca982;
-const GOLD = 0xc8a96e;
+// The web app's silver, and its purple for the one call to act (the break is over).
+const GREEN = 0x9A9A9A;
+const GOLD = 0x4D14A2;
 
 /** The Discord embed for an event, or null for a kind of event that has no message. */
 export function embedFor(event) {

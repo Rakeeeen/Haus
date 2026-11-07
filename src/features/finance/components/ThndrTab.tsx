@@ -177,7 +177,7 @@ export const ThndrTab: React.FC<{
 
       <div className="flex justify-between items-center">
         <p className={captionLabel}>Records</p>
-        <div className="flex items-center gap-4">
+        <div className="spring-group flex items-center gap-4">
           <ActionButton onClick={onAddMoney}>Money in / out</ActionButton>
           <ActionButton tone="solid" onClick={() => setEditing({ open: true, entry: null })}>Update value</ActionButton>
         </div>
