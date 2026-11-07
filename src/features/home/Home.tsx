@@ -755,10 +755,14 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   initial={false}
                   animate={{ top: -pose.edges.top, right: -pose.edges.right, bottom: -pose.edges.bottom, left: -pose.edges.left }}
                   transition={SPRING}
-                  className={`absolute flex flex-col justify-between p-4 border bg-paper-dark rounded-card ${
-                    isActive ? 'border-ink text-ink' : 'border-ink/14 text-ink/55 hover:text-ink hover:border-ink/40'
+                  // Only the card in use is solid. The rest are an outline over the page, so the
+                  // eye has one place to land.
+                  className={`absolute flex flex-col justify-between p-4 border rounded-card ${
+                    isActive
+                      ? 'bg-paper-dark border-ink text-ink'
+                      : 'bg-transparent border-dashed border-ink/30 text-ink/55 hover:text-ink hover:border-ink/50'
                   }`}
-                  style={{ transition: 'border-color 200ms ease, color 200ms ease' }}
+                  style={{ transition: 'border-color 200ms ease, color 200ms ease, background-color 200ms ease' }}
                 >
                 <div className="flex justify-between items-start pointer-events-none">
                   <span className="font-sans-main text-xs font-black tracking-tight uppercase truncate mr-2">
@@ -954,8 +958,8 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         return (
       <AppModal isOpen={showFingerprint} onClose={() => setShowFingerprint(false)} maxWidth="max-w-2xl"
         title={<div>
-          <div className="font-mono-main text-[10px] tracking-[0.25em] uppercase mb-1" style={{ color: 'color-mix(in srgb, var(--ink) 30%, transparent)' }}>ANNUAL FINGERPRINT</div>
-          <div className="font-sans-main text-2xl font-light tracking-tight" style={{ color: 'color-mix(in srgb, var(--ink) 70%, transparent)' }}>{year}</div>
+          <div className="font-mono-main text-[10px] font-bold tracking-[0.25em] uppercase mb-2 text-ink/40">Annual fingerprint</div>
+          <div className="text-silver font-sans-main text-5xl font-black tracking-tight">{year}</div>
         </div>}
       >
               <div className="grid grid-cols-4 gap-3">
@@ -970,25 +974,27 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                     <motion.div
                       key={mk}
                       initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-                      className="flex flex-col items-center gap-2 p-3"
-                      style={{
-                        background: hasData ? 'color-mix(in srgb, var(--ink) 5%, transparent)' : 'transparent',
-                        border: `1px solid color-mix(in srgb, var(--ink) ${hasData ? 10 : 5}%, transparent)`,
-                        opacity: isFuture ? 0.25 : 1,
-                      }}
+                      animate={{ opacity: isFuture ? 0.35 : 1, y: 0 }}
+                      transition={{ ...SPRING, delay: i * 0.04, opacity: { delay: i * 0.04, duration: 0.2 } }}
+                      // This month is the one solid tile; months with days in them sit on silver,
+                      // the rest are just an outline, like the dock's resting cards.
+                      className={`flex flex-col items-center gap-2 p-3 border rounded-box ${
+                        i === currentMonth ? 'bg-paper border-ink text-ink'
+                        : hasData ? 'bg-paper border-transparent text-ink'
+                        : 'border-dashed border-ink/20 text-ink/40'
+                      }`}
+                      data-active={i === currentMonth || undefined}
                     >
                       {hasData ? (
                         <MonthFingerprint monthKey={mk} days={monthDays} size={72} />
                       ) : (
                         <div style={{ width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div className="w-1 h-1 rounded-full" style={{ background: 'color-mix(in srgb, var(--ink) 15%, transparent)' }} />
+                          <div className="w-1 h-1 rounded-full bg-ink/20" />
                         </div>
                       )}
-                      <div className="font-mono-main text-[9px] tracking-[0.2em]" style={{ color: `color-mix(in srgb, var(--ink) ${hasData ? 40 : 20}%, transparent)` }}>{name}</div>
+                      <div className={`font-mono-main text-[9px] font-bold tracking-[0.2em] ${i === currentMonth ? 'text-ink' : 'text-ink/50'}`}>{name}</div>
                       {hasData && (
-                        <div className="font-mono-main text-[8px]" style={{ color: 'color-mix(in srgb, var(--ink) 25%, transparent)' }}>{Object.keys(monthDays).length}d</div>
+                        <div className="font-mono-main text-[8px] text-ink/40">{Object.keys(monthDays).length}d</div>
                       )}
                     </motion.div>
                   );
