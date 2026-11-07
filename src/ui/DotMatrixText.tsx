@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { SPRING } from '@/ui/springPose';
 
 // ─── DOT MATRIX DIGITS DEFINITIONS (5x4 Grid) ───
 const DIGIT_MATRICES: Record<string, number[][]> = {
@@ -101,7 +102,7 @@ export const DotMatrixText: React.FC<{
                     scale: val ? 1 : 0.8,
                     opacity: val ? 1 : 0
                   }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                  transition={{ ...SPRING, opacity: { duration: 0.2 } }}
                   className={`${dotSizeClassName} rounded-full bg-ink`}
                 />
               ))

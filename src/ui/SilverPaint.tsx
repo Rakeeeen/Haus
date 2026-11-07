@@ -3,14 +3,14 @@ import grainOnLight from '@/styles/textures/grain-title-on-light.png';
 import grainOnDark from '@/styles/textures/grain-title-on-dark.png';
 
 /**
- * The titles' aluminum as an SVG paint, for things that aren't text, like a clock's hands.
+ * The titles' aluminum as an SVG paint, for things that aren't text, like a clock's second hand and digits.
  * Put it inside an <svg> and use `url(#id)` as a fill or stroke. The grain belongs to the metal,
  * so it turns with the hand. Both tiles are always in the DOM and global.css shows the one for
  * the current theme, because a CSS variable can't reach an <image> href.
  */
-export const SilverPaint: React.FC<{ id: string; size: number }> = ({ id, size }) => {
-  // Twice the face: at the clocks' usual sizes that keeps a grain close to one screen pixel.
-  const tile = size * 2;
+export const SilverPaint: React.FC<{ id: string; size: number; tile?: number }> = ({ id, size, tile = size * 2 }) => {
+  // `tile` is in the drawing's own units: pick it so a tile lands near 256 screen px, one grain
+  // per device pixel on Retina. Twice the face does that for the clocks' usual sizes.
   return (
     <defs>
       <linearGradient id={`${id}-light`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2={size}>

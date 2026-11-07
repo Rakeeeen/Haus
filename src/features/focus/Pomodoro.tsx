@@ -70,7 +70,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
 
   const controls = (
     <div className="flex flex-col items-center gap-4">
-      <div className="flex justify-center items-center gap-3">
+      <div className="spring-group flex justify-center items-center gap-3">
         {isOvertime || (mode === 'break' && timeLeft === 0) ? (
           <>
             {isOvertime && (

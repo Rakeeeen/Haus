@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { SPRING } from '@/ui/springPose';
 
 /**
  * The system's tab / period switcher: plain mono labels, the current one in full ink with a
@@ -35,7 +36,7 @@ export function Tabs<T extends string>({ options, value, onChange, layoutId, rul
               <motion.span
                 layoutId={layoutId}
                 className="absolute left-0 right-0 -bottom-px h-0.5 bg-ink"
-                transition={{ type: 'spring', stiffness: 450, damping: 36 }}
+                transition={SPRING}
               />
             )}
           </button>

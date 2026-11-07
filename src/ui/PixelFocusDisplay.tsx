@@ -7,9 +7,11 @@ import { SilverPaint, useSilverId } from '@/ui/SilverPaint';
  * wavy ring (see FocusCarousel). Same DM digit bitmaps (see TimerComponents), just drawn
  * as square pixels instead of dots, to match this style's chunkier look.
  */
-export const PixelDigits: React.FC<{ mm: string; ss: string; color: string; maxWidth?: string; height?: string; flush?: boolean }> = ({
-  mm, ss, color, maxWidth = 'min(88vw, 480px)', height, flush = false,
+export const PixelDigits: React.FC<{ mm: string; ss: string; color?: string; silver?: boolean; maxWidth?: string; height?: string; flush?: boolean }> = ({
+  mm, ss, color: flatColor = 'var(--ink)', silver = false, maxWidth = 'min(88vw, 480px)', height, flush = false,
 }) => {
+  const silverId = useSilverId();
+  const color = silver ? `url(#${silverId})` : flatColor;
   const cell = 15;
   const gap = 3;
   const step = cell + gap;
@@ -48,6 +50,7 @@ export const PixelDigits: React.FC<{ mm: string; ss: string; color: string; maxW
       style={height ? { height, width: 'auto' } : { width: maxWidth, height: 'auto' }}
       overflow="visible"
     >
+      {silver && <SilverPaint id={silverId} size={digitH} tile={340} />}
       {mmChars.map((ch, i) => renderDigit(ch, xPositions[i]))}
       <rect x={xColon} y={digitH * 0.22} width={cell} height={cell} fill={color} opacity={0.5} />
       <rect x={xColon} y={digitH * 0.62} width={cell} height={cell} fill={color} opacity={0.5} />
@@ -312,10 +315,10 @@ export const PixelWallClock = React.memo<{
       {cells}
       {emblem && <ClockEmblem rows={emblem} />}
       <g ref={hourRef} style={origin}>
-        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke={metal} strokeWidth={6} strokeLinecap="round" />
+        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke="var(--ink)" strokeWidth={6} strokeLinecap="round" />
       </g>
       <g ref={minuteRef} style={origin}>
-        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke={metal} strokeWidth={4.5} strokeLinecap="round" />
+        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap="round" />
       </g>
       <g ref={secondRef} style={origin}>
         <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={metal} strokeWidth={2.5} strokeLinecap="round" />

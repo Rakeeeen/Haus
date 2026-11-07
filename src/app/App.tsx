@@ -16,6 +16,8 @@ import { DailyResetManager } from '@/app/DailyResetManager';
 import { GoldPriceRefresher } from '@/app/GoldPriceRefresher';
 import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SPRING } from '@/ui/springPose';
+import { usePressHold } from '@/ui/usePressHold';
 import '@/styles/global.css';
 
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -23,13 +25,14 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     initial={{ opacity: 0, y: 15 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -15 }}
-    transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+    transition={{ ...SPRING, opacity: { duration: 0.2 } }}
     className="w-full"
   >
     {children}
   </motion.div>
 );
 const AppRoutes: React.FC = () => {
+  usePressHold();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, biometricCleared, setBiometricCleared } = useAuth();

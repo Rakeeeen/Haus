@@ -83,6 +83,9 @@
     --pomo-focus: var(--ink);
     --pomo-break: var(--ink-faded);
     --pomo-overtime: var(--rust);
+    /* ui/springPose.ts's SPRING, sampled so CSS can run the same physics. */
+    --spring: linear(0, 0.079, 0.252, 0.45, 0.633, 0.782, 0.892, 0.966, 1.009, 1.031, 1.038, 1.037, 1.03, 1.023, 1.016, 1.01, 1.005, 1.002, 1, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 1, 1, 1, 1);
+    --spring-duration: 0.8s;
     /* Bead-blasted aluminum, measured off 4K frames of the reference film: per-pixel grain
        with no direction, over soft light patches. Each tile is built for the tone it sits on. */
     --grain-page: url('./textures/grain-page-light.png');
@@ -293,8 +296,14 @@
     font-weight: 400;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      transform var(--spring-duration) var(--spring);
   }
+  /* A press has weight, a hover doesn't: hovering still only changes the colour. */
+  [data-pressed] { transform: scale(1.03); }
   /* Off goes silver, never a washed-out purple. */
   .btn:disabled {
     background-color: color-mix(in srgb, var(--ink) 8%, transparent);
@@ -366,6 +375,20 @@ body.dark-theme [data-active] {
 body.dark-theme .silver-grain-on-light,
 body:not(.dark-theme) .silver-grain-on-dark {
   display: none;
+}
+
+/* Buttons side by side yield to each other: pressing one pushes its neighbours away. */
+.spring-group > * {
+  transition-property: transform, background-color, border-color, color;
+  transition-duration: var(--spring-duration), 0.2s, 0.2s, 0.2s;
+  transition-timing-function: var(--spring), ease, ease, ease;
+}
+.spring-group > :has(+ [data-pressed]) { transform: translateX(-4px); }
+.spring-group > [data-pressed] + * { transform: translateX(4px); }
+.spring-group > :has(+ * + [data-pressed]) { transform: translateX(-2px); }
+.spring-group > [data-pressed] + * + * { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) {
+  [data-pressed], .spring-group > * { transform: none !important; }
 }
 
 /* Hide native cursor globally — must be outside @layer to beat Tailwind utilities */

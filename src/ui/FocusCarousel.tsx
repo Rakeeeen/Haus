@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { animate, motion, PanInfo, useMotionValue, useMotionValueEvent } from 'framer-motion';
 
-const SPRING = { type: 'spring', stiffness: 380, damping: 38, mass: 0.9 } as const;
+import { SPRING } from '@/ui/springPose';
 // Fraction of a page the content has to travel for a release to commit to
 // the next page instead of springing back.
 const COMMIT_FRACTION = 0.18;

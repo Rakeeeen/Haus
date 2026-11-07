@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SPRING } from '@/ui/springPose';
 
 interface AppModalProps {
   isOpen: boolean;
@@ -46,7 +47,7 @@ export const AppModal: React.FC<AppModalProps> = ({
             initial={{ scale: 0.93, opacity: 0, y: 18 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
-            transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ ...SPRING, opacity: { duration: 0.2 } }}
             onClick={e => e.stopPropagation()}
             className={`relative w-full rounded-modal ${maxWidth}`}
             style={{
@@ -91,7 +92,7 @@ export const AppModal: React.FC<AppModalProps> = ({
                 >
                   {confirm.message}
                 </p>
-                <div className="flex gap-3 justify-end">
+                <div className="spring-group flex gap-3 justify-end">
                   <Button tone="outline" size="sm" onClick={onClose}>
                     {confirm.cancelText ?? 'Cancel'}
                   </Button>

@@ -144,7 +144,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
               </Button>
             )}
             <div
-              className={`flex gap-2 transition-all duration-200 ${glasses > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none invisible'}`}
+              className={`spring-group flex gap-2 ${glasses > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none invisible'}`}
               style={{ visibility: glasses > 0 ? 'visible' : 'hidden' }}
             >
               <Button tone="outline" size="sm" onClick={undo} disabled={isLocked} className="flex-1">

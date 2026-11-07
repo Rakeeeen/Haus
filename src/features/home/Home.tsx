@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { IconButton } from '@/ui/Button';
 import { NAME_MARKED } from '@/constants/brand';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { MIN_PRESS_MS, SPRING, springPose, stagePose, type SpringPhase } from '@/ui/springPose';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { uploadImage } from '@/lib/cloudinary';
 import {
@@ -51,7 +52,6 @@ const ZEN_RESUME_MS = 3 * 60_000;
 // The same spring the dock's priority arrow and the header's dropdown already use —
 // reused here so every zen-mode move (dock, gap, card width, date) reads as one
 // consistent, physical motion instead of a collection of separately-tuned easings.
-const ZEN_SPRING = { type: 'spring', stiffness: 380, damping: 32, mass: 0.9 } as const;
 
 // Persists last active card so remount starts on the correct card instantly
 type CardId = 'time' | 'water' | 'pomodoro' | 'finance';
@@ -67,6 +67,16 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   const [displayedCardId, setDisplayedCardId] = useState<CardId>(() => _lastActiveCardId);
   const [bigCardVisible, setBigCardVisible] = useState(false);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [pressedCardId, setPressedCardId] = useState<string | null>(null);
+  const pressedAtRef = useRef(0);
+  const reduceMotion = useReducedMotion();
+  const [stageTouch, setStageTouch] = useState<SpringPhase | null>(null);
+  const pressCard = (id: string) => { pressedAtRef.current = Date.now(); setPressedCardId(id); };
+  // Held briefly so a quick tap still gets its push instead of ending before it shows.
+  const releaseCard = () => {
+    const held = Date.now() - pressedAtRef.current;
+    window.setTimeout(() => setPressedCardId(null), Math.max(0, MIN_PRESS_MS - held));
+  };
   const [lastManualClickTime, setLastManualClickTime] = useState<number>(0);
   // systemCardId tracks which card has system priority — independent of what user is viewing
   const [systemCardId, setSystemCardId] = useState<CardId | null>(null);
@@ -294,6 +304,10 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   };
 
   const zenActive = zenMode && (displayedCardId === 'pomodoro' || displayedCardId === 'time');
+  const stage = stagePose(
+    reduceMotion || zenActive ? null : stageTouch,
+    reduceMotion || zenActive ? null : pressedCardId ? 'press' : hoveredCardId ? 'hover' : null,
+  );
 
   // The invisible edge strip that reveals the dock on hover (below) only starts listening
   // a moment after zen mode actually engages. Without this, a mouse already resting near
@@ -600,7 +614,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
           {/* Three dots dropdown */}
           <div className="relative">
-            <IconButton onClick={() => setShowMenu(v => !v)} data-tip="Menu" aria-label="Menu">
+            <IconButton onClick={() => setShowMenu(v => !v)} className="!w-12 !h-12 sm:!w-14 sm:!h-14" data-tip="Menu" aria-label="Menu">
               <MoreVertical size={20} />
             </IconButton>
 
@@ -610,7 +624,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   initial={{ opacity: 0, scale: 0.95, y: -10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                  transition={{ ...SPRING, opacity: { duration: 0.2 } }}
                   className="absolute right-0 mt-2 z-50 bg-paper-dark border border-ink/14 rounded-full p-1.5 flex items-center gap-1.5"
                 >
                   {/* Theme Button */}
@@ -652,15 +666,18 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
           className="shrink-0 scrollbar-none"
           initial={false}
           animate={isLgUp ? { width: zenActive ? 0 : 230, marginRight: zenActive ? -32 : 0 } : undefined}
-          transition={ZEN_SPRING}
+          transition={SPRING}
           style={{
             overflowX: isLgUp ? (zenActive ? 'hidden' : 'visible') : 'auto',
             overflowY: 'visible',
           }}
         >
-        <div
+        <motion.div
           ref={dockRef}
           className="relative flex lg:flex-col pb-3 lg:pb-0 w-max lg:w-[230px] -mx-6 px-6 lg:mx-0 lg:px-0"
+          initial={false}
+          animate={{ x: isLgUp ? stage.dockShift : 0 }}
+          transition={SPRING}
         >
           <div
             className="flex lg:flex-col gap-3 lg:gap-4"
@@ -701,14 +718,21 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               metric: null, // drawn as dotted digits below instead of text
               subText: 'EGYPT',
             },
-          ] as const).map((card) => {
+          ] as const).map((card, index, cards) => {
             const isActive = activeCardId === card.id;
             const { Vector } = card;
-            const isHovered = hoveredCardId === card.id;
-            const isReceded = !!hoveredCardId && !isHovered && !isActive;
+            const touchedId = reduceMotion ? null : pressedCardId ?? hoveredCardId;
+            const touchedIndex = touchedId ? cards.findIndex((c) => c.id === touchedId) : -1;
+            const pose = springPose(index, touchedIndex < 0 ? null : touchedIndex, pressedCardId ? 'press' : 'hover');
             return (
-              <div
+              <motion.div
                 key={card.id}
+                initial={false}
+                animate={isLgUp ? { scale: pose.scale, x: 0, y: pose.shift } : { scale: pose.scale, x: pose.shift, y: 0 }}
+                transition={SPRING}
+                onPointerDown={() => pressCard(card.id)}
+                onPointerUp={releaseCard}
+                onPointerCancel={releaseCard}
                 onClick={() => {
                   setActiveCardId(card.id);
                   setLastManualClickTime(Date.now());
@@ -719,16 +743,14 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   else if (card.route) navigate(card.route);
                 }}
                 onMouseEnter={() => setHoveredCardId(card.id)}
-                onMouseLeave={() => setHoveredCardId(null)}
+                onMouseLeave={() => { setHoveredCardId(null); if (pressedCardId) releaseCard(); }}
                 data-active={isActive || undefined}
                 className={`cursor-pointer transform-gpu relative select-none flex flex-col justify-between p-4 border bg-paper-dark rounded-card ${
                   isActive ? 'border-ink text-ink' : 'border-ink/14 text-ink/55 hover:text-ink hover:border-ink/40'
                 } w-[160px] lg:w-[230px] h-[112px] lg:h-[124px] shrink-0`}
                 style={{
-                  transform: isReceded ? 'scale(0.97)' : 'scale(1)',
-                  opacity: isReceded ? 0.35 : undefined,
-                  filter: isReceded ? 'blur(0.6px)' : 'none',
-                  transition: 'transform 500ms cubic-bezier(0.23, 1, 0.32, 1), opacity 500ms cubic-bezier(0.23, 1, 0.32, 1), filter 500ms cubic-bezier(0.23, 1, 0.32, 1), border-color 200ms ease, color 200ms ease',
+                  zIndex: touchedId === card.id ? 1 : 0,
+                  transition: 'border-color 200ms ease, color 200ms ease',
                 }}
               >
                 <div className="flex justify-between items-start pointer-events-none">
@@ -769,7 +791,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                     {card.subText}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
           </div>
@@ -788,12 +810,12 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                 opacity: 1,
               }}
               initial={false}
-              transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.9 }}
+              transition={SPRING}
             >
               <SidebarActiveVector />
             </motion.div>
           )}
-        </div>
+        </motion.div>
         </motion.div>
 
         {/* Active Stage (Center/Right) — in zen mode this grows to the full column height
@@ -801,7 +823,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             not framer-motion — framer's `animate` on `height` here silently refused to
             commit value changes (state updated, the rendered height just never followed),
             so this is driven by a real inline style instead, which doesn't have that bug.
-            The cubic-bezier is an overshoot curve to read as "springy" without framer. */}
+            --spring is the system's spring, sampled for CSS. */}
         <div
           className="flex-1 flex flex-col items-stretch min-h-[280px] lg:min-h-0"
           style={isLgUp ? {
@@ -810,10 +832,17 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             // settling to the actual height right after mount) — animating that looked
             // like the card was briefly oversized and shrinking on every visit to Home.
             // Real changes after that (zen in/out) get the springy settle.
-            transition: heightSettledRef.current ? 'height 650ms cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+            transition: heightSettledRef.current ? 'height var(--spring-duration) var(--spring)' : 'none',
           } : undefined}
         >
-          <div
+          <motion.div
+            initial={false}
+            animate={{ scale: stage.scale, x: isLgUp ? stage.stageShift : 0 }}
+            transition={SPRING}
+            onMouseEnter={() => setStageTouch('hover')}
+            onMouseLeave={() => setStageTouch(null)}
+            onPointerDown={(e) => { if (!(e.target as Element).closest('button')) setStageTouch('press'); }}
+            onPointerUp={() => window.setTimeout(() => setStageTouch((t) => (t === 'press' ? 'hover' : t)), MIN_PRESS_MS)}
             onClick={() => {
               const found = [
                 { id: 'pomodoro', route: 'pomodoro' },
@@ -869,7 +898,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
               {displayedCardId === 'time' && <TimeCardBody clock={timeCard} />}
               </div>
-          </div>
+          </motion.div>
         </div>
 
       </main>
@@ -885,8 +914,9 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         animate={{
           opacity: zenActive ? 0 : 1,
           scale: zenActive ? 0.92 : 1,
+          y: stage.footerShift,
         }}
-        transition={ZEN_SPRING}
+        transition={{ ...SPRING, opacity: { duration: 0.2 } }}
       >
         <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
       </motion.footer>
