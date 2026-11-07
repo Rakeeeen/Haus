@@ -22,6 +22,9 @@ class N:
     def __call__(s,x):
         x=x/s.sc; i=int(math.floor(x)); f=x-i; f=f*f*(3-2*f)
         return s.v[i%4096]*(1-f)+s.v[(i+1)%4096]*f
+# How far, in canvas units, a simplified outline may stray. 0.45 is invisible at full size;
+# icons a few dozen pixels across can take much more.
+EPS = 0.45
 def rdp(pts,eps):
     if len(pts)<3: return pts
     a,b=pts[0],pts[-1]; dx,dy=b[0]-a[0],b[1]-a[1]; m=math.hypot(dx,dy) or 1
@@ -34,7 +37,7 @@ def rdp(pts,eps):
 def path_from(poly):
     # smooth closed polygon -> cubic path; simplified, so curves stay clean and the file stays small
     h=len(poly)//2
-    pts=rdp(poly[:h+1],.45)[:-1]+rdp(poly[h:]+[poly[0]],.45)[:-1]
+    pts=rdp(poly[:h+1],EPS)[:-1]+rdp(poly[h:]+[poly[0]],EPS)[:-1]
     n=len(pts); d=f'M{pts[0][0]:.0f} {pts[0][1]:.0f}'
     for i in range(n):
         p0,p1,p2,p3=pts[i-1],pts[i],pts[(i+1)%n],pts[(i+2)%n]

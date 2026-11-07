@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { ICON_STROKE_LINECAP, ICON_STROKE_WIDTH } from '@/ui/icons';
+import { motion } from 'framer-motion';
+import { SPRING } from '@/ui/springPose';
+import { FINANCE_ICON, FOCUS_ICON, TIME_ICON, WATER_ICON, type Layers } from '@/ui/sketchIcons.data';
+import { ICON_STROKE_WIDTH } from '@/ui/icons';
 
 /**
  * Purely presentational pieces for the Home screen: the privacy-blur value
@@ -62,128 +65,93 @@ export const SidebarActiveVector: React.FC = () => {
   );
 };
 
-// ─── Section Vectors ────────────────────────────────────────────────────────
-// Style matches Calendar DotMatrixVector: dot-matrix shapes, viewBox 0 0 24 24
-// Each shape + animation expresses the section concept.
+// ─── Section icons ──────────────────────────────────────────────────────────
+// Hand-drawn, like the illustrations (see scripts/illustrations): a thick ink line over a flat
+// paper shape set a little off it. Each is drawn three times, slightly differently, and the
+// three are flicked through four times a second, the "line boil" of a hand-drawn animation.
+// Whatever the old dotted icon showed is still shown: the glass fills with the day's water,
+// the stopwatch hand turns while a session runs, the clock tells the time.
 // size=20 → small card   size=36 → big card corner
 
-// WATER — teardrop outline; animation fills bottom→top like water rising inside the drop
-// fillLevel 0–1: fraction of the drop that's "full" — dots below glow, above are dim, level dot pulses
-export const WaterVector: React.FC<{ size?: number; fillLevel?: number }> = ({ size = 20, fillLevel = 0.5 }) => {
-  const dots: [number, number, number][] = [
-    [12,22,0], [9,21,1], [15,21,1], [7,18,2], [17,18,2],
-    [5,14,3], [19,14,3], [7,9,4], [17,9,4], [9,5,5], [15,5,5], [12,2,6],
-  ];
-  const threshold = fillLevel * 6; // order 0–6
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      {dots.map(([cx, cy, order], i) => {
-        const isAtLevel = Math.abs(order - threshold) < 0.8;
-        const isBelow = order < threshold && !isAtLevel;
-        return (
-          <circle key={i} cx={cx} cy={cy} r="1.2"
-            style={{
-              opacity: isBelow ? 0.9 : isAtLevel ? undefined : 0.1,
-              animation: isAtLevel ? 'vectorFade 2.5s ease-in-out infinite' : 'none',
-              animationDelay: `${order * 0.28}s`,
-              transition: 'opacity 0.8s ease',
-            }} />
-        );
-      })}
-    </svg>
-  );
-};
+const Sketch: React.FC<{ layers: Layers }> = ({ layers }) => (
+  <>
+    {layers.map(([paper, ink], i) => (
+      <React.Fragment key={i}>
+        <g fill="var(--icon-paper)">{paper.map((d, j) => <path key={j} d={d} />)}</g>
+        <g fill="currentColor">{ink.map((d, j) => <path key={j} d={d} />)}</g>
+      </React.Fragment>
+    ))}
+  </>
+);
 
-// FOCUS — a small clock face: a dotted rim (12 hour marks, lit in sequence like a hand
-// sweeping past) and one hand, slowly turning. Echoes the pixel clock on the Focus page
-// itself, just simplified down to a size this icon actually reads at.
-// paused=true → the rim stops pulsing and the hand stops turning (no focus today)
-export const FocusVector: React.FC<{ size?: number; paused?: boolean }> = ({ size = 20, paused = false }) => {
-  const dots = Array.from({ length: 12 }, (_, i) => {
-    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    return { cx: 12 + Math.cos(angle) * 9, cy: 12 + Math.sin(angle) * 9, delay: (i / 12) * 2.4 };
-  });
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {dots.map(({ cx, cy, delay }, i) => (
-        <circle key={i} cx={cx} cy={cy} r={1.3} fill="currentColor"
-          style={{
-            animation: 'vectorFade 3s ease-in-out infinite',
-            animationDelay: `${delay}s`,
-            animationPlayState: paused ? 'paused' : 'running',
-          }} />
-      ))}
-      <g style={{ transformOrigin: '12px 12px', animation: 'focusHandSpin 9s linear infinite', animationPlayState: paused ? 'paused' : 'running' }}>
-        <line x1="12" y1="12" x2="12" y2="5" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+/** The three redraws, one showing at a time (global.css, .sketch-boil). */
+const Boil: React.FC<{ frames: readonly Layers[] }> = ({ frames }) => (
+  <g className="sketch-boil-set">
+    {frames.map((layers, i) => (
+      <g key={i} className="sketch-boil" style={{ animationDelay: `${-i * 0.25}s` }}>
+        <Sketch layers={layers} />
       </g>
-      <circle cx="12" cy="12" r="1.4" fill="currentColor" />
-    </svg>
-  );
-};
+    ))}
+  </g>
+);
 
+const SketchSvg: React.FC<{ size: number; children: React.ReactNode }> = ({ size, children }) => (
+  <svg width={size} height={size} viewBox="0 0 1000 1000" aria-hidden="true" overflow="visible">{children}</svg>
+);
 
-// FINANCE — vintage coin face; outer ring + inner cross-hatch + center dot.
-// Animation: shimmer sweeps clockwise around the coin edge.
-export const FinanceVector: React.FC<{ size?: number }> = ({ size = 20 }) => {
-  // Outer ring — 12 dots like clock positions
-  const ring: [number, number, number][] = [
-    [12, 3,  0],    // 12
-    [16.8, 4.2, 0.08], // 1
-    [20.2, 7.8, 0.17], // 2
-    [21, 12, 0.25], // 3
-    [20.2, 16.2, 0.33], // 4
-    [16.8, 19.8, 0.42], // 5
-    [12, 21, 0.50], // 6
-    [7.2, 19.8, 0.58], // 7
-    [3.8, 16.2, 0.67], // 8
-    [3, 12, 0.75], // 9
-    [3.8, 7.8, 0.83], // 10
-    [7.2, 4.2, 0.92], // 11
-  ];
-  // Inner £ symbol in dots (center of 24×24)
-  const symbol: [number, number, number][] = [
-    // top arc of £
-    [10, 8, 0.1], [12, 7, 0.15], [14, 8, 0.20],
-    // vertical stem
-    [10, 10, 0.25], [10, 12, 0.30],
-    // cross bar
-    [10, 14, 0.35], [12, 14, 0.40],
-    // base
-    [9, 17, 0.45], [11, 17, 0.50], [13, 17, 0.55],
-  ];
+// WATER — a glass; fillLevel 0–1 is how full it is, and it fills on the system's spring.
+// The water is the glass's inside moved (34, 30), so it spans y 166–896 and empty shows none.
+export const WaterVector: React.FC<{ size?: number; fillLevel?: number }> = ({ size = 20, fillLevel = 0.5 }) => {
+  const clipId = `water-${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const level = Math.min(1, Math.max(0, fillLevel));
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      {ring.map(([cx, cy, delay], i) => (
-        <circle key={`r${i}`} cx={cx} cy={cy} r="1.1"
-          style={{ animation: 'vectorFade 2.4s ease-in-out infinite', animationDelay: `${delay}s` }} />
-      ))}
-      {symbol.map(([cx, cy, delay], i) => (
-        <circle key={`s${i}`} cx={cx} cy={cy} r="0.9"
-          style={{ animation: 'vectorFade 2.4s ease-in-out infinite', animationDelay: `${delay + 0.3}s` }} />
-      ))}
-    </svg>
+    <SketchSvg size={size}>
+      <defs>
+        <clipPath id={clipId}>
+          <motion.rect x={0} width={1000} height={1000} initial={false} animate={{ y: 896 - level * 730 }} transition={SPRING} />
+        </clipPath>
+      </defs>
+      <path d={WATER_ICON.inside} fill="var(--icon-paper)" transform="translate(34 30)" clipPath={`url(#${clipId})`} />
+      <Boil frames={WATER_ICON.frames} />
+    </SketchSvg>
   );
 };
 
+// FOCUS — a stopwatch whose hand turns; paused=true stops it where it is.
+export const FocusVector: React.FC<{ size?: number; paused?: boolean }> = ({ size = 20, paused = false }) => (
+  <SketchSvg size={size}>
+    <Boil frames={FOCUS_ICON.frames} />
+    <g style={{ transformOrigin: '480px 540px', animation: 'focusHandSpin 9s linear infinite', animationPlayState: paused ? 'paused' : 'running' }}>
+      <Boil frames={FOCUS_ICON.parts.hand} />
+    </g>
+  </SketchSvg>
+);
 
-// TIME — dotted clock face; 12 hour dots + two dotted hands + center dot.
-// Animation: the hour dots fade in sequence, like a second hand sweeping round.
+// FINANCE — a coin over a small stack; the coin floats down and back, slowly.
+export const FinanceVector: React.FC<{ size?: number }> = ({ size = 20 }) => (
+  <SketchSvg size={size}>
+    <Boil frames={FINANCE_ICON.frames} />
+    <g className="sketch-float">
+      <Boil frames={FINANCE_ICON.parts.coin} />
+    </g>
+  </SketchSvg>
+);
+
+// TIME — a clock showing the real time, re-read every half minute.
 export const TimeVector: React.FC<{ size?: number }> = ({ size = 20 }) => {
-  const ring: [number, number][] = [
-    [12, 3], [16.5, 4.2], [19.8, 7.5], [21, 12], [19.8, 16.5], [16.5, 19.8],
-    [12, 21], [7.5, 19.8], [4.2, 16.5], [3, 12], [4.2, 7.5], [7.5, 4.2],
-  ];
-  const hands: [number, number][] = [[12, 12], [12, 9.5], [12, 7], [14.5, 12], [16.5, 12]];
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const minuteDeg = now.getMinutes() * 6;
+  const hourDeg = (now.getHours() % 12) * 30 + now.getMinutes() / 2;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      {ring.map(([cx, cy], i) => (
-        <circle key={`r${i}`} cx={cx} cy={cy} r="1.1"
-          style={{ animation: 'vectorFade 2.4s ease-in-out infinite', animationDelay: `${i * 0.1}s` }} />
-      ))}
-      {hands.map(([cx, cy], i) => (
-        <circle key={`h${i}`} cx={cx} cy={cy} r="0.9" />
-      ))}
-    </svg>
+    <SketchSvg size={size}>
+      <Boil frames={TIME_ICON.frames} />
+      <g transform={`rotate(${hourDeg} 500 500)`}><Boil frames={TIME_ICON.parts.hour} /></g>
+      <g transform={`rotate(${minuteDeg} 500 500)`}><Boil frames={TIME_ICON.parts.minute} /></g>
+    </SketchSvg>
   );
 };
 

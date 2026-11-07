@@ -425,3 +425,16 @@ body:not(.dark-theme) .silver-grain-on-dark {
 @media (prefers-reduced-motion: reduce) {
   .thndr-cursor { animation: none; }
 }
+
+/* === Hand-drawn icons === ui's sketch icons (home/components/visuals.tsx). Three redraws of
+   each, one showing at a time at four a second: the "line boil" of a hand-drawn film, slow
+   enough to read as alive, not as flicker. */
+.sketch-boil { opacity: 0; animation: sketchBoil 0.75s steps(1, end) infinite; }
+@keyframes sketchBoil { 0% { opacity: 1; } 33.333% { opacity: 0; } }
+.sketch-float { animation: sketchFloat 3.2s ease-in-out infinite; }
+@keyframes sketchFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(40px); } }
+@media (prefers-reduced-motion: reduce) {
+  .sketch-boil { animation: none; }
+  .sketch-boil-set > .sketch-boil:first-child { opacity: 1; }
+  .sketch-float { animation: none; }
+}

@@ -1,5 +1,4 @@
 import React from 'react';
-import { WaterIllustration } from '@/ui/illustrations';
 import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
 import { DotMatrixText } from '@/ui/DotMatrixText';
@@ -22,10 +21,6 @@ export const WaterCardBody: React.FC<{
       </div>
     </div>
 
-    {/* The drawing fills the quiet middle of the card; on small screens there's no room for it. */}
-    <div className="hidden md:flex flex-1 min-h-0 items-center justify-center py-4">
-      <WaterIllustration className="h-full max-h-[240px] w-auto text-ink" />
-    </div>
 
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mt-6">
       <div className="flex items-end gap-4">

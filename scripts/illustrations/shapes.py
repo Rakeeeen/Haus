@@ -62,3 +62,74 @@ def finance():
     return p
 
 ILLUSTRATIONS = {'water': water, 'focus': focus, 'finance': finance}
+
+
+# ── Small icons ──────────────────────────────────────────────────────────────────────
+# The same hand at icon size (20 and 36 px): a thick line, no hands, no small detail. Each
+# returns its still parts per seed, so the build can make a few slightly different redraws
+# for the line boil, and the parts that move are drawn on their own, at rest.
+ICON_W = 74
+
+def water_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.line([(210, 90), (500, 84), (790, 92)])
+    p.line([(226, 96), (270, 500), (320, 900)])
+    p.line([(774, 100), (730, 500), (680, 896)])
+    p.line([(318, 902), (500, 912), (684, 900)])
+    return p
+
+# The glass's inside: the water fills this, set a little off the glass like the paper shapes.
+WATER_INSIDE = [(262, 136), (740, 140), (664, 866), (338, 866)]
+
+def focus_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.blob(disc((560, 590), 350, 12), rough=12, corner=.32)
+    p.circle((480, 540), 340, 336)
+    p.line([(400, 96), (480, 84), (566, 96)])
+    p.circle((480, 540), 36, w=50)
+    return p
+
+def focus_hand(seed=3):
+    p = Pen(seed, w=66, wob=1.2)
+    p.line([(480, 540), (482, 420), (480, 300)])
+    return p
+
+def finance_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    for x, y, w_ in [(120, 800, 720), (170, 640, 680)]:
+        p.line([(x+50, y), (x+w_/2, y-8), (x+w_-46, y+4), (x+w_, y+62), (x+w_-46, y+120), (x+w_/2, y+126), (x+50, y+118), (x, y+62)], closed=True)
+    return p
+
+def finance_coin(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.blob(disc((560, 330), 250, 12), rough=11, corner=.32)
+    p.circle((500, 290), 220, 224)
+    return p
+
+def time_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.blob(disc((560, 560), 400, 12), rough=12, corner=.32)
+    p.circle((500, 500), 400, 396)
+    for a in range(0, 360, 90):
+        t = math.radians(a)
+        p.line([(500 + 300 * math.sin(t), 500 - 300 * math.cos(t)), (500 + 352 * math.sin(t), 500 - 352 * math.cos(t))], w=56)
+    p.circle((500, 500), 30, w=46)
+    return p
+
+def time_hour(seed=5):
+    p = Pen(seed, w=70, wob=1.2)
+    p.line([(500, 500), (502, 380), (500, 290)])
+    return p
+
+def time_minute(seed=6):
+    p = Pen(seed, w=56, wob=1.2)
+    p.line([(500, 500), (498, 330), (500, 180)])
+    return p
+
+ICONS = {
+    'water': {'still': water_icon, 'parts': {}},
+    'focus': {'still': focus_icon, 'parts': {'hand': focus_hand}},
+    'finance': {'still': finance_icon, 'parts': {'coin': finance_coin}},
+    'time': {'still': time_icon, 'parts': {'hour': time_hour, 'minute': time_minute}},
+}
+BOIL_SEEDS = (5, 9, 13)

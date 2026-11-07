@@ -1,5 +1,4 @@
 import React from 'react';
-import { FocusIllustration } from '@/ui/illustrations';
 import { Button, IconButton } from '@/ui/Button';
 import { IconPlay as Play } from '@/ui/icons';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
@@ -94,10 +93,6 @@ export const FocusCardBody: React.FC<{
         </div>
       </div>
 
-      {/* The drawing fills the quiet middle of the card; on small screens there's no room for it. */}
-      <div className="hidden md:flex flex-1 min-h-0 items-center justify-center py-4">
-        <FocusIllustration className="h-full max-h-[240px] w-auto text-ink" />
-      </div>
 
       <div className="flex items-end justify-between gap-4">
         <div className="flex items-baseline gap-2">
