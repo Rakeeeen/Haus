@@ -48,7 +48,7 @@ const LabeledClock: React.FC<{ id: ClockId }> = ({ id }) => {
 export const TimeCardBody: React.FC<{ clock: ClockParts }> = ({ clock }) => (
   <div className="flex-1 flex flex-col justify-between">
     <div className="flex justify-between items-start">
-      <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">TIME</h2>
+      <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">TIME</h2>
       <div className="opacity-60">
         <TimeVector size={36} />
       </div>

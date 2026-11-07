@@ -119,7 +119,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const thndrMoves = thndrFlows ?? [];
 
   return (
-    <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main transition-colors duration-300">
+    <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main transition-colors duration-300">
 
       {/* HEADER — the same Home › Page breadcrumb Water and Focus use; the tabs sit on the title's line */}
       <header className="w-full max-w-[1400px] mx-auto mb-10 md:mb-12">

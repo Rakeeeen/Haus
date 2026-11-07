@@ -75,43 +75,65 @@
 
 @layer base {
   :root {
-    --bg: #E7E8E1;
-    --paper: #E7E8E1;
-    --paper-dark: #ffffff;
-    --ink: #222C07;
-    --ink-faded: #4E5E16;
-    --sepia: #C2DC3F;
+    /* Neutral silver: the aluminum reference is exactly R=G=B, so no tint here. */
+    --bg: #D6D6D6;
+    --paper: #D6D6D6;
+    --paper-dark: #F2F2F2;
+    --ink: #141413;
+    --ink-faded: #666666;
+    --sepia: #4D14A2;
     /* An actual rust-red — the old value (#809B15) was olive-green, the same family as
        --forest, so anything relying on --rust to read as "negative/warning" (a debt, a
        loss, a delete action) looked just as positive-green as a gain. */
     --rust: #B7410E;
-    --forest: #617615;
-    --brand-green: #617615;
-    --ghorab-color: #617615;
-    --pomo-focus: var(--forest);
+    /* Only the real gain signal now; same saturation and lightness as --rust. */
+    --forest: #0EB746;
+    --pomo-focus: var(--ink);
     --pomo-break: #2E7A6B;
     --pomo-overtime: #B89228;
+    /* Bead-blasted aluminum, measured off 4K frames of the reference film: per-pixel grain
+       with no direction, over soft light patches. Each tile is built for the tone it sits on. */
+    --grain-page: url('./textures/grain-page-light.png');
+    --grain-title: url('./textures/grain-title-on-light.png');
+    --cloud-page:
+      radial-gradient(70% 60% at 15% 10%, #E4E4E4 0%, transparent 70%),
+      radial-gradient(60% 70% at 90% 85%, #C6C6C6 0%, transparent 70%);
+    --cloud-title:
+      radial-gradient(55% 120% at 20% 15%, #7C7C7C 0%, transparent 75%),
+      radial-gradient(50% 120% at 85% 90%, #8E8E8E 0%, transparent 75%),
+      linear-gradient(#3C3C3C, #3C3C3C);
   }
 
   body.dark-theme {
     --bg: #0D0D0D;
     --paper: #0D0D0D;
     --paper-dark: #000000;
-    --ink: #E7E8E1;
-    --ink-faded: #A5C220;
-    --sepia: #C2DC3F;
+    --ink: #EDEDED;
+    --ink-faded: #9A9A9A;
+    --sepia: #4D14A2;
     --rust: #E2583A;
-    --forest: #D7EA6C;
-    --brand-green: #D7EA6C;
-    --ghorab-color: #617615;
-    --pomo-focus: var(--forest);
+    --forest: #3AE272;
+    --pomo-focus: var(--ink);
     --pomo-break: #5EC8B0;
     --pomo-overtime: #E8C04A;
+    --grain-page: url('./textures/grain-page-dark.png');
+    --grain-title: url('./textures/grain-title-on-dark.png');
+    --cloud-page:
+      radial-gradient(70% 60% at 15% 10%, #1E1E1E 0%, transparent 70%),
+      radial-gradient(60% 70% at 90% 85%, #161616 0%, transparent 70%);
+    --cloud-title:
+      radial-gradient(55% 120% at 20% 15%, #F6F6F6 0%, transparent 75%),
+      radial-gradient(50% 120% at 85% 90%, #E2E2E2 0%, transparent 75%),
+      linear-gradient(#8E8E8E, #8E8E8E);
   }
 
 
   body {
-    background: var(--paper);
+    background-color: var(--paper);
+    background-image: var(--grain-page), var(--cloud-page);
+    /* A 512px tile at 256 CSS px: one grain per device pixel on a Retina screen. */
+    background-size: 256px 256px, 100% 100%, 100% 100%;
+    background-attachment: scroll, fixed, fixed;
     color: var(--ink);
     font-family: var(--font-sans);
     min-height: 100vh;
@@ -122,20 +144,18 @@
   /* === TEXT SELECTION (brand highlight) === */
   ::selection {
     background: var(--sepia);
-    color: var(--ink);
+    color: #FFFFFF;
   }
   ::-moz-selection {
     background: var(--sepia);
-    color: var(--ink);
+    color: #FFFFFF;
   }
-  /* A dark green, not --forest's bright lime (dark.theme) — near-white selected text
-     on a bright background was low-contrast and hard to read. */
   body.dark-theme ::selection {
-    background: #3A4D12;
+    background: var(--sepia);
     color: var(--ink);
   }
   body.dark-theme ::-moz-selection {
-    background: #3A4D12;
+    background: var(--sepia);
     color: var(--ink);
   }
 
@@ -243,9 +263,9 @@
     font-family: var(--font-mono), monospace;
     font-weight: 400;
     text-transform: uppercase;
-    transition: all 0.2s ease;
+    transition: filter 0.2s ease;
     background: var(--sepia);
-    color: #222C07 !important;
+    color: #FFFFFF !important;
     border: 1px solid var(--ink);
     border-radius: 0px;
     padding: 0.6rem 1.5rem;
@@ -255,7 +275,7 @@
     outline: none;
   }
   .btn-brutalist:hover {
-    background: var(--lime-300);
+    filter: brightness(1.25);
     transform: none;
     box-shadow: none;
   }
@@ -264,15 +284,14 @@
     box-shadow: none;
   }
 
-  /* Dark mode button override */
-  body.dark-theme .btn-brutalist {
-    background: #617615;
-    color: #E7E8E1 !important;
-    border-color: #617615;
-  }
-  body.dark-theme .btn-brutalist:hover {
-    background: #4E5E16;
-    border-color: #4E5E16;
+  /* Big screen titles: the same aluminum as the page, clipped to the letters. */
+  .text-silver {
+    width: fit-content;
+    background-image: var(--grain-title), var(--cloud-title);
+    background-size: 256px 256px, 100% 100%, 100% 100%, 100% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   /* Premium Flat Brutalist Card */

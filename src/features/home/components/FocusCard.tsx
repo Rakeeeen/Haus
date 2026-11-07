@@ -90,7 +90,7 @@ export const FocusCardBody: React.FC<{
     <div className="flex-1 flex flex-col justify-between">
       <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">{`YOUR FOCUS`}</h2>
+          <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">{`YOUR FOCUS`}</h2>
         </div>
         <div className="text-ink opacity-60">
           <FocusVector size={36} paused={false} />

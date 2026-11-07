@@ -558,7 +558,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300 relative">
+    <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300 relative">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 
       {/* 1. HEADER SECTION */}
