@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
 import { DotMatrixText } from '@/ui/DotMatrixText';
 import { WaterVector } from '@/features/home/components/visuals';
@@ -33,14 +34,10 @@ export const WaterCardBody: React.FC<{
         <span className="font-sans-main text-sm font-bold uppercase tracking-wider text-ink/60 ml-2 leading-none">glasses today</span>
       </div>
 
-      <button
-        onClick={onAddGlass}
-        disabled={locked}
-        className="btn-brutalist flex items-center gap-2 font-mono-main py-3 px-6 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
-      >
+      <Button onClick={onAddGlass} disabled={locked}>
         <Plus size={18} />
         {locked ? 'Reopens at Fajr' : 'Add Glass'}
-      </button>
+      </Button>
     </div>
   </div>
 );

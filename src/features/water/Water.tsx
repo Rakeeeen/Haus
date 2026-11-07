@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '@/ui/Button';
 import { NAME_MARKED } from '@/constants/brand';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
@@ -88,14 +89,14 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
             onClick={() => navigate('home')}
             className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
           >
-            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            <ArrowLeft size={16} />
             <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
           </button>
           <ChevronRight size={12} className="text-ink/20" />
           <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/50">Water</span>
         </div>
 
-        <h1 className="font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-ink">
+        <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">
           WATER
         </h1>
       </header>
@@ -104,7 +105,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
       <main className="w-full max-w-[1000px] mx-auto flex flex-col gap-6">
 
         {/* HERO COUNTER CARD */}
-        <div className="brutalist-dashed-card no-lift flex flex-col md:flex-row md:items-center md:justify-between gap-10">
+        <div className="card !p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-10">
           <div className="flex-grow flex flex-col sm:flex-row sm:items-center gap-8">
             <div className="flex items-center gap-6">
               <DotMatrixText text={String(shownGlasses)} />
@@ -124,58 +125,44 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
 
           <div className="flex flex-col gap-3 min-w-[180px]">
             {fridayLocked ? (
-              <button
-                onClick={includeToday}
-                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm text-center leading-snug"
-              >
+              <Button onClick={includeToday} className="w-full text-center leading-snug">
                 It's Jumu'ah — count today anyway?
-              </button>
+              </Button>
             ) : isLocked ? (
-              <button
+              <Button
                 onClick={addLateGlass}
                 data-tip="Water is closed — this counts toward the day that just ended"
-                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm"
+                className="w-full"
               >
                 <Plus size={16} />
                 Late Glass
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={addGlass}
-                className="btn-brutalist flex items-center justify-center gap-2 w-full py-4 text-sm"
-              >
+              <Button onClick={addGlass} className="w-full">
                 <Plus size={16} />
                 Add Glass
-              </button>
+              </Button>
             )}
             <div
               className={`flex gap-2 transition-all duration-200 ${glasses > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none invisible'}`}
               style={{ visibility: glasses > 0 ? 'visible' : 'hidden' }}
             >
-              <button
-                onClick={undo}
-                disabled={isLocked}
-                className="flex-1 flex items-center justify-center gap-2 py-3 border border-ink/20 text-ink/40 hover:text-ink hover:border-ink transition-all font-mono-main text-[10px] uppercase tracking-widest font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-ink/40 disabled:hover:border-ink/20"
-              >
+              <Button tone="outline" size="sm" onClick={undo} disabled={isLocked} className="flex-1">
                 <Undo2 size={14} />
                 Undo
-              </button>
-              <button
-                onClick={reset}
-                disabled={isLocked}
-                className="flex-1 flex items-center justify-center gap-2 py-3 border border-ink/10 text-ink/20 hover:text-ink/60 hover:border-ink/40 transition-all font-mono-main text-[10px] uppercase tracking-widest font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-ink/20 disabled:hover:border-ink/10"
-              >
+              </Button>
+              <Button tone="ghost" size="sm" onClick={reset} disabled={isLocked} className="flex-1">
                 <RotateCcw size={14} />
                 Reset
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         {/* ANALYTICS CARD */}
-        <div className="brutalist-card no-lift">
+        <div className="card">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-            <h2 className="font-sans-main text-2xl font-black uppercase tracking-tight">Analytics</h2>
+            <h2 className="text-silver font-sans-main text-2xl font-black uppercase tracking-tight">Analytics</h2>
 
             <FilterSelect label="Period" value={reportView} onChange={setReportView} options={PERIOD_OPTIONS} />
           </div>
@@ -232,13 +219,9 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
                     fontFamily: 'Geist Mono, monospace',
                   }}
                 />
-                <Bar dataKey="value" maxBarSize={36} radius={[0, 0, 0, 0]}>
+                <Bar dataKey="value" maxBarSize={36} radius={[4, 4, 0, 0]}>
                   {reports[reportView].map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill="var(--sepia)"
-                      fillOpacity={0.9}
-                    />
+                    <Cell key={i} fill="var(--ink)" />
                   ))}
                 </Bar>
               </BarChart>

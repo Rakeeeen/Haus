@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/ui/Button';
 import { IconChevronDown as ChevronDown } from '@/ui/icons';
 
 /** The Week / Month / Year choice the chart screens share. */
@@ -39,22 +40,16 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
 
   return (
     <div ref={rootRef} className={`relative inline-block ${className}`}>
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-2.5 px-3.5 py-2 border cursor-pointer font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold text-ink transition-colors hover:border-ink ${open ? 'border-ink' : 'border-ink/30'}`}
-      >
+      <Button tone="outline" size="sm" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="text-ink/40">{label}</span>
         <span>{current?.label}</span>
         <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full mt-1 z-30 min-w-full bg-paper-dark border border-ink/30"
+          className="absolute right-0 top-full mt-1 z-30 min-w-full bg-paper-dark border border-ink/14 rounded-box overflow-hidden"
         >
           {options.map((o) => {
             const selected = o.value === value;

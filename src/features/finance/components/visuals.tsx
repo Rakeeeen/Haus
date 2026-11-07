@@ -282,9 +282,9 @@ export const BUCKET_VECTORS: Record<keyof FinanceBuckets, React.ComponentType<{ 
   sadaqa:    SadaqaVector,
 };
 
-export const BUCKET_META: Record<keyof FinanceBuckets, { en: string; accent: string }> = {
-  tawarr2:  { en: "Tawarru'", accent: 'var(--rust)' },
-  mustaqbal:{ en: 'Future',   accent: 'var(--forest)' },
-  basmala:  { en: 'Basmala',  accent: 'var(--ink-faded)' },
-  sadaqa:   { en: 'Sadaqa',   accent: '#B89228' },
+export const BUCKET_META: Record<keyof FinanceBuckets, { en: string }> = {
+  tawarr2:  { en: "Tawarru'" },
+  mustaqbal:{ en: 'Future' },
+  basmala:  { en: 'Basmala' },
+  sadaqa:   { en: 'Sadaqa' },
 };

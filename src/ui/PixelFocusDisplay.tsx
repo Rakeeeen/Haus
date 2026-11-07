@@ -1,5 +1,6 @@
 import React from 'react';
 import { DM } from '@/ui/TimerComponents';
+import { SilverPaint, useSilverId } from '@/ui/SilverPaint';
 
 /**
  * The second Focus face — a blocky pixel-art style, swipeable alongside the
@@ -91,8 +92,8 @@ const CLOCK_FACE = (() => {
 
 /**
  * A pixel-art clock: a square-pixel face in a neutral tone, with one ordinary
- * smooth hand in the session's color (green for focus, teal for break, gold
- * for overtime) so it always contrasts with the face. One turn a minute.
+ * smooth hand: aluminum for focus, the session's color on a break or in
+ * overtime. One turn a minute.
  *
  * The hand is driven by its own animation frame loop at a constant 6°/s, not
  * by the counter's integer-second ticks — those arrive a little early or late,
@@ -108,7 +109,8 @@ export const PixelClock: React.FC<{
   running: boolean;
   width?: string;
 }> = ({ elapsedSeconds, mode, isOvertime, running, width = '120px' }) => {
-  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : 'var(--pomo-focus)';
+  const silver = useSilverId();
+  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : `url(#${silver})`;
   const counterRef = React.useRef(Math.max(0, Math.floor(elapsedSeconds)));
   counterRef.current = Math.max(0, Math.floor(elapsedSeconds));
   const handRef = React.useRef<SVGGElement>(null);
@@ -149,6 +151,7 @@ export const PixelClock: React.FC<{
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} style={{ width, height: 'auto' }}>
+      <SilverPaint id={silver} size={size} />
       {cells}
       <g ref={handRef} style={{ transformOrigin: `${center}px ${center}px` }}>
         <line x1={center} y1={center + 12} x2={center} y2={center - 58} stroke={handColor} strokeWidth={5} strokeLinecap="round" />
@@ -276,7 +279,8 @@ export const PixelWallClock = React.memo<{
   /** A pixel emblem (see CLOCK_EMBLEMS) drawn on the face's lower half, under the hands. */
   emblem?: readonly string[];
 }>(({ timeZone, width = '110px', emblem }) => {
-  const accent = 'var(--pomo-focus)';
+  const silver = useSilverId();
+  const metal = `url(#${silver})`;
   const { size, center, cells } = CLOCK_FACE;
   const hourRef = React.useRef<SVGGElement>(null);
   const minuteRef = React.useRef<SVGGElement>(null);
@@ -304,18 +308,19 @@ export const PixelWallClock = React.memo<{
   const origin = { transformOrigin: `${center}px ${center}px` };
   return (
     <svg viewBox={`0 0 ${size} ${size}`} style={{ width, height: 'auto' }}>
+      <SilverPaint id={silver} size={size} />
       {cells}
       {emblem && <ClockEmblem rows={emblem} />}
       <g ref={hourRef} style={origin}>
-        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke="var(--ink)" strokeWidth={6} strokeLinecap="round" />
+        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke={metal} strokeWidth={6} strokeLinecap="round" />
       </g>
       <g ref={minuteRef} style={origin}>
-        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap="round" />
+        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke={metal} strokeWidth={4.5} strokeLinecap="round" />
       </g>
       <g ref={secondRef} style={origin}>
-        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={accent} strokeWidth={2.5} strokeLinecap="round" />
+        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={metal} strokeWidth={2.5} strokeLinecap="round" />
       </g>
-      <circle cx={center} cy={center} r={6} fill={accent} />
+      <circle cx={center} cy={center} r={6} fill={metal} />
     </svg>
   );
 });

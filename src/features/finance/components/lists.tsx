@@ -1,19 +1,26 @@
 import React from 'react';
+import { IconButton } from '@/ui/Button';
 import { IconPencil as Pencil, IconTrash2 as Trash2 } from '@/ui/icons';
 
-const iconButton = 'text-ink/25 transition-colors cursor-pointer';
+/** The small round edit / delete pair; only the bin warms to rust on hover. */
+const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <IconButton tone="ghost" size="sm" onClick={onClick} aria-label="Edit"><Pencil size={13} /></IconButton>
+);
+export const DeleteButton: React.FC<{ onClick: () => void; tip?: string }> = ({ onClick, tip }) => (
+  <IconButton tone="ghost" size="sm" onClick={onClick} aria-label="Delete" data-tip={tip} className="hover:!text-rust"><Trash2 size={13} /></IconButton>
+);
 
 /** Edit / delete floating at the right edge of a card row (the row must be `group relative`). */
 export const RowActions: React.FC<{ onEdit?: () => void; onRemove: () => void }> = ({ onEdit, onRemove }) => (
-  <div className="absolute inset-y-0 right-4 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
-    {onEdit && <button onClick={onEdit} aria-label="Edit" className={`${iconButton} hover:text-ink`}><Pencil size={13} /></button>}
-    <button onClick={onRemove} aria-label="Delete" className={`${iconButton} hover:text-rust`}><Trash2 size={13} /></button>
+  <div className="absolute inset-y-0 right-4 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    {onEdit && <EditButton onClick={onEdit} />}
+    <DeleteButton onClick={onRemove} />
   </div>
 );
 
 /** One card holding a list: rows sit edge to edge, separated by a hairline. */
 export const ListCard: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="brutalist-card no-lift bg-paper-dark overflow-hidden !p-0">{children}</div>
+  <div className="card overflow-hidden !p-0">{children}</div>
 );
 
 /** A row of a ListCard: content on the left, a trailing slot (amount, actions) on the right. */
@@ -25,14 +32,14 @@ export const ListRow: React.FC<{ first?: boolean; children: React.ReactNode }> =
 
 /** Edit / delete at the end of a ListRow — shown on hover. */
 export const InlineActions: React.FC<{ onEdit: () => void; onRemove: () => void }> = ({ onEdit, onRemove }) => (
-  <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-    <button onClick={onEdit} aria-label="Edit" className={`${iconButton} hover:text-ink`}><Pencil size={13} /></button>
-    <button onClick={onRemove} aria-label="Delete" className={`${iconButton} hover:text-rust`}><Trash2 size={13} /></button>
+  <div className="flex items-center gap-1 w-[60px] justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+    <EditButton onClick={onEdit} />
+    <DeleteButton onClick={onRemove} />
   </div>
 );
 
 export const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="border border-dashed border-ink/12 py-12 text-center">
+  <div className="card text-center">
     <p className="font-mono-main text-xs text-ink/25">{children}</p>
   </div>
 );

@@ -50,7 +50,7 @@ export const DeviceCodeBanner: React.FC<Props> = ({ user }) => {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 brutalist-card no-lift p-6 w-72 text-left"
+      className="fixed bottom-6 right-6 z-50 card p-6 w-72 text-left"
       style={{ borderColor: 'var(--rust)' }}
     >
       <p className="font-mono-main text-[10px] uppercase tracking-widest text-ink/50 mb-2">

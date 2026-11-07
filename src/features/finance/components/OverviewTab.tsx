@@ -57,7 +57,7 @@ export const OverviewTab: React.FC<{
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-16 gap-y-12">
 
       {/* The total, and what you do to it */}
-      <section className="order-1 lg:col-start-1 lg:row-start-1 lg:col-span-2 brutalist-card no-lift bg-paper-dark px-8 py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+      <section className="order-1 lg:col-start-1 lg:row-start-1 lg:col-span-2 card px-8 py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
         <div>
           <p className={`${sectionLabel} mb-3`}>Total in banks</p>
           {masked(formatEGP(sumOf(banks)), 'font-mono-main text-4xl md:text-5xl font-black tracking-tight')}
@@ -71,7 +71,7 @@ export const OverviewTab: React.FC<{
       {/* Banks — one card, a row each; a row is a shortcut to move money in that bank */}
       <section className="order-2 lg:col-start-1 lg:row-start-2 lg:col-span-2">
         <p className={`${sectionLabel} mb-4`}>Banks</p>
-        <div className="brutalist-card no-lift bg-paper-dark overflow-hidden !p-0">
+        <div className="card overflow-hidden !p-0">
           {banksRanked.map(({ key, balance }, i) => {
             const Vector = BANK_VECTORS[key];
             return (
@@ -94,7 +94,7 @@ export const OverviewTab: React.FC<{
       {/* Buckets — how the same money is split. One card, hairlines between */}
       <section className="order-3 lg:col-start-1 lg:row-start-3 lg:col-span-2">
         <p className={`${sectionLabel} mb-4`}>Buckets</p>
-        <div className="brutalist-card no-lift bg-paper-dark overflow-hidden !p-0">
+        <div className="card overflow-hidden !p-0">
           {/* md:grid-cols-4 matches BUCKET_ORDER's current length (4) — Tailwind needs a literal
               class, so bump this by hand if a bucket is ever added or removed again. */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-ink/12">

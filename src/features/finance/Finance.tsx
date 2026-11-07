@@ -129,7 +129,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
               onClick={() => navigate('home')}
               className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group cursor-pointer"
             >
-              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+              <ArrowLeft size={16} />
               <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
             </button>
             <ChevronRight size={12} className="text-ink/25" />
@@ -144,7 +144,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         </div>
 
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <h1 className="font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">FINANCES</h1>
+          <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">FINANCES</h1>
           <Tabs layoutId="financeTab" ruled value={tab} onChange={setTab} options={TAB_OPTIONS} className="md:mb-1" />
         </div>
       </header>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button, IconButton } from '@/ui/Button';
 import { IconPlay as Play } from '@/ui/icons';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { RulerTimer } from '@/ui/RulerTimer';
@@ -72,14 +73,9 @@ export const FocusCardBody: React.FC<{
 
         {paused && (
           <div className="flex justify-center">
-            <button
-              onClick={onResume}
-              className="w-12 h-12 border border-ink flex items-center justify-center transition-all bg-ink text-paper hover:opacity-90 cursor-pointer"
-              data-tip="Resume"
-              aria-label="Resume"
-            >
+            <IconButton tone="ink" size="lg" onClick={onResume} data-tip="Resume" aria-label="Resume">
               <Play size={18} />
-            </button>
+            </IconButton>
           </div>
         )}
       </div>
@@ -106,17 +102,17 @@ export const FocusCardBody: React.FC<{
           <span className="font-sans-main text-xs font-bold uppercase tracking-wider text-ink/60 ml-1">focused today</span>
         </div>
 
-        <button
+        <Button
           onClick={onStart}
           disabled={nightLocked || fridayLocked}
           data-tip={nightLocked ? 'Reopens at Fajr' : fridayLocked ? 'Include today from the Water page first' : undefined}
-          className="btn-brutalist shrink-0 flex items-center gap-2 px-5 py-3 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+          className="shrink-0"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
             <polygon points="2,1 9,5 2,9" />
           </svg>
           {nightLocked ? 'REOPENS AT FAJR' : 'START FOCUS'}
-        </button>
+        </Button>
       </div>
     </div>
   );

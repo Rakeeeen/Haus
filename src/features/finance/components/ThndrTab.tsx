@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { IconTrash2 as Trash2 } from '@/ui/icons';
 import { formatEGP, formatSignedEGP, formatSignedPercent } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import {
@@ -8,13 +7,13 @@ import {
 } from '@/domain/finance/thndr';
 import type { ThndrEntry, ThndrFlow } from '@/domain/finance/types';
 import { ThndrReadingModal } from '@/features/finance/components/ThndrReadingModal';
-import { EmptyState, InlineActions, ListCard, ListRow } from '@/features/finance/components/lists';
+import { DeleteButton, EmptyState, InlineActions, ListCard, ListRow } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
 import { captionLabel } from '@/features/finance/components/labels';
 
 /** The one accent Thndr gets — the same amber the Pomodoro ring uses for overtime, so it still
  *  reads as "electric" without stepping outside the app's own palette or its dark/light swap. */
-const ACCENT = 'var(--pomo-overtime)';
+const ACCENT = 'var(--ink)';
 const UP = 'var(--forest)';
 const DOWN = 'var(--rust)';
 
@@ -58,12 +57,7 @@ const FlowRow: React.FC<{ flow: ThndrFlow; first: boolean; onRemove: () => void 
       </div>
       <p className="font-mono-main font-black text-xl text-right shrink-0" style={{ color }}>{sign}{formatEGP(flow.amount)}</p>
       <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button
-          onClick={onRemove}
-          aria-label="Delete"
-          data-tip="Removes the record only — your bank balance isn't changed"
-          className="text-ink/25 hover:text-rust transition-colors cursor-pointer"
-        ><Trash2 size={13} /></button>
+        <DeleteButton onClick={onRemove} tip="Removes the record only — your bank balance isn't changed" />
       </div>
     </ListRow>
   );
@@ -142,7 +136,7 @@ export const ThndrTab: React.FC<{
     <div className="space-y-6">
       {/* Portfolio value + what's been put in and what it has earned, beside the split — same two-panel shape as Gold */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="thndr-scan brutalist-card no-lift bg-paper-dark p-6 md:col-span-2 flex flex-col justify-between gap-6">
+        <div className="card p-6 md:col-span-2 flex flex-col justify-between gap-6">
           <div className="flex items-center justify-between">
             <p className={captionLabel}>Thndr.exe — portfolio value<span className="thndr-cursor ml-0.5" style={{ color: ACCENT }}>_</span></p>
             <p className="font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/25">
@@ -164,7 +158,7 @@ export const ThndrTab: React.FC<{
           </div>
         </div>
 
-        <div className="brutalist-card no-lift bg-paper-dark p-6">
+        <div className="card p-6">
           <p className={`${captionLabel} mb-4`}>Split</p>
           {shares && parts ? (
             <div className="space-y-3">

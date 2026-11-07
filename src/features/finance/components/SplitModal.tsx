@@ -155,7 +155,7 @@ export const SplitModal: React.FC<{
           <button
             type="button"
             onClick={() => setRepay((r) => !r)}
-            className={`cursor-pointer text-left px-3.5 py-3 border font-mono-main text-[11px] ${repay ? 'bg-ink text-paper border-ink' : 'bg-transparent text-ink/40 border-ink/12'}`}
+            className={`cursor-pointer text-left px-5 py-3 border rounded-full transition-colors font-mono-main text-[11px] ${repay ? 'bg-ink text-paper border-ink' : 'bg-transparent text-ink/40 border-ink/12 hover:bg-ink/5 hover:text-ink'}`}
           >
             {repay ? '✓ ' : ''}Also clear the Urgent debt ({formatEGP(Math.min(allocations.tawarr2 || 0, urgentOwed))} of {formatEGP(urgentOwed)})
           </button>

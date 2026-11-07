@@ -158,7 +158,7 @@ export const RulerTimer = React.memo<{
                 <React.Fragment key={second}>
                   <div style={{
                     position: 'absolute', left: cq(x - TICK_W / 2), top: cq(labelled ? TICK_TOP - 6 : TICK_TOP), width: cq(TICK_W), height: cq(labelled ? TICK_H + 6 : TICK_H),
-                    background: 'currentColor', opacity: lit ? 1 : 0.28, boxShadow: lit ? '0 0 6px currentColor' : 'none',
+                    background: 'currentColor', opacity: lit ? 1 : 0.28,
                   }} />
                   {labelled && (
                     <div style={{
@@ -177,7 +177,7 @@ export const RulerTimer = React.memo<{
           background: 'currentColor', clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
         }} />
 
-        <div style={{ position: 'absolute', left: '50%', top: cq(DIGITS_TOP), transform: 'translateX(-50%)', filter: 'drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent))' }}>
+        <div style={{ position: 'absolute', left: '50%', top: cq(DIGITS_TOP), transform: 'translateX(-50%)' }}>
           <Digits mm={mm} ss={ss} />
         </div>
       </div>

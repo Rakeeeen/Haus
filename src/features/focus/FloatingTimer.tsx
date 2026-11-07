@@ -30,7 +30,7 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
   return (
     <button
       onClick={onNavigate}
-      className="fixed bottom-8 right-8 z-50 flex items-center justify-center transition-transform duration-300 hover:scale-105 hover:-translate-y-1 outline-none group bg-transparent rounded-full w-[170px] h-[170px] cursor-pointer shadow-none border-none"
+      className="fixed bottom-8 right-8 z-50 flex items-center justify-center transition-opacity duration-200 hover:opacity-80 outline-none group bg-transparent rounded-full w-[170px] h-[170px] cursor-pointer shadow-none border-none"
       data-tip="Return to Pomodoro"
       aria-label="Return to Pomodoro"
     >

@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { IconButton } from '@/ui/Button';
 import { NAME_MARKED } from '@/constants/brand';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
@@ -581,7 +582,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         <div className="flex items-center gap-4 relative" ref={dropdownRef}>
           <div 
             onClick={handleAvatarClick}
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-ink bg-paper-dark relative overflow-hidden cursor-pointer group flex items-center justify-center transition-transform hover:scale-105"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-ink bg-paper-dark relative overflow-hidden cursor-pointer group flex items-center justify-center"
           >
             {uploading ? (
               <div className="text-[8px] font-mono-main font-bold animate-pulse text-ink/80 text-center">Syncing</div>
@@ -599,14 +600,9 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
           {/* Three dots dropdown */}
           <div className="relative">
-            <button
-              onClick={() => setShowMenu(v => !v)}
-              className="w-10 h-10 border border-ink flex items-center justify-center text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              data-tip="Menu"
-              aria-label="Menu"
-            >
+            <IconButton onClick={() => setShowMenu(v => !v)} data-tip="Menu" aria-label="Menu">
               <MoreVertical size={20} />
-            </button>
+            </IconButton>
 
             <AnimatePresence>
               {showMenu && (
@@ -615,28 +611,21 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-                  className="absolute right-0 mt-2 z-50 bg-paper-dark border border-ink p-2 shadow-lg flex items-center gap-2"
-                  style={{ borderRadius: 0 }}
+                  className="absolute right-0 mt-2 z-50 bg-paper-dark border border-ink/14 rounded-full p-1.5 flex items-center gap-1.5"
                 >
                   {/* Theme Button */}
-                  <button
+                  <IconButton
                     onClick={toggleTheme}
-                    className="w-10 h-10 border border-ink flex items-center justify-center text-ink hover:bg-ink/5 transition-colors cursor-pointer"
                     data-tip={isDark ? 'Switch to Light' : 'Switch to Dark'}
                     aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                   >
                     {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                  </button>
+                  </IconButton>
 
                   {/* Logout Button */}
-                  <button
-                    onClick={handleLogout}
-                    className="w-10 h-10 border border-ink flex items-center justify-center text-rust hover:bg-rust/5 transition-colors cursor-pointer"
-                    data-tip="Log out"
-                    aria-label="Log out"
-                  >
+                  <IconButton onClick={handleLogout} className="!text-rust" data-tip="Log out" aria-label="Log out">
                     <LogOut size={18} />
-                  </button>
+                  </IconButton>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -731,17 +720,15 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                 }}
                 onMouseEnter={() => setHoveredCardId(card.id)}
                 onMouseLeave={() => setHoveredCardId(null)}
-                className={`cursor-pointer transform-gpu relative select-none flex flex-col justify-between p-4 border ${
-                  isActive
-                    ? 'border-ink text-ink opacity-100'
-                    : 'border-dashed border-ink/30 bg-paper/60 text-ink opacity-65 hover:opacity-100 hover:border-ink/60'
+                data-active={isActive || undefined}
+                className={`cursor-pointer transform-gpu relative select-none flex flex-col justify-between p-4 border bg-paper-dark rounded-card ${
+                  isActive ? 'border-ink text-ink' : 'border-ink/14 text-ink/55 hover:text-ink hover:border-ink/40'
                 } w-[160px] lg:w-[230px] h-[112px] lg:h-[124px] shrink-0`}
                 style={{
-                  ...(isActive ? { backgroundColor: 'var(--paper-dark)' } : {}),
                   transform: isReceded ? 'scale(0.97)' : 'scale(1)',
                   opacity: isReceded ? 0.35 : undefined,
                   filter: isReceded ? 'blur(0.6px)' : 'none',
-                  transition: 'transform 500ms cubic-bezier(0.23, 1, 0.32, 1), opacity 500ms cubic-bezier(0.23, 1, 0.32, 1), filter 500ms cubic-bezier(0.23, 1, 0.32, 1), border-color 200ms ease',
+                  transition: 'transform 500ms cubic-bezier(0.23, 1, 0.32, 1), opacity 500ms cubic-bezier(0.23, 1, 0.32, 1), filter 500ms cubic-bezier(0.23, 1, 0.32, 1), border-color 200ms ease, color 200ms ease',
                 }}
               >
                 <div className="flex justify-between items-start pointer-events-none">
@@ -835,7 +822,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               ].find(c => c.id === activeCardId);
               if (found) navigate(found.route);
             }}
-            className="flex-1 flex flex-col justify-between brutalist-card bg-paper p-5 sm:p-8 lg:p-10 relative group cursor-pointer"
+            className="flex-1 flex flex-col justify-between card p-5 sm:p-8 lg:p-10 relative group cursor-pointer"
           >
               {/* Invisible — in zen mode the dock is gone, so this is the only way back:
                   hovering in from the left edge, right where the dock used to live. Only

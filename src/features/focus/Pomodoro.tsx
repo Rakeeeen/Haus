@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Button, IconButton } from '@/ui/Button';
 import { NAME_MARKED } from '@/constants/brand';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
 import { buildFocusReports, focusTargetHours } from '@/domain/focus/report';
@@ -73,39 +74,38 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
         {isOvertime || (mode === 'break' && timeLeft === 0) ? (
           <>
             {isOvertime && (
-              <button
+              <IconButton
+                size="lg"
                 onClick={running ? pause : start}
-                className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/60 hover:border-ink/60 hover:text-ink transition-all cursor-pointer bg-transparent"
                 data-tip={running ? 'Stop' : 'Resume'}
                 aria-label={running ? 'Stop' : 'Resume'}
               >
                 {running ? <Pause size={18} /> : <Play size={18} />}
-              </button>
+              </IconButton>
             )}
-            <button
-              onClick={isOvertime ? startBreak : startNewSession}
-              className="btn-brutalist min-w-[180px] py-3 text-xs flex items-center justify-center gap-2 cursor-pointer"
-            >
+            <Button onClick={isOvertime ? startBreak : startNewSession} className="min-w-[180px]">
               <RotateCcw size={14} />
               <span>{isOvertime ? 'Take a break' : 'Start new session'}</span>
-            </button>
+            </Button>
             {isOvertime && (
-              <button
+              <IconButton
+                size="lg"
                 onClick={startNewSession}
-                className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/30 hover:border-ink/60 hover:text-ink/60 transition-all cursor-pointer bg-transparent"
                 data-tip="Restart from the beginning"
                 aria-label="Restart from the beginning"
               >
                 <RotateCcw size={18} />
-              </button>
+              </IconButton>
             )}
           </>
         ) : (
           <>
-            <button
+            <IconButton
+              tone="ink"
+              size="lg"
               onClick={running ? pause : start}
               disabled={!running && (fridayLocked || nightLocked)}
-              className="w-12 h-12 border border-ink flex items-center justify-center transition-all bg-ink text-paper hover:opacity-90 cursor-pointer animate-none disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label={running ? 'Pause' : 'Start'}
               data-tip={
                 running ? 'Pause'
                 : fridayLocked ? "Include today from the Water page first"
@@ -114,31 +114,23 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
               }
             >
               {running ? <Pause size={18} /> : <Play size={18} />}
-            </button>
-            <button
-              onClick={reset}
-              className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/30 hover:border-ink/60 hover:text-ink/60 transition-all cursor-pointer bg-transparent"
-              data-tip="Reset"
-              aria-label="Reset"
-            >
+            </IconButton>
+            <IconButton size="lg" onClick={reset} data-tip="Reset" aria-label="Reset">
               <RotateCcw size={18} />
-            </button>
+            </IconButton>
           </>
         )}
         
         {mode === 'focus' && running && !isOvertime && (
-          <button 
-            onClick={saveProgress}
-            className="text-[10px] uppercase font-black tracking-widest text-forest/40 hover:text-forest transition-all border-b border-forest/20 ml-2 cursor-pointer"
-          >
+          <Button tone="outline" size="sm" onClick={saveProgress} className="ml-2">
             Done
-          </button>
+          </Button>
         )}
       </div>
       {mode === 'break' && (
-        <button onClick={skipBreak} className="text-[10px] uppercase tracking-[0.2em] font-black text-ink/40 hover:text-sepia transition-all underline underline-offset-4 cursor-pointer">
+        <Button tone="ghost" size="sm" onClick={skipBreak}>
           Skip Break
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -155,7 +147,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
               onClick={() => navigate('home')}
               className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
             >
-              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+              <ArrowLeft size={16} />
               <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
             </button>
             <ChevronRight size={12} className="text-ink/20" />
@@ -163,7 +155,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <h1 className="font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-ink">
+            <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">
               FOCUS TIME
             </h1>
             <Tabs
@@ -182,7 +174,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
 
           {/* Focus Session Card */}
           {pomTab === 'focus' && (
-          <div className="text-center brutalist-card no-lift relative p-6 sm:p-10">
+          <div className="text-center card relative p-6 sm:p-10">
 
             <div className="text-[10px] uppercase tracking-[0.3em] font-black mb-10">
               <span style={{ color: getTimerColor() }}>
@@ -235,11 +227,11 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
 
           {/* Performance Reports */}
           {pomTab === 'analysis' && (
-          <div className="brutalist-card no-lift pb-6 p-6 sm:p-8">
+          <div className="card pb-6 p-6 sm:p-8">
             {/* Header row */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Performance</h2>
+                <h2 className="text-silver text-2xl sm:text-3xl font-bold tracking-tight">Performance</h2>
                 <div className="flex items-center gap-4 mt-2">
                   <span className="font-mono-main text-[10px] font-black text-ink/30 uppercase tracking-widest">
                     {sessions} sessions today
@@ -283,15 +275,15 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
                   
                   <ReferenceLine
                     y={focusTargetHours(view)}
-                    stroke="var(--forest)" 
+                    stroke="var(--ink)" 
                     strokeDasharray="6 6" 
                     strokeOpacity={0.4}
                     strokeWidth={1.5}
                   />
 
-                  <Bar dataKey="hours" radius={[0, 0, 0, 0]} maxBarSize={32}>
+                  <Bar dataKey="hours" radius={[4, 4, 0, 0]} maxBarSize={32}>
                     {reports[view].map((_, i) => (
-                      <Cell key={i} fill="var(--sepia)" fillOpacity={0.9} />
+                      <Cell key={i} fill="var(--ink)" />
                     ))}
                   </Bar>
                 </BarChart>

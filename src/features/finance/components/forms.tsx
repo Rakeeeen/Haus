@@ -1,18 +1,12 @@
 import React from 'react';
+import { Button } from '@/ui/Button';
 
 /**
  * The finance modals' form pieces. Every add/edit modal is built from these, so a field,
  * a choice grid or a submit bar looks and behaves the same everywhere.
  */
 
-/** The Finance accent green: the selected segment and the primary submit bar. */
-const ACCENT_FILL = 'bg-[#7A9E1A] text-black';
-const SUBMIT_TONE = {
-  primary: `${ACCENT_FILL} hover:bg-[#8BB520]`,
-  danger: 'bg-[var(--rust)] text-paper hover:opacity-90',
-} as const;
-
-const inputBase = 'w-full font-mono-main outline-none transition-colors bg-ink/5 border border-ink/12 focus:border-ink text-ink';
+const inputBase = 'w-full font-mono-main outline-none transition-colors bg-ink/5 border border-ink/12 focus:border-ink text-ink rounded-box';
 
 export const Field: React.FC<{ label: string; optional?: boolean; hint?: string; children: React.ReactNode }> = ({ label, optional, hint, children }) => (
   <div>
@@ -69,8 +63,8 @@ export function ChoiceGrid<T extends string | number>({ options, value, onChange
             key={String(o.value)}
             type="button"
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer font-sans-main font-bold uppercase tracking-wide transition-colors text-left px-3.5 py-3 border ${
-              selected ? 'bg-ink text-paper border-ink' : 'bg-transparent text-ink/40 border-ink/12 hover:border-ink/30'
+            className={`cursor-pointer font-sans-main font-bold uppercase tracking-wide transition-colors text-left px-5 py-3 border rounded-full ${
+              selected ? 'bg-ink text-paper border-ink' : 'bg-transparent text-ink/40 border-ink/12 hover:bg-ink/5 hover:text-ink'
             }`}
           >
             <span className="block text-[10px]">{o.label}</span>
@@ -82,22 +76,22 @@ export function ChoiceGrid<T extends string | number>({ options, value, onChange
   );
 }
 
-/** Two or three joined options, the selected one filled with the accent. */
+/** Two or three joined options, the selected one filled. */
 export function Segmented<T extends string | number>({ options, value, onChange }: {
   options: ReadonlyArray<{ value: T; label: string }>;
   value: T;
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex border border-ink/12">
-      {options.map((o, i) => {
+    <div className="flex gap-1 p-1 border border-ink/12 rounded-full">
+      {options.map((o) => {
         const selected = value === o.value;
         return (
           <button
             key={String(o.value)}
             type="button"
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer flex-1 font-sans-main font-bold uppercase tracking-wide transition-colors py-3.5 text-[12px] ${i > 0 ? 'border-l border-ink/12' : ''} ${selected ? ACCENT_FILL : 'text-ink/40'}`}
+            className={`cursor-pointer flex-1 rounded-full font-sans-main font-bold uppercase tracking-wide transition-colors py-2.5 text-[12px] ${selected ? 'bg-ink text-paper' : 'text-ink/40 hover:text-ink'}`}
           >
             {o.label}
           </button>
@@ -120,14 +114,10 @@ export const ModalForm: React.FC<{
 }> = ({ onSubmit, submitLabel, disabled = false, tone = 'primary', scrollable = false, children }) => (
   <form onSubmit={onSubmit}>
     <div className={`px-8 pt-7 pb-7 flex flex-col gap-6 ${scrollable ? 'max-h-[68vh] overflow-y-auto' : ''}`}>{children}</div>
-    <div className="border-t border-ink/12">
-      <button
-        type="submit"
-        disabled={disabled}
-        className={`w-full font-sans-main font-black uppercase tracking-wide transition-colors py-5 text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:bg-ink/5 disabled:text-ink/25 disabled:hover:bg-ink/5 ${SUBMIT_TONE[tone]}`}
-      >
+    <div className="border-t border-ink/12 px-8 py-6">
+      <Button type="submit" tone={tone} disabled={disabled} className="w-full">
         {submitLabel}
-      </button>
+      </Button>
     </div>
   </form>
 );

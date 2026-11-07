@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FilterSelect } from '@/ui/FilterSelect';
-import { IconBanknote as Banknote, IconTrash2 as Trash2 } from '@/ui/icons';
+import { IconBanknote as Banknote } from '@/ui/icons';
+import { DeleteButton } from '@/features/finance/components/lists';
 import { formatEGP } from '@/domain/finance/money';
 import { groupLogsByDay, logsInRange, type LogRange } from '@/domain/finance/insights';
 import type { FinanceLog } from '@/domain/finance/types';
@@ -27,7 +28,7 @@ export const LogsTab: React.FC<{ logs: FinanceLog[]; removeLog: (id: string) => 
 
       {days.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <div className="w-10 h-10 border border-ink/12 flex items-center justify-center text-ink/25"><Banknote size={18} /></div>
+          <div className="w-10 h-10 border border-ink/12 rounded-box flex items-center justify-center text-ink/25"><Banknote size={18} /></div>
           <p className="font-mono-main text-[11px] uppercase tracking-widest text-ink/25">No transactions</p>
         </div>
       ) : (
@@ -46,7 +47,7 @@ export const LogsTab: React.FC<{ logs: FinanceLog[]; removeLog: (id: string) => 
                   const sign = log.type === 'assign' ? (log.amount < 0 ? '−' : '+') : log.type === 'deposit' ? '+' : '−';
                   const name = log.type === 'assign' ? 'Assign' : log.type === 'deposit' ? 'Deposit' : 'Withdraw';
                   return (
-                    <div key={log.id} className="brutalist-card no-lift bg-paper-dark group px-6 py-4 flex items-center justify-between gap-4">
+                    <div key={log.id} className="card group px-6 py-4 flex items-center justify-between gap-4">
                       <div className="min-w-0">
                         <p className="font-sans-main font-black uppercase tracking-widest text-ink text-[13px]">
                           {name}
@@ -60,9 +61,9 @@ export const LogsTab: React.FC<{ logs: FinanceLog[]; removeLog: (id: string) => 
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <p className="font-mono-main font-black text-ink text-xl">{sign}{formatEGP(Math.abs(log.amount))}</p>
-                        <button onClick={() => removeLog(log.id)} aria-label="Delete" className="text-ink/25 hover:text-rust transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
-                          <Trash2 size={13} />
-                        </button>
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <DeleteButton onClick={() => removeLog(log.id)} />
+                        </span>
                       </div>
                     </div>
                   );

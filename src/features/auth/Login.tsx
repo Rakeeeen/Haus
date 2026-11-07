@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button, IconButton } from '@/ui/Button';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/data/firebase';
 import { isDarkTheme, setTheme } from '@/lib/theme';
@@ -37,52 +38,45 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300" style={{ background: 'var(--paper)' }}>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300">
       {/* Theme toggle */}
-      <button
+      <IconButton
+        tone="ghost"
         onClick={toggleTheme}
-        className="absolute top-5 right-5 z-20 cursor-pointer"
+        className="absolute top-5 right-5 z-20"
         data-tip={isDark ? 'Switch to light' : 'Switch to dark'}
         aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       >
-        {isDark ? (
-          <Sun size={18} className="text-ink/40 hover:text-ink transition-colors" />
-        ) : (
-          <Moon size={18} className="text-ink/40 hover:text-ink transition-colors" />
-        )}
-      </button>
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      </IconButton>
       
-      <div className="w-full max-w-md brutalist-card no-lift p-10 md:p-12 relative z-10 text-center">
+      <div className="w-full max-w-md card p-10 md:p-12 relative z-10 text-center">
         <div className="flex justify-center mb-8">
-          <div className="w-14 h-14 bg-sepia/20 flex items-center justify-center border border-ink text-ink" style={{ borderRadius: 0 }}>
+          <div className="w-14 h-14 bg-paper flex items-center justify-center border border-ink/14 text-ink rounded-box">
             <IconLock size={28} />
           </div>
         </div>
         
         <div className="mb-10">
-          <h1 className="text-3xl font-black uppercase tracking-tight">Vault gatekeeper</h1>
+          <h1 className="text-silver mx-auto text-3xl font-black uppercase tracking-tight">Vault gatekeeper</h1>
         </div>
 
         {error && (
-          <div className="bg-rust/10 border-2 border-rust text-rust text-[11px] font-black px-4 py-3 mb-8" style={{ borderRadius: 0 }}>
+          <div className="bg-rust/10 border border-rust text-rust text-[11px] font-black px-4 py-3 mb-8 rounded-box">
              {error}
           </div>
         )}
 
-        <button 
-          onClick={handleGoogleLogin} 
-          disabled={loading}
-          className="btn-brutalist w-full flex items-center justify-center gap-3 py-4 text-base font-mono-main"
-        >
+        <Button onClick={handleGoogleLogin} disabled={loading} className="w-full">
           {loading ? (
-             <div className="w-5 h-5 border-2 border-ink/30 border-t-ink rounded-full animate-spin" />
+             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <>
               <IconLogin size={20} />
               <span>CONTINUE WITH GOOGLE</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

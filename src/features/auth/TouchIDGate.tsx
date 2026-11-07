@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Button, IconButton } from '@/ui/Button';
 import { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/data/firebase';
@@ -181,28 +182,24 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300" style={{ background: 'var(--paper)' }}>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300">
 
-      <button
+      <IconButton
+        tone="ghost"
         onClick={toggleTheme}
-        className="absolute top-5 right-5 z-20 cursor-pointer"
+        className="absolute top-5 right-5 z-20"
         data-tip={isDark ? 'Switch to light' : 'Switch to dark'}
         aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       >
-        {isDark ? (
-          <Sun size={18} className="text-ink/40 hover:text-ink transition-colors" />
-        ) : (
-          <Moon size={18} className="text-ink/40 hover:text-ink transition-colors" />
-        )}
-      </button>
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      </IconButton>
 
-      <div className="w-full max-w-md brutalist-card no-lift p-10 md:p-12 relative z-10 text-center">
+      <div className="w-full max-w-md card p-10 md:p-12 relative z-10 text-center">
 
         {/* Animated fingerprint icon */}
         <div className="flex justify-center mb-8">
           <div
-            className="w-14 h-14 bg-sepia/20 flex items-center justify-center border border-ink text-ink"
-            style={{ borderRadius: 0 }}
+            className="w-14 h-14 bg-paper flex items-center justify-center border border-ink/14 text-ink rounded-box"
           >
             <FingerprintVector scanning={stage === 'verify' || stage === 'register' || busy} />
           </div>
@@ -210,7 +207,7 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
 
         {/* Title */}
         <div className="mb-10">
-          <h1 className="text-3xl font-black uppercase tracking-tight">
+          <h1 className="text-silver mx-auto text-3xl font-black uppercase tracking-tight">
             {stage === 'checking'   && 'CHECKING…'}
             {stage === 'register'   && 'REGISTER TOUCH ID'}
             {stage === 'verify'     && 'TOUCH ID REQUIRED'}
@@ -222,7 +219,7 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
 
         {/* Error */}
         {errorMsg && (
-          <div className="bg-rust/10 border-2 border-rust text-rust text-[11px] font-black px-4 py-3 mb-8" style={{ borderRadius: 0 }}>
+          <div className="bg-rust/10 border border-rust text-rust text-[11px] font-black px-4 py-3 mb-8 rounded-box">
             {errorMsg}
           </div>
         )}
@@ -235,25 +232,18 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
         )}
 
         {(stage === 'register' || stage === 'verify') && (
-          <button
-            onClick={stage === 'register' ? handleRegister : handleVerify}
-            disabled={busy}
-            className="btn-brutalist w-full flex items-center justify-center gap-3 py-4 text-base font-mono-main cursor-pointer"
-          >
+          <Button onClick={stage === 'register' ? handleRegister : handleVerify} disabled={busy} className="w-full">
             {busy
-              ? <div className="w-5 h-5 border-2 border-ink/30 border-t-ink rounded-full animate-spin" />
+              ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : stage === 'register' ? 'REGISTER ON THIS DEVICE' : 'AUTHENTICATE'
             }
-          </button>
+          </Button>
         )}
 
         {stage === 'verify' && !busy && (
-          <button
-            onClick={() => { setStage('get_code'); setErrorMsg(''); }}
-            className="mt-4 font-mono-main text-[10px] uppercase tracking-widest text-ink/25 hover:text-ink/50 transition-colors cursor-pointer"
-          >
+          <Button tone="ghost" size="sm" onClick={() => { setStage('get_code'); setErrorMsg(''); }} className="mt-4">
             No passkey on this device? Get a code
-          </button>
+          </Button>
         )}
 
         {stage === 'get_code' && (
@@ -261,16 +251,12 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
             <p className="text-[11px] font-mono-main text-ink/50 mb-6 leading-relaxed">
               Open your trusted device (Mac), then click the button below. A 6-digit code will appear there.
             </p>
-            <button
-              onClick={handleGetCode}
-              disabled={busy}
-              className="btn-brutalist w-full flex items-center justify-center gap-3 py-4 text-base font-mono-main cursor-pointer"
-            >
+            <Button onClick={handleGetCode} disabled={busy} className="w-full">
               {busy
-                ? <div className="w-5 h-5 border-2 border-ink/30 border-t-ink rounded-full animate-spin" />
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 : 'SEND CODE TO MY MAC'
               }
-            </button>
+            </Button>
           </>
         )}
 
@@ -286,29 +272,21 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
               value={codeInput}
               onChange={e => setCodeInput(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
-              className="w-full border border-ink bg-transparent text-center text-3xl font-black font-mono-main tracking-[0.3em] py-3 mb-4 outline-none"
-              style={{ borderRadius: 0 }}
+              className="w-full border border-ink/14 focus:border-ink bg-transparent rounded-box text-center text-3xl font-black font-mono-main tracking-[0.3em] py-3 mb-4 outline-none"
             />
-            <button
-              onClick={handleVerifyCode}
-              disabled={busy || codeInput.length < 6}
-              className="btn-brutalist w-full flex items-center justify-center gap-3 py-4 text-base font-mono-main cursor-pointer"
-            >
+            <Button onClick={handleVerifyCode} disabled={busy || codeInput.length < 6} className="w-full">
               {busy
-                ? <div className="w-5 h-5 border-2 border-ink/30 border-t-ink rounded-full animate-spin" />
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 : 'VERIFY CODE'
               }
-            </button>
+            </Button>
           </>
         )}
 
         {stage !== 'checking' && (
-          <button
-            onClick={handleLogout}
-            className="mt-6 font-mono-main text-[10px] uppercase tracking-widest text-ink/25 hover:text-ink/50 transition-colors cursor-pointer"
-          >
+          <Button tone="ghost" size="sm" onClick={handleLogout} className="mt-6">
             Sign out
-          </button>
+          </Button>
         )}
       </div>
     </div>

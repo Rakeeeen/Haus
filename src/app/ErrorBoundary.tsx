@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@/ui/Button';
 import { Wordmark } from '@/ui/Wordmark';
 
 interface Props {
@@ -53,12 +54,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <p className="font-mono-main text-xs uppercase tracking-[0.25em] text-ink/50 max-w-xs">
           Something glitched. Reloading…
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="btn-brutalist px-6 py-3 text-xs font-mono-main uppercase tracking-widest cursor-pointer"
-        >
-          Reload now
-        </button>
+        <Button onClick={() => window.location.reload()}>Reload now</Button>
       </div>
     );
   }

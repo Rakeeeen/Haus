@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AppModalProps {
@@ -47,9 +48,9 @@ export const AppModal: React.FC<AppModalProps> = ({
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
             transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
             onClick={e => e.stopPropagation()}
-            className={`relative w-full ${maxWidth}`}
+            className={`relative w-full rounded-modal ${maxWidth}`}
             style={{
-              background: 'color-mix(in srgb, var(--paper-dark) 94%, transparent)',
+              background: 'var(--paper-dark)',
               border: '1px solid color-mix(in srgb, var(--ink) 12%, transparent)',
             }}
           >
@@ -67,15 +68,9 @@ export const AppModal: React.FC<AppModalProps> = ({
                     {title}
                   </span>
                 )}
-                <button
-                  onClick={onClose}
-                  className="ml-auto font-mono-main text-[10px] tracking-[0.2em] transition-opacity"
-                  style={{ color: 'color-mix(in srgb, var(--ink) 35%, transparent)' }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
-                >
+                <Button tone="outline" size="sm" onClick={onClose} className="ml-auto">
                   ESC
-                </button>
+                </Button>
               </div>
             )}
 
@@ -97,29 +92,16 @@ export const AppModal: React.FC<AppModalProps> = ({
                   {confirm.message}
                 </p>
                 <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={onClose}
-                    className="font-mono-main text-[10px] uppercase tracking-widest px-5 py-2.5 transition-opacity"
-                    style={{
-                      border: '1px solid color-mix(in srgb, var(--ink) 18%, transparent)',
-                      color: 'color-mix(in srgb, var(--ink) 45%, transparent)',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
-                  >
+                  <Button tone="outline" size="sm" onClick={onClose}>
                     {confirm.cancelText ?? 'Cancel'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    tone={confirm.variant === 'info' ? 'primary' : 'danger'}
+                    size="sm"
                     onClick={() => { confirm.onConfirm(); onClose(); }}
-                    className="font-mono-main text-[10px] uppercase tracking-widest px-5 py-2.5 transition-opacity"
-                    style={{
-                      background: confirm.variant === 'info' ? 'color-mix(in srgb, var(--forest) 80%, transparent)' : 'color-mix(in srgb, var(--rust) 80%, transparent)',
-                      color: 'var(--paper)',
-                      border: 'none',
-                    }}
                   >
                     {confirm.confirmText ?? 'Confirm'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : raw ? (

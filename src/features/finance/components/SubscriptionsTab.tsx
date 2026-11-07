@@ -116,7 +116,7 @@ export const SubscriptionsTab: React.FC<{
     <div className="space-y-6">
       {subscriptions.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="brutalist-card no-lift bg-paper-dark p-6 flex items-baseline justify-between">
+          <div className="card p-6 flex items-baseline justify-between">
             <div>
               <p className={`${captionLabel} mb-1`}>{totalLabel}</p>
               <p className="font-mono-main text-3xl font-black">
@@ -126,7 +126,7 @@ export const SubscriptionsTab: React.FC<{
             <p className="font-mono-main text-xs text-ink/25">{countLabel}</p>
           </div>
 
-          <div className="brutalist-card no-lift bg-paper-dark p-6 flex items-baseline justify-between">
+          <div className="card p-6 flex items-baseline justify-between">
             <div>
               <p className={`${captionLabel} mb-1`}>Hamed's Share</p>
               <p className="font-mono-main text-3xl font-black" style={share < 0 ? { color: 'var(--rust)' } : undefined}>
@@ -153,7 +153,7 @@ export const SubscriptionsTab: React.FC<{
             const interval = sub.intervalMonths ?? 1;
             const soon = daysLeft <= 5;
             return (
-              <div key={sub.id} className="brutalist-card no-lift flex items-center justify-between group relative bg-paper-dark px-7 py-5">
+              <div key={sub.id} className="card flex items-center justify-between group relative bg-paper-dark px-7 py-5">
                 <RowActions onEdit={() => setModal({ open: true, sub })} onRemove={() => setSubscriptions(removeById(subscriptions, sub.id))} />
                 <div>
                   <p className="font-sans-main font-black text-ink text-base">{sub.name}</p>

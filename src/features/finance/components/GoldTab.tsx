@@ -99,14 +99,14 @@ export const GoldTab: React.FC<{
     <div className="space-y-6">
       {/* Portfolio first; the spot price it's valued at beside it */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="brutalist-card no-lift bg-paper-dark p-6 md:col-span-2 flex flex-col justify-between gap-4">
+        <div className="card p-6 md:col-span-2 flex flex-col justify-between gap-4">
           <p className={captionLabel}>Portfolio value</p>
           {prices ? (
             <div>
               <MaskedValue disabled={!privacyMode} className="font-mono-main text-4xl font-black text-ink">{formatEGP(summary.value)}</MaskedValue>
               <p className="font-mono-main text-[10px] text-ink/25 mt-2">{summary.weight.toFixed(2)}g total weight</p>
               {summary.pnl !== null && (
-                <p className="font-mono-main text-[11px] font-bold mt-1" style={{ color: summary.pnl >= 0 ? 'var(--forest)' : '#C0392B' }}>
+                <p className="font-mono-main text-[11px] font-bold mt-1" style={{ color: summary.pnl >= 0 ? 'var(--forest)' : 'var(--rust)' }}>
                   {summary.pnl >= 0 ? '▲ ' : '▼ '}
                   <MaskedValue disabled={!privacyMode}>{formatEGP(Math.abs(summary.pnl))}</MaskedValue>
                   {' '}{summary.pnl >= 0 ? 'profit' : 'loss'}
@@ -121,7 +121,7 @@ export const GoldTab: React.FC<{
           )}
         </div>
 
-        <div className="brutalist-card no-lift bg-paper-dark p-6">
+        <div className="card p-6">
           <p className={`${captionLabel} mb-4`}>Spot / gram</p>
           {prices ? (
             <div className="space-y-3">
@@ -166,7 +166,7 @@ export const GoldTab: React.FC<{
                     <p className="font-mono-main text-[11px] mt-1 text-ink/40">
                       Paid {formatEGP(paid)}
                       {pnl !== null && (
-                        <span className="font-bold ml-2" style={{ color: pnl >= 0 ? 'var(--forest)' : '#C0392B' }}>{pnl >= 0 ? '+' : ''}{formatEGP(pnl)}</span>
+                        <span className="font-bold ml-2" style={{ color: pnl >= 0 ? 'var(--forest)' : 'var(--rust)' }}>{pnl >= 0 ? '+' : ''}{formatEGP(pnl)}</span>
                       )}
                     </p>
                   )}
