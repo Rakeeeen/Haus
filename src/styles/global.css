@@ -94,6 +94,8 @@
     /* The illustrations' paper shape: the page's silver, set on a card. */
     --icon-paper: #D6D6D6;
     --silver-low: #3C3C3C;
+    /* One flat silver for things that must stay readable, like the clock's digits (no gradient). */
+    --silver-flat: #8A8A8A;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #E4E4E4 0%, transparent 70%),
       radial-gradient(60% 70% at 90% 85%, #C6C6C6 0%, transparent 70%);
@@ -120,6 +122,7 @@
     --silver-high: #F6F6F6;
     --icon-paper: #2C2C2C;
     --silver-low: #8E8E8E;
+    --silver-flat: #B8B8B8;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #1E1E1E 0%, transparent 70%),
       radial-gradient(60% 70% at 90% 85%, #161616 0%, transparent 70%);
@@ -140,7 +143,6 @@
     font-family: var(--font-sans);
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
-    cursor: none !important;
   }
 
   /* === TEXT SELECTION (brand highlight) === */
@@ -379,12 +381,6 @@ body.dark-theme [data-active] {
   border-color: rgba(231, 232, 225, 0.38) !important;
 }
 
-/* See ui/SilverPaint.tsx: only the grain built for this theme's metal shows. */
-body.dark-theme .silver-grain-on-light,
-body:not(.dark-theme) .silver-grain-on-dark {
-  display: none;
-}
-
 /* Buttons side by side share their space, as in Material's button groups. A pressed button grows
    only towards its neighbour and the neighbour gives up that edge, so the row keeps its length,
    the far edges stay put and the labels don't move. A button with no neighbour has nothing to
@@ -407,10 +403,14 @@ body:not(.dark-theme) .silver-grain-on-dark {
   .spring-group > .flex-1 { flex-grow: 1 !important; }
 }
 
-/* Hide native cursor globally — must be outside @layer to beat Tailwind utilities */
-*, *::before, *::after {
-  cursor: none !important;
-}
+/* The pointer is the browser's own — same speed, same hand over links, same text cursor in
+   fields — with only a light touch: the arrow is hand-drawn, its paper set a little off the
+   line (scripts/illustrations → styles/cursors). SVG images can't read CSS variables, so there
+   is one per theme. Hot spot is the arrow's tip. */
+body { cursor: url('./cursors/arrow-light.svg') 3 2, auto; }
+body.dark-theme { cursor: url('./cursors/arrow-dark.svg') 3 2, auto; }
+/* Tailwind 4 resets buttons to the default arrow; the browser's own pointer hand comes back. */
+button:not(:disabled), [role='button']:not([aria-disabled='true']), summary, select, label[for] { cursor: pointer; }
 
 /* === Focus ruler face === it takes the same accents as the other Focus faces */
 .ruler-face { --ruler-tone: var(--pomo-focus); }

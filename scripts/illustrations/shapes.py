@@ -188,8 +188,7 @@ ICONS.update({
 })
 
 
-# ── The mouse pointer: an outline only. Its paper is drawn by the app, separately, so it can
-#    trail the line on a spring.
+# ── The mouse pointer: build.py writes it as two SVG files the browser uses as its cursor.
 CURSOR_SHAPE = [(110, 70), (430, 260), (800, 470), (540, 560), (410, 880), (260, 470)]
 
 def cursor_icon(seed):

@@ -60,7 +60,7 @@ export const TimeCardBody: React.FC<{ clock: ClockParts }> = ({ clock }) => (
           <PixelWallClock timeZone={WORLD_CLOCKS.egypt.timeZone} emblem={CLOCK_EMBLEMS.egypt} width="100%" />
         </div>
         <div className="flex items-end gap-2">
-          <PixelDigits mm={clock.hour} ss={clock.minute} silver height={HOME_DIGITS_HEIGHT} flush />
+          <PixelDigits mm={clock.hour} ss={clock.minute} color="var(--silver-flat)" height={HOME_DIGITS_HEIGHT} flush />
           <span className="font-mono-main text-[10px] font-bold leading-none pb-0.5">{clock.period}</span>
         </div>
       </div>

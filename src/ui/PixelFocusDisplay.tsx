@@ -1,18 +1,15 @@
 import React from 'react';
 import { DM } from '@/ui/TimerComponents';
 import { ICON_STROKE_LINECAP } from '@/ui/icons';
-import { SilverPaint, useSilverId } from '@/ui/SilverPaint';
 
 /**
  * The second Focus face — a blocky pixel-art style, swipeable alongside the
  * wavy ring (see FocusCarousel). Same DM digit bitmaps (see TimerComponents), just drawn
  * as square pixels instead of dots, to match this style's chunkier look.
  */
-export const PixelDigits: React.FC<{ mm: string; ss: string; color?: string; silver?: boolean; maxWidth?: string; height?: string; flush?: boolean }> = ({
-  mm, ss, color: flatColor = 'var(--ink)', silver = false, maxWidth = 'min(88vw, 480px)', height, flush = false,
+export const PixelDigits: React.FC<{ mm: string; ss: string; color?: string; maxWidth?: string; height?: string; flush?: boolean }> = ({
+  mm, ss, color = 'var(--ink)', maxWidth = 'min(88vw, 480px)', height, flush = false,
 }) => {
-  const silverId = useSilverId();
-  const color = silver ? `url(#${silverId})` : flatColor;
   const cell = 15;
   const gap = 3;
   const step = cell + gap;
@@ -51,7 +48,6 @@ export const PixelDigits: React.FC<{ mm: string; ss: string; color?: string; sil
       style={height ? { height, width: 'auto' } : { width: maxWidth, height: 'auto' }}
       overflow="visible"
     >
-      {silver && <SilverPaint id={silverId} size={digitH} tile={340} />}
       {mmChars.map((ch, i) => renderDigit(ch, xPositions[i]))}
       <rect x={xColon} y={digitH * 0.22} width={cell} height={cell} fill={color} opacity={0.5} />
       <rect x={xColon} y={digitH * 0.62} width={cell} height={cell} fill={color} opacity={0.5} />
@@ -113,8 +109,7 @@ export const PixelClock: React.FC<{
   running: boolean;
   width?: string;
 }> = ({ elapsedSeconds, mode, isOvertime, running, width = '120px' }) => {
-  const silver = useSilverId();
-  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : `url(#${silver})`;
+  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : 'var(--sepia)';
   const counterRef = React.useRef(Math.max(0, Math.floor(elapsedSeconds)));
   counterRef.current = Math.max(0, Math.floor(elapsedSeconds));
   const handRef = React.useRef<SVGGElement>(null);
@@ -155,7 +150,6 @@ export const PixelClock: React.FC<{
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} style={{ width, height: 'auto' }}>
-      <SilverPaint id={silver} size={size} />
       {cells}
       <g ref={handRef} style={{ transformOrigin: `${center}px ${center}px` }}>
         <line x1={center} y1={center + 12} x2={center} y2={center - 58} stroke={handColor} strokeWidth={5} strokeLinecap={ICON_STROKE_LINECAP} />
@@ -283,8 +277,6 @@ export const PixelWallClock = React.memo<{
   /** A pixel emblem (see CLOCK_EMBLEMS) drawn on the face's lower half, under the hands. */
   emblem?: readonly string[];
 }>(({ timeZone, width = '110px', emblem }) => {
-  const silver = useSilverId();
-  const metal = `url(#${silver})`;
   const { size, center, cells } = CLOCK_FACE;
   const hourRef = React.useRef<SVGGElement>(null);
   const minuteRef = React.useRef<SVGGElement>(null);
@@ -312,7 +304,6 @@ export const PixelWallClock = React.memo<{
   const origin = { transformOrigin: `${center}px ${center}px` };
   return (
     <svg viewBox={`0 0 ${size} ${size}`} style={{ width, height: 'auto' }}>
-      <SilverPaint id={silver} size={size} />
       {cells}
       {emblem && <ClockEmblem rows={emblem} />}
       <g ref={hourRef} style={origin}>
@@ -322,9 +313,9 @@ export const PixelWallClock = React.memo<{
         <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <g ref={secondRef} style={origin}>
-        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={metal} strokeWidth={2.5} strokeLinecap={ICON_STROKE_LINECAP} />
+        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke="var(--sepia)" strokeWidth={2.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
-      <circle cx={center} cy={center} r={6} fill={metal} />
+      <circle cx={center} cy={center} r={6} fill="var(--sepia)" />
     </svg>
   );
 });
