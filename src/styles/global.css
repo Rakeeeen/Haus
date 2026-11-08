@@ -413,6 +413,18 @@ body.dark-theme [data-active] {
   cursor: none !important;
 }
 
+/* The custom pointer's arrow: over something clickable it tilts, as a hand turns a pen towards a
+   button; pressed, it squeezes towards its tip. Both on the system's spring. The origin is the
+   tip, so the point it clicks at never moves. */
+.custom-cursor-svg {
+  transform: rotate(-4deg) translate(-2px, -2px);
+  transform-origin: 19% 12%;
+  transition: transform var(--spring-duration) var(--spring);
+}
+.custom-cursor-wrapper[data-hover] .custom-cursor-svg { transform: rotate(-12deg) translate(-2px, -2px) scale(1.1); }
+.custom-cursor-wrapper[data-pressed] .custom-cursor-svg { transform: rotate(-4deg) translate(-2px, -2px) scale(0.84); }
+@media (prefers-reduced-motion: reduce) { .custom-cursor-svg { transition: none; } }
+
 /* === Thndr's blinking cursor === */
 @keyframes thndrBlink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
 .thndr-cursor { animation: thndrBlink 1.1s step-end infinite; }

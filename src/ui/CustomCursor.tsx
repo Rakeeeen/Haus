@@ -26,9 +26,7 @@ export const CustomCursor = () => {
         height="28"
         viewBox="0 0 24 24"
         fill="none"
-        style={{
-          transform: 'rotate(-4deg) translate(-2px, -2px)',
-        }}
+        className="custom-cursor-svg"
       >
         <path
           d="M4.5 3L18.5 11.2L11.8 12.8L9.2 19.5L4.5 3Z"
