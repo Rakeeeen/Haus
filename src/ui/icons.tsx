@@ -1,35 +1,45 @@
 /**
- * The single source for every icon in the app — one library (Hugeicons),
- * rendered with sharp (square cap / miter join) strokes to match the
- * brutalist design language, never the library's own rounded default.
- * Features import icons from here, never from '@hugeicons/*' directly —
- * that's what makes the library, the stroke width, and the sharp-vs-rounded
- * choice each a one-line edit (ICON_STROKE_WIDTH / ICON_STROKE_LINECAP /
- * ICON_STROKE_LINEJOIN below) instead of a find-and-replace across every
+ * The single source for every plain UI icon in the app (play, pause, plus, log out…) — one
+ * library (Hugeicons), given a light touch of the hand-drawn style: round, blunt ends and joins
+ * and a faint tremor in the line (IconTremor below). The touch is kept light on purpose: these
+ * are controls, read at a glance. The bigger, characterful icons (the sections, the dock's
+ * arrow, sign-in, banks and buckets) are fully hand-drawn instead, in ui/Sketch.tsx.
+ * Features import icons from here, never from '@hugeicons/*' directly — that's what makes the
+ * library, the stroke width and the line ends each a one-line edit (ICON_STROKE_WIDTH /
+ * ICON_STROKE_LINECAP / ICON_STROKE_LINEJOIN below) instead of a find-and-replace across every
  * screen.
  *
- * Exceptions (not built through createIcon, but still import these same
- * constants rather than hardcoding their own): the Pomodoro focus ring
- * (src/ui/TimerComponents.tsx, scales with its own size), Recharts
- * chart internals, and the TouchID fingerprint glyph (a one-off animated scan
- * effect, not a reusable icon — but sharp-stroked like everything else).
+ * Exceptions (not built through createIcon, but still import these same constants rather than
+ * hardcoding their own): the Pomodoro focus ring (src/ui/TimerComponents.tsx, scales with its own
+ * size), Recharts chart internals, and the wordmark.
  */
 import React from 'react';
 import {
   Refresh01Icon, Undo02Icon, PlusSignIcon, ArrowLeft01Icon, ArrowRight01Icon,
   Sun01Icon, Moon01Icon, Camera01Icon, MoreVerticalIcon, Logout04Icon,
   Money01Icon, Delete02Icon, PencilEdit01Icon,
-  PlayIcon, PauseIcon, LockIcon, Login03Icon,
+  PlayIcon, PauseIcon, Login03Icon,
   ArrowDown01Icon,
 } from '@hugeicons/core-free-icons';
 
-/** The brutalist icon system: every icon in the app is built from these three
- *  constants. Change one here and it changes everywhere — including the
- *  hand-drawn exceptions listed below, which import these same constants
+/** Every plain icon is built from these three constants. Change one here and it changes
+ *  everywhere, including the exceptions listed above, which import these same constants
  *  instead of hardcoding their own numbers/keywords. */
 export const ICON_STROKE_WIDTH = 2;
-export const ICON_STROKE_LINECAP = 'square' as const;
-export const ICON_STROKE_LINEJOIN = 'miter' as const;
+export const ICON_STROKE_LINECAP = 'round' as const;
+export const ICON_STROKE_LINEJOIN = 'round' as const;
+
+/** The filter the plain icons share: a faint, fixed wobble, about half a pixel at icon size, so
+ *  a line reads as drawn rather than plotted. Mounted once at the app's root. */
+export const ICON_TREMOR_ID = 'icon-tremor';
+export const IconTremor: React.FC = () => (
+  <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+    <filter id={ICON_TREMOR_ID} x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.3" numOctaves="1" seed="7" />
+      <feDisplacementMap in="SourceGraphic" scale="0.8" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+);
 
 type HugeIconData = [string, Record<string, unknown>][];
 
@@ -39,10 +49,10 @@ interface IconProps {
   color?: string;
 }
 
-/** Renders a Hugeicons path set with sharp caps/joins instead of the library's rounded default. */
+/** Renders a Hugeicons path set with the system's line ends and tremor. */
 function createIcon(data: HugeIconData, displayName: string) {
   const Icon: React.FC<IconProps> = ({ size = 24, className, color = 'currentColor' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} filter={`url(#${ICON_TREMOR_ID})`}>
       {data.map(([tag, attrs], i) =>
         React.createElement(tag, {
           ...attrs,
@@ -74,6 +84,5 @@ export const IconTrash2 = createIcon(Delete02Icon as HugeIconData, 'Trash2');
 export const IconPencil = createIcon(PencilEdit01Icon as HugeIconData, 'Pencil');
 export const IconPlay = createIcon(PlayIcon as HugeIconData, 'Play');
 export const IconPause = createIcon(PauseIcon as HugeIconData, 'Pause');
-export const IconLock = createIcon(LockIcon as HugeIconData, 'Lock');
 export const IconLogin = createIcon(Login03Icon as HugeIconData, 'Login');
 export const IconChevronDown = createIcon(ArrowDown01Icon as HugeIconData, 'ChevronDown');

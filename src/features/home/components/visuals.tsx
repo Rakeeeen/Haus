@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
-import { FINANCE_ICON, FOCUS_ICON, TIME_ICON, WATER_ICON, type Layers } from '@/ui/sketchIcons.data';
+import { ARROW_ICON, FINANCE_ICON, FOCUS_ICON, TIME_ICON, WATER_ICON } from '@/ui/sketchIcons.data';
+import { Boil, SketchSvg } from '@/ui/Sketch';
 import { ICON_STROKE_WIDTH } from '@/ui/icons';
 
 /**
@@ -42,28 +43,13 @@ export const MaskedValue: React.FC<{ children: React.ReactNode; className?: stri
   );
 };
 
-// Priority indicator — 6 dots orbiting a right-pointing triangle outline.
-// The bright point chases the triangle clockwise: tip → upper → left → lower → tip.
-// Reads as "active / locked-on" without being a circle, chevron, or spinner.
-export const SidebarActiveVector: React.FC = () => {
-  // Triangle pointing right: tip, upper-right, upper-left, left-mid, lower-left, lower-right
-  const pts: [number,number][] = [
-    [18,12],  // 0 — tip (right)
-    [11,4],   // 1 — upper corner
-    [4,4],    // 2 — upper-left
-    [4,12],   // 3 — left mid
-    [4,20],   // 4 — lower-left
-    [11,20],  // 5 — lower corner
-  ];
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 24" fill="currentColor" className="text-ink/80">
-      {pts.map(([cx,cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="1.4"
-          style={{ animation: 'vectorFade 1.5s ease-in-out infinite', animationDelay: `${i * 0.25}s` }} />
-      ))}
-    </svg>
-  );
-};
+// Priority indicator — a hand-drawn arrow pointing at the card that matters now, with the
+// same line boil as the section icons.
+export const SidebarActiveVector: React.FC = () => (
+  <SketchSvg size={22} className="text-ink/80">
+    <Boil frames={ARROW_ICON.frames} />
+  </SketchSvg>
+);
 
 // ─── Section icons ──────────────────────────────────────────────────────────
 // Hand-drawn, like the illustrations (see scripts/illustrations): a thick ink line over a flat
@@ -72,32 +58,6 @@ export const SidebarActiveVector: React.FC = () => {
 // Whatever the old dotted icon showed is still shown: the glass fills with the day's water,
 // the stopwatch hand turns while a session runs, the clock tells the time.
 // size=20 → small card   size=36 → big card corner
-
-const Sketch: React.FC<{ layers: Layers }> = ({ layers }) => (
-  <>
-    {layers.map(([paper, ink], i) => (
-      <React.Fragment key={i}>
-        <g fill="var(--icon-paper)">{paper.map((d, j) => <path key={j} d={d} />)}</g>
-        <g fill="currentColor">{ink.map((d, j) => <path key={j} d={d} />)}</g>
-      </React.Fragment>
-    ))}
-  </>
-);
-
-/** The three redraws, one showing at a time (global.css, .sketch-boil). */
-const Boil: React.FC<{ frames: readonly Layers[] }> = ({ frames }) => (
-  <g className="sketch-boil-set">
-    {frames.map((layers, i) => (
-      <g key={i} className="sketch-boil" style={{ animationDelay: `${-i * 0.25}s` }}>
-        <Sketch layers={layers} />
-      </g>
-    ))}
-  </g>
-);
-
-const SketchSvg: React.FC<{ size: number; children: React.ReactNode }> = ({ size, children }) => (
-  <svg width={size} height={size} viewBox="0 0 1000 1000" aria-hidden="true" overflow="visible">{children}</svg>
-);
 
 // WATER — a glass; fillLevel 0–1 is how full it is, and it fills on the system's spring.
 // The water is the glass's inside moved (34, 30), so it spans y 166–896 and empty shows none.
@@ -166,7 +126,10 @@ export const MonthFingerprint: React.FC<{
   const [year, month] = monthKey.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   return (
+    // Drawn like the hand-drawn icons: rays with round ends that bend a little, each by its own
+    // fixed amount so the drawing doesn't change between visits, over a paper disc set off it.
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ overflow: 'visible' }}>
+      <circle cx={cx + size * 0.04} cy={cy + size * 0.04} r={maxR * 0.8} fill="var(--icon-paper)" />
       {Array.from({ length: daysInMonth }, (_, i) => {
         const dateKey = `${monthKey}-${String(i + 1).padStart(2, '0')}`;
         const d = days[dateKey] ?? null;
@@ -175,10 +138,15 @@ export const MonthFingerprint: React.FC<{
         const r = score > 0 ? maxR * (0.3 + score * 0.7) : maxR * 0.08;
         const x2 = cx + Math.cos(angle) * r;
         const y2 = cy + Math.sin(angle) * r;
+        const bend = Math.sin(i * 12.9898) * r * 0.12;
+        const qx = cx + Math.cos(angle) * r * 0.5 - Math.sin(angle) * bend;
+        const qy = cy + Math.sin(angle) * r * 0.5 + Math.cos(angle) * bend;
         return (
-          <line key={i} x1={cx} y1={cy} x2={x2} y2={y2}
+          <path key={i} d={`M${cx} ${cy}Q${qx} ${qy} ${x2} ${y2}`}
+            fill="none"
             stroke="currentColor"
-            strokeWidth={score > 0.5 ? 1.6 : 1}
+            strokeWidth={score > 0.5 ? 1.8 : 1.2}
+            strokeLinecap="round"
             opacity={score > 0 ? 0.3 + score * 0.65 : 0.1} />
         );
       })}

@@ -2,9 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
 import { formatEGP } from '@/domain/finance/money';
 import { ICON_STROKE_WIDTH } from '@/ui/icons';
+import { Boil, SketchSvg } from '@/ui/Sketch';
+import {
+  AHLY_MAIN_ICON, AHLY_MEEZA_ICON, BANQUE_MISR_ICON, BASMALA_ICON, CIB_ICON, MUSTAQBAL_ICON,
+  SADAQA_ICON, TAWARR2_ICON, type Layers,
+} from '@/ui/sketchIcons.data';
 
 /**
- * Purely presentational pieces for the Finance screen: bank/bucket dot-matrix
+ * Purely presentational pieces for the Finance screen: the hand-drawn bank/bucket
  * icons, the privacy-blur value mask, and the flash-on-change animated
  * number. No app state — just props in, SVG/markup out.
  */
@@ -15,104 +20,20 @@ function balanceToDuration(balance: number): number {
   return Math.max(2, 12 - norm * 10);
 }
 
-// CIB — diamond star network; dots radiate center→out, wave reflects balance speed
-const CIBVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [12, 12, 0],
-    [12, 7, 0.08], [17, 12, 0.16], [12, 17, 0.24], [7, 12, 0.32],
-    [7, 7, 0.42], [17, 7, 0.50], [17, 17, 0.58], [7, 17, 0.66],
-    [12, 2, 0.74], [22, 12, 0.82], [12, 22, 0.90], [2, 12, 0.98],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 0 ? 1.5 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
+// Banks: hand-drawn marks (scripts/illustrations). Their line boils faster the more money the
+// account holds, the way the old dots ran faster.
+const sketchVector = (frames: readonly Layers[]): React.FC<{ balance: number }> => {
+  const Vector: React.FC<{ balance: number }> = ({ balance }) => (
+    <SketchSvg size={32} className="text-ink">
+      <Boil frames={frames} cycle={balanceToDuration(balance) / 4} />
+    </SketchSvg>
   );
+  return Vector;
 };
-
-// Ahly Main — ankh ☥ (Egyptian cross); loop → crossbar → stem, wave = balance
-const AhlyMainVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    // oval loop top→right→bottom→left
-    [12, 2,    0   ],
-    [16, 4,    0.07],
-    [18, 8,    0.14],
-    [16, 11.5, 0.21],
-    [8,  11.5, 0.28],
-    [6,  8,    0.35],
-    [8,  4,    0.42],
-    // crossbar L→R
-    [5,  13.5, 0.50],
-    [8,  13.5, 0.55],
-    [16, 13.5, 0.60],
-    [19, 13.5, 0.65],
-    // stem downward
-    [12, 16,   0.72],
-    [12, 19,   0.79],
-    [12, 22,   0.86],
-    // loop center
-    [12, 8,    0.93],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 14 ? 1.5 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
-
-// Ahly Meeza — card outline + stripe; sweep clockwise, speed = balance
-const AhlyMeezaVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    // top edge L→R
-    [3, 4, 0], [7, 4, 0.07], [12, 4, 0.14], [17, 4, 0.21], [21, 4, 0.28],
-    // right edge T→B
-    [21, 9, 0.35], [21, 14, 0.42], [21, 20, 0.49],
-    // bottom edge R→L
-    [17, 20, 0.56], [12, 20, 0.63], [7, 20, 0.70], [3, 20, 0.77],
-    // left edge B→T
-    [3, 14, 0.84], [3, 9, 0.91],
-    // magnetic stripe
-    [6, 10, 0.3], [10, 10, 0.35], [14, 10, 0.4], [18, 10, 0.45],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i >= 14 ? 1.0 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
-
-// Banque Misr — pyramid; wave from apex→base, speed = balance
-const BanqueMisrVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const rows: [number, number, number][][] = [
-    [[12, 3, 0]],
-    [[9, 9, 0.18], [12, 9, 0.18], [15, 9, 0.18]],
-    [[6, 15, 0.40], [9, 15, 0.40], [12, 15, 0.40], [15, 15, 0.40], [18, 15, 0.40]],
-    [[3, 21, 0.65], [6, 21, 0.65], [9, 21, 0.65], [12, 21, 0.65], [15, 21, 0.65], [18, 21, 0.65], [21, 21, 0.65]],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {rows.map((row, ri) =>
-        row.map(([cx, cy, frac], i) => (
-          <circle key={`${ri}-${i}`} cx={cx} cy={cy} r={ri === 0 ? 1.6 : 1.1}
-            style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-        ))
-      )}
-    </svg>
-  );
-};
+const CIBVector = sketchVector(CIB_ICON.frames);                 // diamond, like CIB's mark
+const AhlyMainVector = sketchVector(AHLY_MAIN_ICON.frames);      // ankh
+const AhlyMeezaVector = sketchVector(AHLY_MEEZA_ICON.frames);    // the card
+const BanqueMisrVector = sketchVector(BANQUE_MISR_ICON.frames);  // pyramid
 
 // Animated price number — flashes green/red on change
 // Spinning vector that hides the value until hover
@@ -199,81 +120,11 @@ export const BANK_VECTORS: Record<keyof FinanceBanks, React.ComponentType<{ bala
   bm: BanqueMisrVector,
 };
 
-// Mustaqbal — shield outline (safe / vault)
-const MustaqbalVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [12, 2,  0   ], [17, 4,  0.08], [20, 8,  0.16], [20, 13, 0.24],
-    [17, 18, 0.32], [12, 21, 0.40], [7,  18, 0.48], [4,  13, 0.56],
-    [4,  8,  0.64], [7,  4,  0.72],
-    [12, 12, 0.85],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 10 ? 1.5 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
-
-// Tawarr2 — lightning bolt (urgent, emergency)
-const Tawarr2Vector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [16, 2,  0   ], [14, 5,  0.10], [12, 8,  0.20],
-    [14, 8,  0.25], [11, 12, 0.35], [9,  16, 0.45],
-    [11, 16, 0.50], [8,  22, 0.65],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r="1.2"
-          style={{ animation: `vectorFade ${d * 0.7}s ease-in-out infinite`, animationDelay: `${frac * d * 0.7}s` }} />
-      ))}
-    </svg>
-  );
-};
-
-// Basmala — crescent moon (spiritual, personal)
-const BasmalaVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [12, 2,  0   ], [17, 4,  0.09], [20, 8,  0.18],
-    [21, 12, 0.27], [20, 16, 0.36], [17, 20, 0.45], [12, 22, 0.54],
-    [4,  6,  0.70], [4,  18, 0.80],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r="1.1"
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
-
-// Sadaqa — ascending sprout / rising (charity = growth)
-const SadaqaVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [12, 2,  0   ],
-    [9,  6,  0.10], [12, 6,  0.15], [15, 6,  0.10],
-    [7,  10, 0.22], [12, 10, 0.28], [17, 10, 0.22],
-    [12, 14, 0.40],
-    [12, 18, 0.55],
-    [12, 22, 0.70],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 0 ? 1.5 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
+// Buckets, the same way.
+const MustaqbalVector = sketchVector(MUSTAQBAL_ICON.frames);  // shield: kept safe
+const Tawarr2Vector = sketchVector(TAWARR2_ICON.frames);      // lightning: urgent
+const BasmalaVector = sketchVector(BASMALA_ICON.frames);      // crescent
+const SadaqaVector = sketchVector(SADAQA_ICON.frames);        // sprout: giving grows
 
 export const BUCKET_VECTORS: Record<keyof FinanceBuckets, React.ComponentType<{ balance: number }>> = {
   mustaqbal: MustaqbalVector,

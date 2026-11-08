@@ -65,29 +65,25 @@ npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must
 
 ## Icon system
 
-**Sharp, not rounded, is a deliberate identity choice** — it matches the
-brutalist card/border language everywhere else (hard edges, no soft corners).
-It lives entirely in `src/ui/icons.tsx`, the **only** file allowed to import
-from `@hugeicons/core-free-icons` (raw path data — `@hugeicons/react` isn't a
-dependency at all; we render the paths ourselves). Three exported constants
-are the whole system:
+Two kinds of icons, on purpose:
 
-- `ICON_STROKE_WIDTH` (2)
-- `ICON_STROKE_LINECAP` (`'square'`)
-- `ICON_STROKE_LINEJOIN` (`'miter'`)
+- **Hand-drawn icons** (the four sections, the dock's arrow, sign-in's lock and fingerprint,
+  Finance's banks and buckets) are drawn in Anthropic's spirit: a thick ink line with a hand's
+  tremor over a flat paper shape set a little off it, and a "line boil" (three redraws flicked
+  through four times a second). They're generated: edit `scripts/illustrations/shapes.py`, run
+  `python3 scripts/illustrations/build.py`, which writes `src/ui/sketchIcons.data.ts`. Render them
+  with `ui/Sketch.tsx` (`Boil`, `SketchSvg`). Paper is `--icon-paper`, ink is `currentColor`.
+- **Plain UI icons** (play, pause, plus, log out, sun/moon…) live in `src/ui/icons.tsx`, the
+  **only** file allowed to import from `@hugeicons/core-free-icons`. They get a light touch of
+  the same style, kept light because they're controls: round ends and joins and a faint tremor
+  (`IconTremor`, mounted once in `App.tsx`). Three constants are the whole system:
+  `ICON_STROKE_WIDTH` (2), `ICON_STROKE_LINECAP` (`'round'`), `ICON_STROKE_LINEJOIN` (`'round'`).
+  Features import them from `@/ui/icons` (`Icon<Name>`), never from an icon library directly.
+  New plain icon → add it to `icons.tsx` first.
 
-`createIcon()` applies all three to every icon, overriding Hugeicons' own
-rounded defaults. Features import icons from `@/ui/icons` (`Icon<Name>`),
-never from an icon library directly — so the library, the stroke width, and
-the sharp-vs-rounded choice are each a one-line edit instead of a
-find-and-replace across every screen. New icon → add it to `icons.tsx` first.
-
-A hand-drawn icon that can't go through `createIcon()` (its own component, not
-a static Hugeicons path set) still **imports these same three constants**
-instead of hardcoding its own numbers — see the TouchID fingerprint glyph
-(`TouchIDGate.tsx`) for the pattern. Genuine exceptions, with their own
-hand-tuned stroke unrelated to this system: the Pomodoro focus ring (scales
-with its own size), Recharts chart internals, the `MonthFingerprint` dot
+A hand-drawn SVG that isn't generated still **imports these same three constants** instead of
+hardcoding its own numbers. Genuine exceptions with their own hand-tuned stroke: the Pomodoro
+focus ring (scales with its own size), Recharts chart internals, the `MonthFingerprint` ray
 weight (encodes a data value), and `CustomCursor`'s shape outline.
 
 ## Don't
@@ -95,7 +91,7 @@ weight (encodes a data value), and `CustomCursor`'s shape outline.
 - Don't add a new top-level folder under `src/` without updating
   `docs/ARCHITECTURE.md`.
 - Don't import an icon from any icon library directly in a feature file —
-  add it to `src/ui/icons.tsx` and import it from `@/ui/icons`.
+  add it to `src/ui/icons.tsx` (plain) or `scripts/illustrations` (hand-drawn).
 - Don't hardcode `strokeLinecap`/`strokeLinejoin`/a stroke-width number on any
   hand-drawn icon-like SVG — import `ICON_STROKE_LINECAP` /
   `ICON_STROKE_LINEJOIN` / `ICON_STROKE_WIDTH` from `@/ui/icons` instead.

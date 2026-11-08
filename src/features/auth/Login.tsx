@@ -3,7 +3,9 @@ import { Button, IconButton } from '@/ui/Button';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/data/firebase';
 import { isDarkTheme, setTheme } from '@/lib/theme';
-import { IconLock, IconLogin, IconSun as Sun, IconMoon as Moon } from '@/ui/icons';
+import { IconLogin, IconSun as Sun, IconMoon as Moon } from '@/ui/icons';
+import { Boil, SketchSvg } from '@/ui/Sketch';
+import { LOCK_ICON } from '@/ui/sketchIcons.data';
 
 export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -52,8 +54,8 @@ export const Login: React.FC = () => {
       
       <div className="w-full max-w-md card p-10 md:p-12 relative z-10 text-center">
         <div className="flex justify-center mb-8">
-          <div className="w-14 h-14 bg-paper flex items-center justify-center border border-ink/14 text-ink rounded-box">
-            <IconLock size={28} />
+          <div className="w-14 h-14 flex items-center justify-center text-ink">
+            <SketchSvg size={52}><Boil frames={LOCK_ICON.frames} /></SketchSvg>
           </div>
         </div>
         

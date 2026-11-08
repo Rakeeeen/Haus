@@ -10,7 +10,9 @@ import {
   isBiometricSupported,
 } from '@/data/webauthn';
 import { requestDeviceCode, verifyDeviceCode } from '@/data/deviceAuth';
-import { ICON_STROKE_WIDTH, ICON_STROKE_LINECAP, IconSun as Sun, IconMoon as Moon } from '@/ui/icons';
+import { IconSun as Sun, IconMoon as Moon } from '@/ui/icons';
+import { Boil, SketchSvg } from '@/ui/Sketch';
+import { FINGERPRINT_ICON } from '@/ui/sketchIcons.data';
 
 interface Props {
   user: User;
@@ -19,63 +21,12 @@ interface Props {
 
 type Stage = 'checking' | 'register' | 'verify' | 'get_code' | 'enter_code' | 'error';
 
-const FingerprintVector: React.FC<{ scanning?: boolean }> = ({ scanning = false }) => {
-  const cx = 30;
-  const cy = 38;
-  const radii = [5, 10, 15, 20, 25];
-  return (
-    <svg width="56" height="56" viewBox="0 0 60 56" fill="none">
-      <style>{`
-        @keyframes fpDraw {
-          0%   { stroke-dashoffset: var(--len); opacity: 0.15; }
-          35%  { stroke-dashoffset: 0;          opacity: 1; }
-          70%  { stroke-dashoffset: 0;          opacity: 1; }
-          100% { stroke-dashoffset: var(--len); opacity: 0.15; }
-        }
-        @keyframes fpDot {
-          0%, 100% { opacity: 0.2; transform: scale(0.6); }
-          35%, 70% { opacity: 1;   transform: scale(1); }
-        }
-      `}</style>
-
-      {/* Center dot */}
-      <circle
-        cx={cx} cy={cy} r={2}
-        fill="currentColor"
-        style={{
-          animation: scanning ? 'fpDot 2.8s ease-in-out infinite' : undefined,
-          transformOrigin: `${cx}px ${cy}px`,
-          opacity: scanning ? undefined : 0.5,
-        }}
-      />
-
-      {/* Concentric arcs */}
-      {radii.map((r, i) => {
-        const len = Math.PI * r;
-        const delay = i * 0.18;
-        return (
-          <path
-            key={r}
-            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-            stroke="currentColor"
-            strokeWidth={ICON_STROKE_WIDTH}
-            strokeLinecap={ICON_STROKE_LINECAP}
-            fill="none"
-            style={{
-              ['--len' as string]: len,
-              strokeDasharray: `${len} ${len}`,
-              strokeDashoffset: scanning ? len : 0,
-              opacity: scanning ? 0.15 : 0.5 - i * 0.06,
-              animation: scanning
-                ? `fpDraw 2.8s ease-in-out ${delay}s infinite`
-                : undefined,
-            }}
-          />
-        );
-      })}
-    </svg>
-  );
-};
+// The hand-drawn fingerprint; its line boils while Touch ID is being asked for.
+const FingerprintVector: React.FC<{ scanning?: boolean }> = ({ scanning = false }) => (
+  <SketchSvg size={52}>
+    <Boil frames={FINGERPRINT_ICON.frames} paused={!scanning} />
+  </SketchSvg>
+);
 
 export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
   const [stage, setStage] = useState<Stage>('checking');
@@ -199,7 +150,7 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
         {/* Animated fingerprint icon */}
         <div className="flex justify-center mb-8">
           <div
-            className="w-14 h-14 bg-paper flex items-center justify-center border border-ink/14 text-ink rounded-box"
+            className="w-14 h-14 flex items-center justify-center text-ink"
           >
             <FingerprintVector scanning={stage === 'verify' || stage === 'register' || busy} />
           </div>

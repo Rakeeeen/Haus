@@ -133,3 +133,112 @@ ICONS = {
     'time': {'still': time_icon, 'parts': {'hour': time_hour, 'minute': time_minute}},
 }
 BOIL_SEEDS = (5, 9, 13)
+
+
+# ── Identity icons: the dock's pointer, sign-in, and Finance's banks and buckets ─────────
+def _poly(p, pts, w=None):
+    p.line(pts, closed=True, w=w)
+
+def arrow_icon(seed):
+    p = Pen(seed, w=96, wob=1.4)
+    p.blob([(560, 250), (930, 510), (560, 770)], rough=10, corner=.2)
+    p.line([(100, 500), (480, 492), (820, 500)])
+    p.line([(560, 230), (700, 380), (860, 500), (700, 620), (560, 770)])
+    return p
+
+def lock_icon(seed):
+    p = Pen(seed, w=70, wob=1.5)
+    p.blob([(270, 500), (850, 490), (840, 930), (260, 930)], rough=12, corner=.14)
+    p.line([(320, 470), (310, 300), (390, 170), (500, 130), (610, 170), (690, 300), (680, 470)])
+    _poly(p, [(250, 460), (500, 452), (750, 460), (770, 660), (754, 880), (500, 888), (246, 880), (230, 660)])
+    p.circle((500, 620), 46, w=50)
+    p.line([(500, 660), (502, 760)], w=56)
+    return p
+
+def fingerprint_icon(seed):
+    """Nested loops, open at the bottom like a finger's whorl, each starting a little later."""
+    p = Pen(seed, w=50, wob=1.3)
+    p.blob(disc((550, 540), 400, 14), rough=12, corner=.32)
+    cx, cy = 500, 520
+    for i, r in enumerate((70, 170, 270, 370)):
+        a0 = math.radians(150 - 10 * i)
+        a1 = math.radians(395 - 6 * i)
+        n = 12
+        pts = [(cx + r * .78 * math.cos(a0 + (a1 - a0) * k / n), cy + r * math.sin(a0 + (a1 - a0) * k / n)) for k in range(n + 1)]
+        p.line(pts)
+    p.line([(500, 560), (500, 640)], w=46)
+    return p
+
+def cib_icon(seed):
+    p = Pen(seed, w=74, wob=1.6)
+    p.blob([(540, 170), (900, 540), (540, 910), (180, 540)], rough=10, corner=.12)
+    _poly(p, [(500, 110), (700, 300), (890, 500), (700, 700), (500, 890), (300, 700), (110, 500), (300, 300)])
+    p.line([(500, 330), (500, 670)], w=60); p.line([(330, 500), (670, 500)], w=60)
+    return p
+
+def ahly_main_icon(seed):
+    p = Pen(seed, w=74, wob=1.6)
+    p.blob(disc((540, 330), 200, 10, sq=1.15), rough=9, corner=.3)
+    p.circle((500, 290), 170, 210, )
+    p.line([(170, 580), (500, 572), (830, 580)])
+    p.line([(500, 500), (498, 720), (500, 920)])
+    return p
+
+def ahly_meeza_icon(seed):
+    p = Pen(seed, w=70, wob=1.6)
+    p.blob([(170, 290), (920, 280), (910, 820), (180, 830)], rough=11, corner=.1)
+    _poly(p, [(140, 230), (500, 222), (860, 230), (880, 500), (860, 770), (500, 778), (140, 770), (122, 500)])
+    p.line([(130, 420), (500, 412), (870, 420)], w=90)
+    p.line([(260, 620), (420, 616)], w=60)
+    return p
+
+def banque_misr_icon(seed):
+    p = Pen(seed, w=74, wob=1.6)
+    p.blob([(540, 200), (920, 900), (160, 900)], rough=10, corner=.12)
+    _poly(p, [(500, 110), (700, 480), (900, 860), (500, 870), (100, 860), (300, 480)])
+    p.line([(310, 560), (500, 552), (690, 560)], w=60)
+    return p
+
+def mustaqbal_icon(seed):
+    p = Pen(seed, w=70, wob=1.6)
+    p.blob([(540, 170), (870, 280), (830, 600), (540, 930), (240, 600), (210, 280)], rough=10, corner=.16)
+    _poly(p, [(500, 90), (840, 210), (810, 540), (500, 900), (190, 540), (160, 210)])
+    p.line([(370, 480), (470, 590), (650, 380)], w=64)
+    return p
+
+def tawarr2_icon(seed):
+    p = Pen(seed, w=66, wob=1.6)
+    p.blob([(640, 140), (330, 600), (540, 600), (460, 960), (820, 460), (600, 460), (700, 140)], rough=8, corner=.1)
+    _poly(p, [(600, 80), (280, 560), (480, 560), (400, 920), (780, 400), (560, 400), (660, 80)])
+    return p
+
+def basmala_icon(seed):
+    p = Pen(seed, w=70, wob=1.6)
+    p.blob(disc((540, 540), 360, 12), rough=10, corner=.3)
+    outer = [(500 + 380 * math.cos(math.radians(a)), 500 + 380 * math.sin(math.radians(a))) for a in range(60, 320, 20)]
+    inner = [(610 + 300 * math.cos(math.radians(a)), 470 + 300 * math.sin(math.radians(a))) for a in range(300, 70, -20)]
+    _poly(p, outer + inner)
+    return p
+
+def sadaqa_icon(seed):
+    p = Pen(seed, w=70, wob=1.6)
+    p.blob([(200, 820), (860, 800), (840, 960), (220, 970)], rough=9, corner=.2)
+    p.line([(500, 900), (494, 640), (500, 380)])
+    _poly(p, [(496, 520), (380, 470), (230, 330), (360, 300), (470, 400)], w=60)
+    _poly(p, [(504, 400), (600, 270), (790, 160), (770, 320), (640, 410)], w=60)
+    p.line([(250, 900), (500, 892), (750, 900)])
+    return p
+
+ICONS.update({
+    'arrow': {'still': arrow_icon, 'parts': {}},
+    'lock': {'still': lock_icon, 'parts': {}},
+    'fingerprint': {'still': fingerprint_icon, 'parts': {}},
+    'cib': {'still': cib_icon, 'parts': {}},
+    'ahly_main': {'still': ahly_main_icon, 'parts': {}},
+    'ahly_meeza': {'still': ahly_meeza_icon, 'parts': {}},
+    'banque_misr': {'still': banque_misr_icon, 'parts': {}},
+    'mustaqbal': {'still': mustaqbal_icon, 'parts': {}},
+    'tawarr2': {'still': tawarr2_icon, 'parts': {}},
+    'basmala': {'still': basmala_icon, 'parts': {}},
+    'sadaqa': {'still': sadaqa_icon, 'parts': {}},
+})
