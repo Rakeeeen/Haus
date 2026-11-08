@@ -211,11 +211,11 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
                     <div className="w-full min-h-[220px] flex items-center justify-center">
                       <RulerTimer seconds={secs} mm={pixelMM} ss={pixelSS} mode={mode} isOvertime={isOvertime} running={running} />
                     </div>,
-                    <div className="w-full min-h-[220px] flex items-center justify-center gap-5 sm:gap-8 text-ink">
+                    <div className="w-full min-h-[220px] flex items-center justify-center gap-4 sm:gap-6 text-ink">
                       <div className="shrink-0">
                         <HourglassFace
                           {...hourglassSand(timeLeft, mode === 'focus' ? FOCUS_S : BREAK_S, mode, isOvertime)}
-                          mode={mode} running={running} overtime={isOvertime} size="clamp(84px, 14vw, 128px)"
+                          mode={mode} running={running} overtime={isOvertime} color={getTimerColor()} size="clamp(112px, 16vw, 160px)"
                         />
                       </div>
                       <div className="min-w-0 flex-1 max-w-[300px]"><PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="100%" /></div>

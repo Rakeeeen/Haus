@@ -69,11 +69,11 @@ export const FocusCardBody: React.FC<{
               <div className="flex items-center justify-center w-full px-1">
                 <RulerTimer seconds={secs} mm={mm} ss={ss} mode={mode} isOvertime={overtime} running={running} />
               </div>,
-              <div className="flex items-center justify-center gap-6 w-full text-ink">
+              <div className="flex items-center justify-center gap-4 w-full text-ink">
                 <div className="shrink-0">
                   <HourglassFace
                     {...hourglassSand(timeLeft, totalSecs, mode, overtime)}
-                    mode={mode} running={running} overtime={overtime} size="clamp(84px, 14vw, 128px)"
+                    mode={mode} running={running} overtime={overtime} color={accent} size="clamp(104px, 14vw, 140px)"
                   />
                 </div>
                 <div className="min-w-0 flex-1 max-w-[300px]"><PixelDigits mm={mm} ss={ss} color={accent} maxWidth="100%" /></div>

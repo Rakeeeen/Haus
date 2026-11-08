@@ -42,8 +42,9 @@ export const Boil: React.FC<{ frames: readonly Layers[]; cycle?: number; paused?
   </g>
 );
 
-export const SketchSvg: React.FC<{ size: number | string; className?: string; children: React.ReactNode }> = ({ size, className, children }) => (
-  <svg width={size} height={size} viewBox="0 0 1000 1000" className={className} aria-hidden="true" overflow="visible">
+/** `viewBox` crops the 1000-unit canvas to what is drawn, for an icon that is tall and thin. */
+export const SketchSvg: React.FC<{ size: number | string; viewBox?: string; className?: string; children: React.ReactNode }> = ({ size, viewBox = '0 0 1000 1000', className, children }) => (
+  <svg width={viewBox === '0 0 1000 1000' ? size : '100%'} height={size} viewBox={viewBox} className={className} aria-hidden="true" overflow="visible">
     {children}
   </svg>
 );
