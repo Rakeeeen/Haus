@@ -33,6 +33,6 @@ export async function sendDailyReport(client, channelId) {
   });
 
   const channel = await client.channels.fetch(channelId);
-  await channel.send({ embeds: [embed], files: [{ attachment: pdf, name: `firmus-report-${report.date.iso}.pdf` }] });
+  await channel.send({ embeds: [embed], files: [{ attachment: pdf, name: `haus-report-${report.date.iso}.pdf` }] });
   console.log(`[${report.date.time}] 📄 Daily report sent (${(pdf.length / 1024).toFixed(0)} KB)`);
 }

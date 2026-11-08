@@ -12,7 +12,8 @@ agent. Read this before adding a file, and see `CLAUDE.md` for the short version
 
 ```
 src/
-  app/        the shell — routing, providers, ErrorBoundary, top-level layout
+  app/        the shell — routing, providers, ErrorBoundary, top-level layout (Water, Focus and Finance
+              are lazy routes: they load on first visit, which keeps Recharts out of the first screen)
   data/       Firestore + device-auth. The ONLY place that talks to Firebase.
   domain/     business rules as pure functions + types. No React, no Firestore, no DOM.
   features/   one folder per screen/capability — the React layer

@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: '/Firmus/',
+  base: '/Haus/',
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "./src"),

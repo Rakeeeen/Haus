@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { THNDR_PARTS, egp, signedEgp, duration, countdown } from './data.js';
+import { NAME } from '../../lib/brand.js';
 
 // The daily report as a PDF, kept as quiet as the dashboard itself: no boxes, just hairlines and
 // a lot of space; small mono caps for labels, large light numerals for the figures, and one accent
@@ -120,36 +121,13 @@ function dotLegend(doc, x, y, color, name, pct, value) {
 
 // ─── Page furniture ─────────────────────────────────────────────────────────
 
-/** The name, "Firmus", with the Arabic vowel marks that go with it (فِرْمُسْ) — the same shapes as ui/Wordmark.tsx. */
-const WORDMARK = [
-  { letter: 'F', mark: 'kasra', above: false },
-  { letter: 'i' },
-  { letter: 'r', mark: 'sukun', above: true },
-  { letter: 'm', mark: 'damma', above: true },
-  { letter: 'u' },
-  { letter: 's', mark: 'sukun', above: true },
-];
-
-/** One mark, `size` wide, centred on (cx, cy). */
-function drawMark(doc, kind, cx, cy, size) {
-  doc.save().lineWidth(size * 0.2).lineCap('square').lineJoin('miter').strokeColor(C.ink);
-  if (kind === 'sukun') doc.circle(cx, cy, size * 0.4).stroke();
-  else if (kind === 'kasra') doc.moveTo(cx - size * 0.5, cy + size * 0.3).lineTo(cx + size * 0.5, cy - size * 0.3).stroke();
-  else doc.rect(cx - size * 0.25, cy - size * 0.5, size * 0.5, size * 0.4).stroke().moveTo(cx + size * 0.25, cy - size * 0.1).lineTo(cx - size * 0.25, cy + size * 0.5).stroke();
-  doc.restore();
-}
-
 /** Draws the name at (x, y) — y is the top of the capitals. */
 function wordmark(doc, x, y, size, spacing) {
-  const CAP_HEIGHT = 0.72;
   doc.font(F.sans).fontSize(size).fillColor(C.ink);
   let cursor = x;
-  for (const { letter, mark, above } of WORDMARK) {
-    const width = doc.widthOfString(letter);
+  for (const letter of NAME) {
     doc.text(letter, cursor, y, { lineBreak: false });
-    // The marks above sit just over the small letters' x-height, not the capitals' top.
-    if (mark) drawMark(doc, mark, cursor + width / 2, above ? y - size * 0.1 : y + size * (CAP_HEIGHT + 0.17), size * 0.34);
-    cursor += width + spacing;
+    cursor += doc.widthOfString(letter) + spacing;
   }
 }
 
@@ -391,7 +369,7 @@ export function renderReportPdf(report) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4', margin: 0, bufferPages: true,
-      info: { Title: `Firmus daily report - ${report.date.iso}`, Author: 'Firmus', Subject: 'Daily report' },
+      info: { Title: `${NAME} daily report - ${report.date.iso}`, Author: NAME, Subject: 'Daily report' },
     });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));

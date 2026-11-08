@@ -1,9 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Home } from '@/features/home/Home';
-import { Water } from '@/features/water/Water';
-import { Pomodoro } from '@/features/focus/Pomodoro';
-import { Finance } from '@/features/finance/Finance';
 import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
 import { CustomCursor } from '@/ui/CustomCursor';
@@ -21,6 +18,12 @@ import { usePressHold } from '@/ui/usePressHold';
 import { IconTremor } from '@/ui/icons';
 import '@/styles/global.css';
 
+// The other pages load when they are first opened, so the first screen doesn't carry the charts
+// (Recharts) and everything Finance needs.
+const Water = lazy(() => import('@/features/water/Water').then((m) => ({ default: m.Water })));
+const Pomodoro = lazy(() => import('@/features/focus/Pomodoro').then((m) => ({ default: m.Pomodoro })));
+const Finance = lazy(() => import('@/features/finance/Finance').then((m) => ({ default: m.Finance })));
+
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <motion.div
     initial={{ opacity: 0, y: 15 }}
@@ -29,7 +32,7 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     transition={{ ...SPRING, opacity: { duration: 0.2 } }}
     className="w-full"
   >
-    {children}
+    <Suspense fallback={null}>{children}</Suspense>
   </motion.div>
 );
 const AppRoutes: React.FC = () => {
