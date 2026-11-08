@@ -1,5 +1,8 @@
 import { useRef } from 'react';
 import { useCustomCursor } from '@/ui/useCustomCursor';
+import { ICON_STROKE_LINEJOIN } from '@/ui/icons';
+
+const ARROW = 'M5.4 4.4L17.2 11.3L11.5 12.7L9.3 18.2L5.4 4.4Z';
 
 export const CustomCursor = () => {
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -28,14 +31,10 @@ export const CustomCursor = () => {
         fill="none"
         className="custom-cursor-svg"
       >
-        <path
-          d="M4.5 3L18.5 11.2L11.8 12.8L9.2 19.5L4.5 3Z"
-          fill="var(--ink)"
-          stroke="var(--paper-dark)"
-          strokeWidth="1"
-          strokeLinejoin="miter"
-          strokeMiterlimit="4"
-        />
+        {/* Rounded all round: the paper outline and the ink body both have round joins, so the
+            tip and the corners are soft, like the buttons. */}
+        <path d={ARROW} fill="var(--paper-dark)" stroke="var(--paper-dark)" strokeWidth={4.2} strokeLinejoin={ICON_STROKE_LINEJOIN} />
+        <path d={ARROW} fill="var(--ink)" stroke="var(--ink)" strokeWidth={2.2} strokeLinejoin={ICON_STROKE_LINEJOIN} />
       </svg>
     </div>
   );
