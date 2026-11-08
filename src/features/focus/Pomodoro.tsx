@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Button, IconButton } from '@/ui/Button';
-import { NAME_MARKED } from '@/constants/brand';
+import { NAME } from '@/constants/brand';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
 import { buildFocusReports, focusTargetHours } from '@/domain/focus/report';
 import { isFocusNightLocked } from '@/domain/devotion/prayer';
@@ -59,7 +59,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
   const FOCUS_S = focusDuration * 60;
   const BREAK_S = breakDuration * 60;
 
-  useEffect(() => { document.title = `${NAME_MARKED} — Focus`; }, []);
+  useEffect(() => { document.title = `${NAME} — Focus`; }, []);
 
   const getTimerColor = () => {
     if (isOvertime) return 'var(--pomo-overtime)';

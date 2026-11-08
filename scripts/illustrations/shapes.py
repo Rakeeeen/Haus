@@ -188,14 +188,6 @@ ICONS.update({
 })
 
 
-# ── The mouse pointer: build.py writes it as two SVG files the browser uses as its cursor.
-CURSOR_SHAPE = [(110, 70), (430, 260), (800, 470), (540, 560), (410, 880), (260, 470)]
-
-def cursor_icon(seed):
-    p = Pen(seed, w=78, wob=1.2)
-    p.line(CURSOR_SHAPE, closed=True)
-    return p
-
 # ── Focus's hourglass face: the glass is drawn here; the sand is drawn by the app from the
 #    session's progress, inside these two chambers.
 HOURGLASS_TOP = [(318, 130), (682, 130), (672, 290), (512, 470), (488, 470), (328, 290)]
@@ -210,6 +202,5 @@ def hourglass_icon(seed):
     return p
 
 ICONS.update({
-    'cursor': {'still': cursor_icon, 'parts': {}},
     'hourglass': {'still': hourglass_icon, 'parts': {}},
 })

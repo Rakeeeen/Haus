@@ -159,8 +159,8 @@ hardcoding its own numbers, so it stays visually consistent with everything
 built through `createIcon()`. Genuine exceptions, with their own hand-tuned
 stroke unrelated to this system: the Pomodoro focus ring (scales with its own
 size), Recharts `ReferenceLine`/chart internals, the `MonthFingerprint` dot
-weight (encodes a data value, not a fixed style). The pointer is the
-browser's own, with a generated hand-drawn arrow image (`styles/cursors/`).
+weight (encodes a data value, not a fixed style), and `CustomCursor`'s shape
+outline.
 
 ## The Discord bot (`backend/`)
 

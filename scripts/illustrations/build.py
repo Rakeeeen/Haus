@@ -1,4 +1,4 @@
-"""Writes src/ui/sketchIcons.data.ts and the pointer images (src/styles/cursors/) from shapes.py. Run: python3 scripts/illustrations/build.py"""
+"""Writes src/ui/sketchIcons.data.ts from shapes.py. Run: python3 scripts/illustrations/build.py"""
 import json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -7,7 +7,7 @@ from draw import path_from
 
 # At 20-36 px a canvas unit is 0.02-0.04 px, so 2.5 units of simplification can't be seen.
 draw.EPS = 4
-from shapes import ICONS, BOIL_SEEDS, WATER_INSIDE, CURSOR_SHAPE, HOURGLASS_TOP, HOURGLASS_BOTTOM
+from shapes import ICONS, BOIL_SEEDS, WATER_INSIDE, HOURGLASS_TOP, HOURGLASS_BOTTOM
 
 def layers(pen):
     return [[paper, ink] for paper, ink in getattr(pen, 'done', []) + [(pen.paper, pen.ink)]]
@@ -20,25 +20,8 @@ for name, spec in ICONS.items():
         'parts': {part: [layers(draw(seed)) for seed in BOIL_SEEDS] for part, draw in spec['parts'].items()},
     }
 data['water']['inside'] = path_from(WATER_INSIDE)
-data['cursor']['inside'] = path_from(CURSOR_SHAPE)
 data['hourglass']['inside'] = path_from(HOURGLASS_TOP)
 data['hourglass']['lower'] = path_from(HOURGLASS_BOTTOM)
-
-# The pointer is not an icon the app draws: it is two plain SVG files the browser uses as its own
-# cursor (global.css), one per theme. SVG images can't read CSS variables, so the colours are
-# written in here: they are the themes' --ink and --paper-dark / --icon-paper.
-CURSOR_PX = 28
-CURSOR_PAPER_OFFSET = 90  # canvas units the paper sits down and right of the line, about 2.5 px
-cursor_dir = os.path.join(HERE, '..', '..', 'src', 'styles', 'cursors')
-os.makedirs(cursor_dir, exist_ok=True)
-cursor_data = data['cursor']
-for theme, ink, paper in (('light', '#141413', '#F2F2F2'), ('dark', '#EDEDED', '#2C2C2C')):
-    lines = ''.join(f'<path d="{d}"/>' for _, inks in cursor_data['frames'][0] for d in inks)
-    with open(os.path.join(cursor_dir, f'arrow-{theme}.svg'), 'w') as f:
-        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{CURSOR_PX}" height="{CURSOR_PX}" viewBox="0 0 1000 1000">'
-                f'<path transform="translate({CURSOR_PAPER_OFFSET} {CURSOR_PAPER_OFFSET})" fill="{paper}" d="{cursor_data["inside"]}"/>'
-                f'<g fill="{ink}">{lines}</g></svg>\n')
-del data['cursor']
 
 out = os.path.join(HERE, '..', '..', 'src', 'ui', 'sketchIcons.data.ts')
 with open(out, 'w') as f:

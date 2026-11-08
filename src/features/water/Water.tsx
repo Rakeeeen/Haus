@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/ui/Button';
-import { NAME_MARKED } from '@/constants/brand';
+import { NAME } from '@/constants/brand';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
 import { useFridayGate } from '@/data/useFridayGate';
@@ -30,7 +30,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   const goal = 12;
 
   React.useEffect(() => {
-    document.title = `${NAME_MARKED} — Water`;
+    document.title = `${NAME} — Water`;
   }, []);
 
   // Day is archived/reset at the real Maghrib time (from the prayer API, refreshed

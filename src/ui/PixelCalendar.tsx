@@ -45,7 +45,7 @@ export const PixelDateTile: React.FC<{ date: { day: number; monthName: string };
           <rect
             key={`d${i}-${r}-${c}`}
             x={(starts[i] + c - first) * STEP} y={(DAY_ROW + r) * STEP}
-            width={CELL} height={CELL} fill="var(--sepia)"
+            width={CELL} height={CELL} fill="var(--sepia-mark)"
           />
         );
       })

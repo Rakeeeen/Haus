@@ -3,7 +3,7 @@ import { isWaterLocked, getMaghrib } from '../lib/prayerTimes.js';
 import { archivedDayKey, applyLateGlass } from '../lib/lateGlass.js';
 import { isFriday } from '../lib/day.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
-import { NAME_MARKED } from '../lib/brand.js';
+import { NAME } from '../lib/brand.js';
 
 const GOAL = 12;
 const GLASS_KEY = 'hydration_glasses';
@@ -39,7 +39,7 @@ export async function buildWaterView() {
         domain: 'water',
         headline: "It's Jumu'ah — Friday is opt-in system-wide.",
         big: `${shown} / ${GOAL}`,
-        note: `${NAME_MARKED} · Water · nothing logged counts until you opt in`,
+        note: `${NAME} · Water · nothing logged counts until you opt in`,
       })],
       components: [row([
         { id: 'water:fridayoptin', label: 'Count Today Anyway', style: ButtonStyle.Success },

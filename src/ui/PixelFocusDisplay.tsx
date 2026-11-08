@@ -109,7 +109,7 @@ export const PixelClock: React.FC<{
   running: boolean;
   width?: string;
 }> = ({ elapsedSeconds, mode, isOvertime, running, width = '120px' }) => {
-  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : 'var(--sepia)';
+  const handColor = isOvertime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : 'var(--sepia-mark)';
   const counterRef = React.useRef(Math.max(0, Math.floor(elapsedSeconds)));
   counterRef.current = Math.max(0, Math.floor(elapsedSeconds));
   const handRef = React.useRef<SVGGElement>(null);
@@ -313,9 +313,9 @@ export const PixelWallClock = React.memo<{
         <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <g ref={secondRef} style={origin}>
-        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke="var(--sepia)" strokeWidth={2.5} strokeLinecap={ICON_STROKE_LINECAP} />
+        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke="var(--sepia-mark)" strokeWidth={3.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
-      <circle cx={center} cy={center} r={6} fill="var(--sepia)" />
+      <circle cx={center} cy={center} r={7.5} fill="var(--sepia-mark)" />
     </svg>
   );
 });

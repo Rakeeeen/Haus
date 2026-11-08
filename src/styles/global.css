@@ -96,6 +96,9 @@
     --silver-low: #3C3C3C;
     /* One flat silver for things that must stay readable, like the clock's digits (no gradient). */
     --silver-flat: #8A8A8A;
+    /* The purple where it is small and sits on a grey face (a seconds hand, the date's number): the
+       brand purple on light, a lighter step of the same hue on dark, where #4D14A2 all but vanishes. */
+    --sepia-mark: #4D14A2;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #E4E4E4 0%, transparent 70%),
       radial-gradient(60% 70% at 90% 85%, #C6C6C6 0%, transparent 70%);
@@ -123,6 +126,7 @@
     --icon-paper: #2C2C2C;
     --silver-low: #8E8E8E;
     --silver-flat: #B8B8B8;
+    --sepia-mark: #9461F0;
     --cloud-page:
       radial-gradient(70% 60% at 15% 10%, #1E1E1E 0%, transparent 70%),
       radial-gradient(60% 70% at 90% 85%, #161616 0%, transparent 70%);
@@ -143,6 +147,7 @@
     font-family: var(--font-sans);
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
+    cursor: none !important;
   }
 
   /* === TEXT SELECTION (brand highlight) === */
@@ -403,19 +408,10 @@ body.dark-theme [data-active] {
   .spring-group > .flex-1 { flex-grow: 1 !important; }
 }
 
-/* The pointer is the browser's own — same speed, same hand over links, same text cursor in
-   fields — with only a light touch: the arrow is hand-drawn, its paper set a little off the
-   line (scripts/illustrations → styles/cursors). SVG images can't read CSS variables, so there
-   is one per theme. Hot spot is the arrow's tip. */
-body { cursor: url('./cursors/arrow-light.svg') 3 2, auto; }
-body.dark-theme { cursor: url('./cursors/arrow-dark.svg') 3 2, auto; }
-/* Tailwind 4 resets buttons to the default arrow; the browser's own pointer hand comes back. */
-button:not(:disabled), [role='button']:not([aria-disabled='true']), summary, select, label[for] { cursor: pointer; }
-
-/* === Focus ruler face === it takes the same accents as the other Focus faces */
-.ruler-face { --ruler-tone: var(--pomo-focus); }
-.ruler-face.ruler-break { --ruler-tone: var(--pomo-break); }
-.ruler-face.ruler-overtime { --ruler-tone: var(--pomo-overtime); }
+/* Hide the native cursor globally (ui/CustomCursor draws it) — must be outside @layer to beat Tailwind utilities */
+*, *::before, *::after {
+  cursor: none !important;
+}
 
 /* === Thndr's blinking cursor === */
 @keyframes thndrBlink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
@@ -443,8 +439,6 @@ button:not(:disabled), [role='button']:not([aria-disabled='true']), summary, sel
 @media (prefers-reduced-motion: reduce) { .hourglass-tremble { animation: none; } }
 
 /* === Retro touches === */
-/* Photos as silver prints: black and white, a little more contrast. */
-.retro-photo { filter: grayscale(1) contrast(1.15) brightness(1.03); }
 /* An aluminum knob: the titles' metal, small. */
 .metal-knob {
   background: linear-gradient(160deg, var(--silver-high), var(--silver-low));

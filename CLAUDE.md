@@ -68,7 +68,7 @@ npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must
 Two kinds of icons, on purpose:
 
 - **Hand-drawn icons** (the four sections, the dock's arrow, sign-in's lock and fingerprint,
-  Finance's banks and buckets, the pointer, Focus's hourglass face) are drawn in Anthropic's spirit: a thick ink line with a hand's
+  Finance's banks and buckets, Focus's hourglass face) are drawn in Anthropic's spirit: a thick ink line with a hand's
   tremor over a flat paper shape set a little off it, and a "line boil" (three redraws flicked
   through four times a second). They're generated: edit `scripts/illustrations/shapes.py`, run
   `python3 scripts/illustrations/build.py`, which writes `src/ui/sketchIcons.data.ts`. Render them
@@ -84,7 +84,7 @@ Two kinds of icons, on purpose:
 A hand-drawn SVG that isn't generated still **imports these same three constants** instead of
 hardcoding its own numbers. Genuine exceptions with their own hand-tuned stroke: the Pomodoro
 focus ring (scales with its own size), Recharts chart internals, the `MonthFingerprint` ray
-weight (encodes a data value).
+weight (encodes a data value), and `CustomCursor`'s shape outline.
 
 ## Don't
 

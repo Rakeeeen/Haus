@@ -2,7 +2,7 @@ import { readState as readWaterState } from '../features/water.js';
 import { readFocusState } from '../features/focus.js';
 import { readFinanceSummary, readBanks, readBucketsDetail, BANK_LABELS, BUCKET_LABELS } from '../features/finance.js';
 import { formatDurationText, formatEGP } from '../lib/format.js';
-import { NAME_MARKED } from '../lib/brand.js';
+import { NAME } from '../lib/brand.js';
 
 /**
  * The Slack side of the control panel: Block Kit versions of the same cards the Discord bot draws.
@@ -12,7 +12,7 @@ import { NAME_MARKED } from '../lib/brand.js';
  */
 
 const GOAL = 12;
-const LABELS = { water: 'Water', focus: 'Focus', finance: 'Finance', system: NAME_MARKED };
+const LABELS = { water: 'Water', focus: 'Focus', finance: 'Finance', system: NAME };
 
 const text = (t) => ({ type: 'plain_text', text: t, emoji: false });
 const md = (t) => ({ type: 'mrkdwn', text: t });
@@ -37,7 +37,7 @@ const MAIN_MENU = button('bommy:home', 'Main Menu');
 export function hubView() {
   return card({
     domain: 'system',
-    big: `${NAME_MARKED} Control`,
+    big: `${NAME} Control`,
     headline: 'Tap a card to control it from here.',
     buttons: [[button('bommy:water', 'Water', 'primary'), button('bommy:focus', 'Focus', 'primary'), button('bommy:finance', 'Finance', 'primary')]],
   });

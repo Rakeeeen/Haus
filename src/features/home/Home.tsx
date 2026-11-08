@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { IconButton } from '@/ui/Button';
-import { NAME_MARKED } from '@/constants/brand';
+import { NAME } from '@/constants/brand';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { dockPose, MIN_PRESS_MS, SPRING, stagePose, type SpringPhase } from '@/ui/springPose';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
@@ -373,7 +373,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
-    document.title = NAME_MARKED;
+    document.title = NAME;
     return () => clearInterval(timer);
   }, []);
 
@@ -603,7 +603,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               <div className="text-[8px] font-mono-main font-bold animate-pulse text-ink/80 text-center">Syncing</div>
             ) : avatarUrl ? (
               <>
-                <img src={avatarUrl} alt="Avatar" className="retro-photo w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-paper-dark/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <Camera size={14} className="text-ink" />
                 </div>
@@ -934,11 +934,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         }}
         transition={{ ...SPRING, opacity: { duration: 0.2 } }}
       >
-        <div className="flex flex-col items-center gap-3">
-          <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
-          {/* The retro touch: the system named like a machine, the way the future used to be sold. */}
-          <span className="font-mono-main text-[9px] font-bold tracking-[0.3em] uppercase text-ink/30 select-none">Haus · Model 26</span>
-        </div>
+        <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
       </motion.footer>
 
       <AppModal

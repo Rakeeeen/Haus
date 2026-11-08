@@ -6,6 +6,7 @@ import { Pomodoro } from '@/features/focus/Pomodoro';
 import { Finance } from '@/features/finance/Finance';
 import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
+import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
 import { Wordmark } from '@/ui/Wordmark';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
@@ -57,6 +58,7 @@ const AppRoutes: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen">
+        <CustomCursor />
         <Login />
       </div>
     );
@@ -65,6 +67,7 @@ const AppRoutes: React.FC = () => {
   if (!biometricCleared) {
     return (
       <div className="min-h-screen">
+        <CustomCursor />
         <TouchIDGate user={user} onCleared={() => setBiometricCleared(true)} />
       </div>
     );
@@ -72,6 +75,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
+      <CustomCursor />
       <DailyResetManager />
       <GoldPriceRefresher />
 
