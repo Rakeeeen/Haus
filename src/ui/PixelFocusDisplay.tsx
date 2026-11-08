@@ -1,5 +1,6 @@
 import React from 'react';
 import { DM } from '@/ui/TimerComponents';
+import { ICON_STROKE_LINECAP } from '@/ui/icons';
 import { SilverPaint, useSilverId } from '@/ui/SilverPaint';
 
 /**
@@ -157,7 +158,7 @@ export const PixelClock: React.FC<{
       <SilverPaint id={silver} size={size} />
       {cells}
       <g ref={handRef} style={{ transformOrigin: `${center}px ${center}px` }}>
-        <line x1={center} y1={center + 12} x2={center} y2={center - 58} stroke={handColor} strokeWidth={5} strokeLinecap="round" />
+        <line x1={center} y1={center + 12} x2={center} y2={center - 58} stroke={handColor} strokeWidth={5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <circle cx={center} cy={center} r={7} fill={handColor} />
     </svg>
@@ -315,13 +316,13 @@ export const PixelWallClock = React.memo<{
       {cells}
       {emblem && <ClockEmblem rows={emblem} />}
       <g ref={hourRef} style={origin}>
-        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke="var(--ink)" strokeWidth={6} strokeLinecap="round" />
+        <line x1={center} y1={center + 6} x2={center} y2={center - 34} stroke="var(--ink)" strokeWidth={6} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <g ref={minuteRef} style={origin}>
-        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap="round" />
+        <line x1={center} y1={center + 8} x2={center} y2={center - 54} stroke="var(--ink)" strokeWidth={4.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <g ref={secondRef} style={origin}>
-        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={metal} strokeWidth={2.5} strokeLinecap="round" />
+        <line x1={center} y1={center + 14} x2={center} y2={center - 60} stroke={metal} strokeWidth={2.5} strokeLinecap={ICON_STROKE_LINECAP} />
       </g>
       <circle cx={center} cy={center} r={6} fill={metal} />
     </svg>

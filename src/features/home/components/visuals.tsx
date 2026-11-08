@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { ARROW_ICON, FINANCE_ICON, FOCUS_ICON, TIME_ICON, WATER_ICON } from '@/ui/sketchIcons.data';
 import { Boil, SketchSvg } from '@/ui/Sketch';
-import { ICON_STROKE_WIDTH } from '@/ui/icons';
+import { ICON_STROKE_LINECAP, ICON_STROKE_WIDTH } from '@/ui/icons';
 
 /**
  * Purely presentational pieces for the Home screen: the privacy-blur value
@@ -28,9 +28,9 @@ export const MaskedValue: React.FC<{ children: React.ReactNode; className?: stri
             const anim = i === 1 ? 'mvrr' : 'mvr';
             return (
               <g key={i} style={{ animation: `${anim} ${2 + i * 0.5}s linear infinite`, transformOrigin: `${cx}px ${cy}px`, opacity: 0.25 + i * 0.2 }}>
-                <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
-                <line x1={cx - r * 0.5} y1={cy - r * 0.866} x2={cx + r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
-                <line x1={cx + r * 0.5} y1={cy - r * 0.866} x2={cx - r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
+                <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+                <line x1={cx - r * 0.5} y1={cy - r * 0.866} x2={cx + r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+                <line x1={cx + r * 0.5} y1={cy - r * 0.866} x2={cx - r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
               </g>
             );
           })}
@@ -146,7 +146,7 @@ export const MonthFingerprint: React.FC<{
             fill="none"
             stroke="currentColor"
             strokeWidth={score > 0.5 ? 1.8 : 1.2}
-            strokeLinecap="round"
+            strokeLinecap={ICON_STROKE_LINECAP}
             opacity={score > 0 ? 0.3 + score * 0.65 : 0.1} />
         );
       })}

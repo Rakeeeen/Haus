@@ -366,11 +366,6 @@ html {
   overflow-y: scroll;
 }
 
-@keyframes vectorFade {
-  0%, 100% { opacity: 0.18; }
-  50% { opacity: 1; }
-}
-
 /* FocusVector's clock hand — one slow turn, like a real second hand */
 @keyframes focusHandSpin {
   to { transform: rotate(360deg); }

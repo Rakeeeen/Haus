@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
 import { formatEGP } from '@/domain/finance/money';
-import { ICON_STROKE_WIDTH } from '@/ui/icons';
+import { ICON_STROKE_LINECAP, ICON_STROKE_WIDTH } from '@/ui/icons';
 import { Boil, SketchSvg } from '@/ui/Sketch';
 import {
   AHLY_MAIN_ICON, AHLY_MEEZA_ICON, BANQUE_MISR_ICON, BASMALA_ICON, CIB_ICON, MUSTAQBAL_ICON,
@@ -63,9 +63,9 @@ export const MaskedValue: React.FC<{ children: React.ReactNode; className?: stri
             const dur = 2 + i * 0.5;
             return (
               <g key={i} style={{ animation: `${anim} ${dur}s linear infinite`, transformOrigin: `${cx}px ${cy}px`, opacity: 0.25 + i * 0.2 }}>
-                <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
-                <line x1={cx - r * 0.5} y1={cy - r * 0.866} x2={cx + r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
-                <line x1={cx + r * 0.5} y1={cy - r * 0.866} x2={cx - r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" />
+                <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+                <line x1={cx - r * 0.5} y1={cy - r * 0.866} x2={cx + r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+                <line x1={cx + r * 0.5} y1={cy - r * 0.866} x2={cx - r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
               </g>
             );
           })}
