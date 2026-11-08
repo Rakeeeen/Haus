@@ -75,8 +75,8 @@ Two kinds of icons, on purpose:
   with `ui/Sketch.tsx` (`Boil`, `SketchSvg`). Paper is `--icon-paper`, ink is `currentColor`.
 - **Plain UI icons** (play, pause, plus, log out, sun/moon…) live in `src/ui/icons.tsx`, the
   **only** file allowed to import from `@hugeicons/core-free-icons`. They get a light touch of
-  the same style, kept light because they're controls: round ends and joins and a faint tremor
-  (`IconTremor`, mounted once in `App.tsx`). Three constants are the whole system:
+  the same style, kept light because they're controls: round ends and joins, and no SVG filter (it
+  can flash dark when the icon is redrawn). Three constants are the whole system:
   `ICON_STROKE_WIDTH` (2), `ICON_STROKE_LINECAP` (`'round'`), `ICON_STROKE_LINEJOIN` (`'round'`).
   Features import them from `@/ui/icons` (`Icon<Name>`), never from an icon library directly.
   New plain icon → add it to `icons.tsx` first.

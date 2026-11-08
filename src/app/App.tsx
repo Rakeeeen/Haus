@@ -15,7 +15,6 @@ import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { usePressHold } from '@/ui/usePressHold';
-import { IconTremor } from '@/ui/icons';
 import '@/styles/global.css';
 
 // The other pages load when they are first opened, so the first screen doesn't carry the charts
@@ -121,7 +120,6 @@ const App: React.FC = () => {
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <TooltipLayer />
-      <IconTremor />
       <AuthProvider>
         <PomodoroProvider>
           <AppRoutes />

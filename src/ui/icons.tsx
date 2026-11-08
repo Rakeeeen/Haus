@@ -1,8 +1,9 @@
 /**
  * The single source for every plain UI icon in the app (play, pause, plus, log out…) — one
- * library (Hugeicons), given a light touch of the hand-drawn style: round, blunt ends and joins
- * and a faint tremor in the line (IconTremor below). The touch is kept light on purpose: these
- * are controls, read at a glance. The bigger, characterful icons (the sections, the dock's
+ * library (Hugeicons), given a light touch of the hand-drawn style: round, blunt ends and joins. The
+ * touch is kept light on purpose: these are controls, read at a glance. They carry no SVG filter: a
+ * filter has to be computed whenever the icon is drawn again, and in some browsers that shows as a
+ * dark flash. The bigger, characterful icons (the sections, the dock's
  * arrow, sign-in, banks and buckets) are fully hand-drawn instead, in ui/Sketch.tsx.
  * Features import icons from here, never from '@hugeicons/*' directly — that's what makes the
  * library, the stroke width and the line ends each a one-line edit (ICON_STROKE_WIDTH /
@@ -29,18 +30,6 @@ export const ICON_STROKE_WIDTH = 2;
 export const ICON_STROKE_LINECAP = 'round' as const;
 export const ICON_STROKE_LINEJOIN = 'round' as const;
 
-/** The filter the plain icons share: a faint, fixed wobble, about half a pixel at icon size, so
- *  a line reads as drawn rather than plotted. Mounted once at the app's root. */
-export const ICON_TREMOR_ID = 'icon-tremor';
-export const IconTremor: React.FC = () => (
-  <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-    <filter id={ICON_TREMOR_ID} x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.3" numOctaves="1" seed="7" />
-      <feDisplacementMap in="SourceGraphic" scale="0.8" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </svg>
-);
-
 type HugeIconData = [string, Record<string, unknown>][];
 
 interface IconProps {
@@ -49,10 +38,10 @@ interface IconProps {
   color?: string;
 }
 
-/** Renders a Hugeicons path set with the system's line ends and tremor. */
+/** Renders a Hugeicons path set with the system's line ends. */
 function createIcon(data: HugeIconData, displayName: string) {
   const Icon: React.FC<IconProps> = ({ size = 24, className, color = 'currentColor' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} filter={`url(#${ICON_TREMOR_ID})`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       {data.map(([tag, attrs], i) =>
         React.createElement(tag, {
           ...attrs,
