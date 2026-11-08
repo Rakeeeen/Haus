@@ -414,15 +414,16 @@ body.dark-theme [data-active] {
 }
 
 /* The custom pointer's arrow: over something clickable it tilts, as a hand turns a pen towards a
-   button; pressed, it squeezes towards its tip. Both on the system's spring. The origin is the
+   button, further to the right; pressed, it squeezes towards its tip. At rest it leans a little to
+   the right, so the arrow doesn't lean hard to the left. Both on the system's spring. The origin is the
    tip, so the point it clicks at never moves. */
 .custom-cursor-svg {
-  transform: rotate(-4deg) translate(-2px, -2px);
+  transform: rotate(10deg) translate(-2px, -2px);
   transform-origin: 19% 12%;
   transition: transform var(--spring-duration) var(--spring);
 }
-.custom-cursor-wrapper[data-hover] .custom-cursor-svg { transform: rotate(-12deg) translate(-2px, -2px) scale(1.1); }
-.custom-cursor-wrapper[data-pressed] .custom-cursor-svg { transform: rotate(-4deg) translate(-2px, -2px) scale(0.84); }
+.custom-cursor-wrapper[data-hover] .custom-cursor-svg { transform: rotate(17deg) translate(-2px, -2px) scale(1.1); }
+.custom-cursor-wrapper[data-pressed] .custom-cursor-svg { transform: rotate(10deg) translate(-2px, -2px) scale(0.84); }
 @media (prefers-reduced-motion: reduce) { .custom-cursor-svg { transition: none; } }
 
 /* === Thndr's blinking cursor === */
