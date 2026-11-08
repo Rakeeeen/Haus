@@ -1,6 +1,6 @@
-# Firmus
+# Haus
 
-(The repo and the site's URL are `Firmus`; the Firebase project is still `rakeeen-home` — a Firebase project's ID can't be renamed.)
+(The system's name is Haus — a house, the one place everything of Hamed's is run from. The repo and the site's URL are still `Firmus`; the Firebase project is still `rakeeen-home` — a Firebase project's ID can't be renamed.)
 
 Personal life-dashboard for Hamed — water, focus/Pomodoro and finance, with the day's
 rhythm taken from the real prayer times. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed

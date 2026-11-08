@@ -1,4 +1,4 @@
-"""Firmus's hand-drawn illustrations, in the spirit of Anthropic's: an ink line about 23/1000
+"""Haus's hand-drawn illustrations, in the spirit of Anthropic's: an ink line about 23/1000
 thick with a hand's tremor, over a flat paper shape set a little off it. A hand only where a
 person is part of the act. Run build.py after changing anything here."""
 import math

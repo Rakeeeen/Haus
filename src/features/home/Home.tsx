@@ -937,7 +937,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         <div className="flex flex-col items-center gap-3">
           <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
           {/* The retro touch: the system named like a machine, the way the future used to be sold. */}
-          <span className="font-mono-main text-[9px] font-bold tracking-[0.3em] uppercase text-ink/30 select-none">Firmus · Model 26</span>
+          <span className="font-mono-main text-[9px] font-bold tracking-[0.3em] uppercase text-ink/30 select-none">Haus · Model 26</span>
         </div>
       </motion.footer>
 

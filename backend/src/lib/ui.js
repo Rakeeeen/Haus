@@ -2,7 +2,7 @@ import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'disc
 import { NAME_MARKED } from './brand.js';
 
 /**
- * Firmus's Discord "design system" — the smart-home-panel look every card in
+ * Haus's Discord "design system" — the smart-home-panel look every card in
  * this bot shares. One function builds the embed shell (`card`), one builds a
  * row of buttons (`row`). Everything else in discord/ composes these two.
  *
@@ -10,7 +10,7 @@ import { NAME_MARKED } from './brand.js';
  * (src/styles/global.css), so a card here reads as the same product, not a
  * reskin — kept in sync by hand since the two codebases don't share a build.
  */
-// Silver for the three areas, the brand purple only for Firmus itself, same as the web app.
+// Silver for the three areas, the brand purple only for Haus itself, same as the web app.
 const BRAND = {
   water:   { color: 0x9A9A9A, label: 'Water' },
   focus:   { color: 0x9A9A9A, label: 'Focus' },
