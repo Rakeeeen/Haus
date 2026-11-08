@@ -15,6 +15,8 @@ import {
 } from '@/ui/icons';
 import { usePomodoro } from '@/data/usePomodoro';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
+import { HourglassFace } from '@/ui/HourglassFace';
+import { hourglassSand } from '@/domain/focus/hourglass';
 import { FocusCarousel } from '@/ui/FocusCarousel';
 import { RulerTimer } from '@/ui/RulerTimer';
 import { useFridayGate } from '@/data/useFridayGate';
@@ -204,10 +206,19 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
                           width="clamp(84px, 14vw, 128px)"
                         />
                       </div>
-                      <PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="min(60vw, 300px)" />
+                      <div className="min-w-0 flex-1 max-w-[300px]"><PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="100%" /></div>
                     </div>,
                     <div className="w-full min-h-[220px] flex items-center justify-center">
                       <RulerTimer seconds={secs} mm={pixelMM} ss={pixelSS} mode={mode} isOvertime={isOvertime} running={running} />
+                    </div>,
+                    <div className="w-full min-h-[220px] flex items-center justify-center gap-5 sm:gap-8 text-ink">
+                      <div className="shrink-0">
+                        <HourglassFace
+                          {...hourglassSand(timeLeft, mode === 'focus' ? FOCUS_S : BREAK_S, mode, isOvertime)}
+                          mode={mode} running={running} overtime={isOvertime} size="clamp(84px, 14vw, 128px)"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1 max-w-[300px]"><PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="100%" /></div>
                     </div>,
                   ]}
                 />

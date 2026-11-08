@@ -98,12 +98,14 @@ export const DotMatrixText: React.FC<{
                 <motion.div
                   key={`${rowIdx}-${colIdx}`}
                   initial={false}
+                  // Square pixels with the unlit ones faintly showing, like an old LED board:
+                  // the same display language as the clock's digits.
                   animate={{
-                    scale: val ? 1 : 0.8,
-                    opacity: val ? 1 : 0
+                    scale: val ? 1 : 0.9,
+                    opacity: val ? 1 : 0.08
                   }}
                   transition={{ ...SPRING, opacity: { duration: 0.2 } }}
-                  className={`${dotSizeClassName} rounded-full bg-ink`}
+                  className={`${dotSizeClassName} bg-ink`}
                 />
               ))
             )}

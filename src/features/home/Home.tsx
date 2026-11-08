@@ -603,7 +603,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               <div className="text-[8px] font-mono-main font-bold animate-pulse text-ink/80 text-center">Syncing</div>
             ) : avatarUrl ? (
               <>
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="retro-photo w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-paper-dark/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <Camera size={14} className="text-ink" />
                 </div>
@@ -934,7 +934,11 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         }}
         transition={{ ...SPRING, opacity: { duration: 0.2 } }}
       >
-        <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
+        <div className="flex flex-col items-center gap-3">
+          <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
+          {/* The retro touch: the system named like a machine, the way the future used to be sold. */}
+          <span className="font-mono-main text-[9px] font-bold tracking-[0.3em] uppercase text-ink/30 select-none">Firmus · Model 26</span>
+        </div>
       </motion.footer>
 
       <AppModal

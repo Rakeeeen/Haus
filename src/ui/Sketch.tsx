@@ -42,7 +42,7 @@ export const Boil: React.FC<{ frames: readonly Layers[]; cycle?: number; paused?
   </g>
 );
 
-export const SketchSvg: React.FC<{ size: number; className?: string; children: React.ReactNode }> = ({ size, className, children }) => (
+export const SketchSvg: React.FC<{ size: number | string; className?: string; children: React.ReactNode }> = ({ size, className, children }) => (
   <svg width={size} height={size} viewBox="0 0 1000 1000" className={className} aria-hidden="true" overflow="visible">
     {children}
   </svg>

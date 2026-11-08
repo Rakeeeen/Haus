@@ -242,3 +242,31 @@ ICONS.update({
     'basmala': {'still': basmala_icon, 'parts': {}},
     'sadaqa': {'still': sadaqa_icon, 'parts': {}},
 })
+
+
+# ── The mouse pointer: an outline only. Its paper is drawn by the app, separately, so it can
+#    trail the line on a spring.
+CURSOR_SHAPE = [(110, 70), (430, 260), (800, 470), (540, 560), (410, 880), (260, 470)]
+
+def cursor_icon(seed):
+    p = Pen(seed, w=78, wob=1.2)
+    p.line(CURSOR_SHAPE, closed=True)
+    return p
+
+# ── Focus's hourglass face: the glass is drawn here; the sand is drawn by the app from the
+#    session's progress, inside these two chambers.
+HOURGLASS_TOP = [(318, 130), (682, 130), (672, 290), (512, 470), (488, 470), (328, 290)]
+HOURGLASS_BOTTOM = [(328, 710), (488, 530), (512, 530), (672, 710), (682, 870), (318, 870)]
+
+def hourglass_icon(seed):
+    p = Pen(seed, w=34, wob=1.3)
+    p.line([(230, 92), (500, 84), (770, 92)], w=44)
+    p.line([(230, 908), (500, 916), (770, 908)], w=44)
+    p.line([(292, 100), (300, 300), (470, 500), (300, 700), (292, 900)])
+    p.line([(708, 100), (700, 300), (530, 500), (700, 700), (708, 900)])
+    return p
+
+ICONS.update({
+    'cursor': {'still': cursor_icon, 'parts': {}},
+    'hourglass': {'still': hourglass_icon, 'parts': {}},
+})

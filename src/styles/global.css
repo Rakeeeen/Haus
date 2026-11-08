@@ -291,6 +291,9 @@
     justify-content: center;
     gap: 0.5rem;
     min-height: 2.5rem;
+    /* A button's label is one line; it never breaks into two. */
+    white-space: nowrap;
+    flex-shrink: 0;
     --pad: 1.5rem;
     --reach-left: 0px;
     --reach-right: 0px;
@@ -437,4 +440,18 @@ body:not(.dark-theme) .silver-grain-on-dark {
   .sketch-boil { animation: none; }
   .sketch-boil-set > .sketch-boil:first-child { opacity: 1; }
   .sketch-float { animation: none; }
+}
+
+/* Focus's hourglass in overtime: a small, steady tremble, not a shake. */
+.hourglass-tremble { animation: hourglassTremble 0.9s ease-in-out infinite; }
+@keyframes hourglassTremble { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+@media (prefers-reduced-motion: reduce) { .hourglass-tremble { animation: none; } }
+
+/* === Retro touches === */
+/* Photos as silver prints: black and white, a little more contrast. */
+.retro-photo { filter: grayscale(1) contrast(1.15) brightness(1.03); }
+/* An aluminum knob: the titles' metal, small. */
+.metal-knob {
+  background: linear-gradient(160deg, var(--silver-high), var(--silver-low));
+  transition: left var(--spring-duration) var(--spring);
 }

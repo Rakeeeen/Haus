@@ -1,44 +1,41 @@
 import { useRef } from 'react';
 import { useCustomCursor } from '@/ui/useCustomCursor';
+import { Sketch } from '@/ui/Sketch';
+import { CURSOR_ICON } from '@/ui/sketchIcons.data';
 
+/** Pixels per canvas unit at this size, and where the pointer's tip sits on the 1000-unit canvas. */
+const SIZE = 26;
+const TIP = { x: 110, y: 70 };
+
+/**
+ * The pointer, hand-drawn like the icons: an ink outline with its paper behind it. The paper is
+ * its own layer and trails the line on the system's spring, settling a few pixels off it like the
+ * icons' paper; over something clickable it lifts a little further, and a press pushes it under
+ * the line, so it springs back on release (see useCustomCursor).
+ */
 export const CustomCursor = () => {
-  const cursorRef = useRef<HTMLDivElement>(null);
-  useCustomCursor(cursorRef);
+  const lineRef = useRef<HTMLDivElement>(null);
+  const paperRef = useRef<HTMLDivElement>(null);
+  useCustomCursor(lineRef, paperRef);
+
+  const layer = (z: number): React.CSSProperties => ({
+    position: 'fixed', top: 0, left: 0, width: SIZE, height: SIZE,
+    marginLeft: (-TIP.x / 1000) * SIZE, marginTop: (-TIP.y / 1000) * SIZE,
+    pointerEvents: 'none', zIndex: z, willChange: 'transform',
+  });
 
   return (
-    <div
-      ref={cursorRef}
-      className="custom-cursor-wrapper hidden md:flex"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        pointerEvents: 'none',
-        zIndex: 99999,
-        width: '28px',
-        height: '28px',
-        willChange: 'transform',
-      }}
-    >
-      {/* Dynamic vector pointer: fill matches ink (dark in light theme, paper in dark theme), stroke matches background container */}
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 24 24"
-        fill="none"
-        style={{
-          transform: 'rotate(-4deg) translate(-2px, -2px)',
-        }}
-      >
-        <path
-          d="M4.5 3L18.5 11.2L11.8 12.8L9.2 19.5L4.5 3Z"
-          fill="var(--ink)"
-          stroke="var(--paper-dark)"
-          strokeWidth="1"
-          strokeLinejoin="miter"
-          strokeMiterlimit="4"
-        />
-      </svg>
-    </div>
+    <>
+      <div ref={paperRef} className="hidden md:block" style={layer(99998)} aria-hidden>
+        <svg width={SIZE} height={SIZE} viewBox="0 0 1000 1000">
+          <path d={CURSOR_ICON.inside} fill="var(--paper-dark)" />
+        </svg>
+      </div>
+      <div ref={lineRef} className="hidden md:block text-ink" style={layer(99999)} aria-hidden>
+        <svg width={SIZE} height={SIZE} viewBox="0 0 1000 1000" overflow="visible">
+          <Sketch layers={CURSOR_ICON.frames[0]} />
+        </svg>
+      </div>
+    </>
   );
 };

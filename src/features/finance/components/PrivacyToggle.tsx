@@ -13,9 +13,11 @@ export const PrivacyToggle: React.FC<{ privateMode: boolean; onToggle: () => voi
     <span className="font-mono-main text-[9px] uppercase tracking-widest text-ink/40 group-hover:text-ink/60 transition-colors">
       {privateMode ? 'PRIVATE' : 'VISIBLE'}
     </span>
-    <div className={`relative w-9 h-5 border rounded-full transition-colors duration-200 ${privateMode ? 'border-ink' : 'border-ink/30'}`}>
+    {/* A metal toggle, the retro touch: an aluminum knob that throws across on the system's spring. */}
+    <div className={`relative w-9 h-5 border rounded-full transition-colors duration-200 ${privateMode ? 'border-ink bg-ink/10' : 'border-ink/30'}`}>
       <div
-        className={`absolute top-0.5 w-3.5 h-3.5 rounded-full transition-all duration-200 ${privateMode ? 'left-[calc(100%-0.875rem-2px)] bg-ink' : 'left-0.5 bg-ink/25'}`}
+        className="metal-knob absolute top-0.5 w-3.5 h-3.5 rounded-full"
+        style={{ left: privateMode ? 'calc(100% - 0.875rem - 2px)' : '2px' }}
       />
     </div>
   </button>

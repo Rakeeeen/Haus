@@ -29,7 +29,7 @@ export const WaterCardBody: React.FC<{
           dotSizeClassName="w-[12px] h-[12px] sm:w-[15px] sm:h-[15px]"
           gapClassName="gap-[4px] sm:gap-[5px]"
         />
-        <span className="font-mono-main text-3xl sm:text-4xl font-bold text-ink/40 leading-none">
+        <span className="font-mono-main text-3xl sm:text-4xl font-bold text-ink/40 leading-none whitespace-nowrap">
           / 12
         </span>
         <span className="font-sans-main text-sm font-bold uppercase tracking-wider text-ink/60 ml-2 leading-none">glasses today</span>
