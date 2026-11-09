@@ -39,3 +39,43 @@ export interface Viewer {
   /** Their Google photo, if they have one. */
   photoUrl: string | null;
 }
+
+// ── Letting a guest in with a code ──────────────────────────────────────────────────────────────
+// A guest has no fingerprint here (that is Hamed's). Instead, when they sign in, Hamed's system shows him
+// a one-time code, he gives it to them, and they type it. firestore.rules checks the code itself, and
+// keeps a guest out of everything until they have entered one — the same two numbers are written there.
+
+/** How long a code can be typed in. */
+export const CODE_LIFETIME_MS = 5 * 60 * 1000;
+/** How long a guest stays in after entering a code, before they need a new one. */
+export const GUEST_APPROVAL_DAYS = 30;
+/** Eight digits: guessing one inside its five minutes is hopeless. */
+export const CODE_LENGTH = 8;
+
+/** A code from random bytes (the caller supplies crypto-strong ones; at least 4× CODE_LENGTH are plenty). */
+export function codeFromBytes(bytes: ArrayLike<number>): string {
+  let code = '';
+  // Bytes 250–255 would favour the low digits when reduced to 0–9, so they are skipped.
+  for (let i = 0; i < bytes.length && code.length < CODE_LENGTH; i++) {
+    if (bytes[i] < 250) code += String(bytes[i] % 10);
+  }
+  if (code.length < CODE_LENGTH) throw new Error('Not enough random bytes for a code');
+  return code;
+}
+
+/** What someone typed, reduced to digits ("4829 1037" → "48291037"). */
+export const normalizeCode = (input: string): string => input.replace(/\D/g, '').slice(0, CODE_LENGTH);
+
+/** A code as shown, in two groups: "48291037" → "4829 1037". */
+export const formatCode = (code: string): string => code.replace(/^(\d{4})(\d+)$/, '$1 $2');
+
+export const isCompleteCode = (input: string): boolean => normalizeCode(input).length === CODE_LENGTH;
+
+/** Whether a guest approved at `approvedAtMs` is still in at `nowMs`. */
+export function isApprovalValid(approvedAtMs: number, nowMs: number): boolean {
+  return nowMs < approvedAtMs + GUEST_APPROVAL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/** Whole seconds left on a code (never below 0). */
+export const secondsLeft = (expiresAtMs: number, nowMs: number): number =>
+  Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));

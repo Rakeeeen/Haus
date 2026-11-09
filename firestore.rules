@@ -5,11 +5,11 @@ rules_version = '2';
 // Everything is denied unless a rule below allows it. Signing in with Google is not enough:
 //  - the OWNER is one fixed account (by uid, which can't be spoofed or changed);
 //  - a GUEST is a Google account the owner has invited (a document in /members, keyed by the
-//    lower-case email) and has not switched off.
+//    lower-case email), has not switched off, and who has typed in a one-time code the owner gave them.
 // Anyone else — a stranger who signed in with Google — can read and write nothing.
 //
-// Deploy with `node backend/scripts/deploy-rules.js`; check them with `node backend/scripts/test-rules.js`
-// (both use the bot's service account). See docs/ARCHITECTURE.md, "Access".
+// Deploy with `node backend/scripts/deploy-rules.js` (the bot's service account; `--rollback` undoes it).
+// See docs/ARCHITECTURE.md, "Access".
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -34,13 +34,30 @@ service cloud.firestore {
       return signedIn() && exists(memberPath()) && get(memberPath()).data.active == true;
     }
 
-    function isMember() {
-      return isOwner() || isGuest();
+    function approvalPath(uid) {
+      return /databases/$(database)/documents/guest_approvals/$(uid);
     }
 
-    // The signed-in member's own area, named by their uid.
+    function codePath(uid) {
+      return /databases/$(database)/documents/guest_codes/$(uid);
+    }
+
+    // An invited guest who typed in a code Hamed gave them, less than 30 days ago (domain/access.ts
+    // writes the same number). Being invited alone gets a guest nothing but the right to ask for a code.
+    function isApprovedGuest() {
+      return isGuest()
+        && exists(approvalPath(request.auth.uid))
+        && request.time < get(approvalPath(request.auth.uid)).data.approvedAt + duration.value(30, 'd');
+    }
+
+    // The signed-in person's own area, named by their uid: the owner, or a guest let in.
     function isSelf(uid) {
-      return isMember() && request.auth.uid == uid;
+      return (isOwner() || isApprovedGuest()) && request.auth.uid == uid;
+    }
+
+    // Hamed's own area only — the fingerprint is his, and so is a new device's code.
+    function isOwnerSelf(uid) {
+      return isOwner() && request.auth.uid == uid;
     }
 
     // A document may only hold the fields it is meant to hold.
@@ -65,16 +82,49 @@ service cloud.firestore {
         && request.resource.data.updatedAt is string;
     }
 
-    // ── Fingerprint sign-in and the new-device code: each member's own document ──────
+    // ── Fingerprint sign-in and the new-device code: Hamed's alone ───────────────────
     match /biometric_credentials/{uid} {
-      allow read, delete: if isSelf(uid);
-      allow create, update: if isSelf(uid) && onlyKeys(['byHost']);
+      allow read, delete: if isOwnerSelf(uid);
+      allow create, update: if isOwnerSelf(uid) && onlyKeys(['byHost']);
     }
 
     match /device_auth_codes/{uid} {
-      allow read, delete: if isSelf(uid);
-      allow create, update: if isSelf(uid)
+      allow read, delete: if isOwnerSelf(uid);
+      allow create, update: if isOwnerSelf(uid)
         && onlyKeys(['pending', 'code', 'requestedAt', 'expiresAt', 'used']);
+    }
+
+    // ── A guest comes in with a code ──────────────────────────────────────────────────
+    // 1. The guest asks (guest_requests). Hamed's screen sees it and writes a one-time code into
+    //    guest_codes, which only he can read — the guest never sees it, only Hamed's voice or message.
+    // 2. The guest types the code. They can't read guest_codes, but these rules can: the approval is created
+    //    only if what they typed equals the stored code and it hasn't expired. Nothing else can create it.
+    // 3. Every guest rule above then asks for that approval (isApprovedGuest).
+    match /guest_requests/{uid} {
+      allow read, delete: if isOwner();
+      allow create, update: if isGuest() && request.auth.uid == uid
+        && onlyKeys(['email', 'name', 'requestedAt'])
+        && request.resource.data.email == request.auth.token.email.lower()
+        && request.resource.data.get('name', '') is string
+        && request.resource.data.requestedAt == request.time;
+    }
+
+    match /guest_codes/{uid} {
+      allow read, write: if isOwner();
+    }
+
+    match /guest_approvals/{uid} {
+      allow list, delete: if isOwner();
+      allow get: if isOwner() || (isGuest() && request.auth.uid == uid);
+      // A fresh code replaces an approval only once the old one has run out.
+      allow create, update: if isGuest() && request.auth.uid == uid
+        && onlyKeys(['code', 'approvedAt'])
+        && request.resource.data.approvedAt == request.time
+        && request.resource.data.code is string
+        && exists(codePath(uid))
+        && request.resource.data.code == get(codePath(uid)).data.code
+        && get(codePath(uid)).data.expiresAt > request.time.toMillis()
+        && (resource == null || request.time >= resource.data.approvedAt + duration.value(30, 'd'));
     }
 
     // ── Invitations: only the owner manages them; a guest can read just their own ────

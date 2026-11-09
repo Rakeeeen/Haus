@@ -213,9 +213,17 @@ value: the owner's stay in `dashboard/{key}` (exactly as before, so the bots sti
 `users/{uid}/data/{key}`, with their localStorage keys prefixed. A guest sees Water, Focus and Time — no Finance (the route
 isn't even registered for them). Screens receive who is looking as a `viewer` prop (a feature never imports another).
 
+**Fingerprint for the owner, a code for a guest.** Touch ID is Hamed's alone. An invited guest signs in with Google and
+sees `GuestCodeGate`: it asks (`guest_requests/{uid}`), Hamed's screen (`GuestCodeBanner`, owner only) answers with a
+one-time 8-digit code in `guest_codes/{uid}` — a document only he can read — shown for five minutes, and he tells it to the
+guest. The guest types it; `firestore.rules` itself compares it to the stored code (a rule can read a document the
+requester can't) and only then lets the guest create `guest_approvals/{uid}`. From then on every guest rule requires that
+approval (`isApprovedGuest`), valid 30 days (`GUEST_APPROVAL_DAYS` in `domain/access.ts` and the rules — change both).
+Switching a guest off in the Guests list cuts them off at once. `AuthProvider` exposes this as `approved`.
+
 **`firestore.rules` is the real lock; the screens only follow it.** Everything is denied unless a rule allows it: the owner
-reads and writes `dashboard/*`; a guest only their own `users/{uid}/data/*`, fingerprint record and device code; only the
-owner reads or writes `members`. Publish with `node backend/scripts/deploy-rules.js` (the bot's service account; the ruleset it
+reads and writes `dashboard/*`, his fingerprint record and device code; an approved guest only their own
+`users/{uid}/data/*`; only the owner reads or writes `members`. Publish with `node backend/scripts/deploy-rules.js` (the bot's service account; the ruleset it
 replaces is remembered, `--rollback` puts it back). The rules have no automated tests yet — the service account may not run
 Google's rules evaluator, and the local emulator needs Java; add them with the next collections.
 

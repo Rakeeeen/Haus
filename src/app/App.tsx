@@ -4,6 +4,8 @@ import { Home } from '@/features/home/Home';
 import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
 import { NoAccess } from '@/features/auth/NoAccess';
+import { GuestCodeGate } from '@/features/auth/GuestCodeGate';
+import { GuestCodeBanner } from '@/features/auth/GuestCodeBanner';
 import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
@@ -38,7 +40,7 @@ const AppRoutes: React.FC = () => {
   usePressHold();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, role, firstName, accessError, biometricCleared, setBiometricCleared } = useAuth();
+  const { user, role, firstName, approved, accessError, biometricCleared, setBiometricCleared } = useAuth();
 
   const nav = (to: string) => {
     const path = to === 'home' ? '/' : `/${to}`;
@@ -68,7 +70,18 @@ const AppRoutes: React.FC = () => {
     );
   }
 
-  if (!biometricCleared) {
+  // An invited guest has no fingerprint here: a code Hamed gives them lets them in.
+  if (role === 'guest' && !approved) {
+    return (
+      <div className="min-h-screen">
+        <CustomCursor />
+        <GuestCodeGate user={user} />
+      </div>
+    );
+  }
+
+  // The fingerprint is Hamed's alone.
+  if (role === 'owner' && !biometricCleared) {
     return (
       <div className="min-h-screen">
         <CustomCursor />
@@ -95,7 +108,8 @@ const AppRoutes: React.FC = () => {
       </AnimatePresence>
 
       <FloatingTimer currentPage={currentPage} onNavigate={() => nav('pomodoro')} />
-      <DeviceCodeBanner user={user} />
+      {role === 'owner' && <DeviceCodeBanner user={user} />}
+      {role === 'owner' && <GuestCodeBanner />}
     </div>
   );
 };
