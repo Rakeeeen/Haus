@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
+import { readStored, writeStored } from '@/data/dataScope';
 import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
 import { getDayMoments } from '@/domain/devotion/prayer';
 import type { FocusDayStats, FocusWeekDay } from '@/domain/focus/session';
@@ -60,10 +61,7 @@ export const DailyResetManager: React.FC = () => {
       // which can lag behind what Water.tsx just wrote (a Firestore-listener state
       // update isn't guaranteed to have flushed yet), causing the archived tally to
       // be recorded as 0.
-      const currentGlasses = (() => {
-        try { return Number(JSON.parse(window.localStorage.getItem('hydration_glasses') || '0')) || 0; }
-        catch { return 0; }
-      })();
+      const currentGlasses = Number(readStored<number>('hydration_glasses', 0)) || 0;
 
       if (currentGlasses > 0) {
         setHistory(prev => ({ ...(prev || {}), [lastDateStr]: currentGlasses }));
@@ -74,10 +72,8 @@ export const DailyResetManager: React.FC = () => {
     const dayIdxOf = (d: Date) => (d.getDay() + 6) % 7; // Mon-Sun
 
     const readFreshPomoWeek = (): FocusWeekDay[] => {
-      try {
-        const parsed = JSON.parse(window.localStorage.getItem('pomodoro_week') || 'null');
-        return Array.isArray(parsed) && parsed.length === 7 ? parsed : POMODORO_WEEKLY_MOCK;
-      } catch { return POMODORO_WEEKLY_MOCK; }
+      const parsed = readStored<FocusWeekDay[] | null>('pomodoro_week', null);
+      return Array.isArray(parsed) && parsed.length === 7 ? parsed : POMODORO_WEEKLY_MOCK;
     };
 
     const checkPomoReset = () => {
@@ -93,8 +89,7 @@ export const DailyResetManager: React.FC = () => {
 
       if (now.getTime() >= todayIsha && lastPomoIshaResetDate !== todayDateStr && firedPomoIshaMarkerRef.current !== todayDateStr) {
         firedPomoIshaMarkerRef.current = todayDateStr;
-        window.localStorage.setItem('system_last_pomo_reset_date', JSON.stringify(todayDateStr));
-        window.localStorage.setItem('system_last_pomo_reset_date_updatedAt', new Date().toISOString());
+        writeStored('system_last_pomo_reset_date', todayDateStr);
 
         const todayIdx = dayIdxOf(now);
         const freshWeek = readFreshPomoWeek();
@@ -133,9 +128,7 @@ export const DailyResetManager: React.FC = () => {
         // Write value + updatedAt synchronously (mirrors useFirebaseSync's setValue) so a
         // refresh mid-reset sees the marker AND the Firestore listener won't clobber it
         // back with the stale server value once it connects.
-        const nowIso = new Date().toISOString();
-        window.localStorage.setItem('system_last_reset_date', JSON.stringify(resetMarker));
-        window.localStorage.setItem('system_last_reset_date_updatedAt', nowIso);
+        writeStored('system_last_reset_date', resetMarker);
         const maghribMoment = new Date(resetDateBase);
         maghribMoment.setHours(todayMaghrib.getHours(), todayMaghrib.getMinutes(), 0, 0);
         performReset(maghribMoment);

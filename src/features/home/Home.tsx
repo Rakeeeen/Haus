@@ -7,12 +7,15 @@ import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { uploadImage } from '@/lib/cloudinary';
 import {
   IconSun as Sun, IconCamera as Camera, IconMoreVertical as MoreVertical,
-  IconLogOut as LogOut, IconMoon as Moon,
+  IconLogOut as LogOut, IconMoon as Moon, IconUsers as Users,
 } from '@/ui/icons';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/data/firebase';
 import { usePomodoro } from '@/data/usePomodoro';
 import { AppModal } from '@/ui/AppModal';
+import type { Viewer } from '@/domain/access';
+import { useGuests } from '@/data/useMembers';
+import { GuestsModal } from '@/features/home/components/GuestsModal';
 import { getLogicalDate } from '@/domain/day';
 import { usePrayer } from '@/data/usePrayer';
 import { getDayMoments, getDayPhase, isFocusNightLocked, isWaterClosed } from '@/domain/devotion/prayer';
@@ -39,6 +42,8 @@ import { FinanceCardBody } from '@/features/home/components/FinanceCard';
 
 interface HomeProps {
   navigate: (to: string) => void;
+  /** Who is looking: the owner sees everything; a guest sees no finance and is greeted by their own name. */
+  viewer: Viewer;
 }
 
 // How long a manually-picked card stays before the dock snaps back to the system's pick.
@@ -62,7 +67,10 @@ let _persistedGreetingName = _NAMES[Math.floor(Math.random() * _NAMES.length)];
 
 
 
-export const Home: React.FC<HomeProps> = ({ navigate }) => {
+export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
+  const isOwner = viewer.role === 'owner';
+  const { guests, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
+  const [guestsOpen, setGuestsOpen] = useState(false);
   const [activeCardId, setActiveCardId] = useState<CardId>(() => _lastActiveCardId);
   const [displayedCardId, setDisplayedCardId] = useState<CardId>(() => _lastActiveCardId);
   const [bigCardVisible, setBigCardVisible] = useState(false);
@@ -430,7 +438,9 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   const { times, hijriDate, nextPrayer } = usePrayer();
   const weather = useWeather();
 
-  const [greetingName, setGreetingName] = useState(() => _persistedGreetingName);
+  // Hamed is greeted by one of his names in turn; a guest only by their own.
+  const greetingNames = isOwner ? _NAMES : [viewer.firstName];
+  const [greetingName, setGreetingName] = useState(() => (isOwner ? _persistedGreetingName : viewer.firstName));
 
   const isFriday = now.getDay() === 5;
 
@@ -491,9 +501,9 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
       if (!journalEntry) {
         setDisplayedGreeting(prev => {
           if (prev.before === greetingParts.before && prev.achievement?.kind === greetingParts.achievement?.kind) return prev;
-          const others = _NAMES.filter(n => n.toUpperCase() !== prev.name);
-          const nextName = others[Math.floor(Math.random() * others.length)];
-          _persistedGreetingName = nextName;
+          const others = greetingNames.filter(n => n.toUpperCase() !== prev.name);
+          const nextName = others.length ? others[Math.floor(Math.random() * others.length)] : prev.name;
+          if (isOwner) _persistedGreetingName = nextName;
           setGreetingName(nextName);
           return { before: greetingParts.before, name: nextName.toUpperCase(), after: '', achievement: greetingParts.achievement };
         });
@@ -601,15 +611,15 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
           >
             {uploading ? (
               <div className="text-[8px] font-mono-main font-bold animate-pulse text-ink/80 text-center">Syncing</div>
-            ) : avatarUrl ? (
+            ) : (avatarUrl ?? (isOwner ? null : viewer.photoUrl)) ? (
               <>
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={(avatarUrl ?? viewer.photoUrl) as string} alt="Avatar" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-paper-dark/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <Camera size={14} className="text-ink" />
                 </div>
               </>
             ) : (
-              <span className="text-xl font-black font-sans-main text-ink/30">R</span>
+              <span className="text-xl font-black font-sans-main text-ink/30">{isOwner ? 'R' : viewer.firstName.charAt(0).toUpperCase()}</span>
             )}
           </div>
 
@@ -636,6 +646,13 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   >
                     {isDark ? <Sun size={18} /> : <Moon size={18} />}
                   </IconButton>
+
+                  {/* Guests (Hamed's alone) */}
+                  {isOwner && (
+                    <IconButton onClick={() => { setShowMenu(false); setGuestsOpen(true); }} data-tip="Guests" aria-label="Guests">
+                      <Users size={18} />
+                    </IconButton>
+                  )}
 
                   {/* Logout Button */}
                   <IconButton onClick={handleLogout} className="!text-rust" data-tip="Log out" aria-label="Log out">
@@ -719,7 +736,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               metric: null, // drawn as dotted digits below instead of text
               subText: 'EGYPT',
             },
-          ] as const).map((card, index, cards) => {
+          ] as const).filter((card) => isOwner || card.id !== 'finance').map((card, index, cards) => {
             const isActive = activeCardId === card.id;
             const { Vector } = card;
             const touchedId = reduceMotion ? null : pressedCardId ?? hoveredCardId;
@@ -818,7 +835,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               className="hidden lg:block absolute -left-10 z-10 pointer-events-none"
               style={{ top: 0 }}
               animate={{
-                y: (124 - 22) / 2 + ['water', 'pomodoro', 'finance', 'time'].indexOf(systemCardId) * (124 + 16),
+                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'finance', 'time'] : ['water', 'pomodoro', 'time']).indexOf(systemCardId) * (124 + 16),
                 opacity: 1,
               }}
               initial={false}
@@ -943,6 +960,17 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         title="Upload failed"
         confirm={{ message: 'Something went wrong while uploading your avatar. Please try again.', confirmText: 'Got it', cancelText: 'Dismiss', onConfirm: () => setErrorModal(false) }}
       />
+      {isOwner && (
+        <GuestsModal
+          isOpen={guestsOpen}
+          onClose={() => setGuestsOpen(false)}
+          guests={guests}
+          error={guestsError}
+          onInvite={invite}
+          onSetActive={setActive}
+          onRemove={remove}
+        />
+      )}
       <AppModal
         isOpen={logoutModal}
         onClose={() => setLogoutModal(false)}

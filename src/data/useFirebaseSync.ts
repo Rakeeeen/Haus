@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { db } from '@/data/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { onSnapshot, setDoc } from 'firebase/firestore';
+import { scopedDoc, storageKey } from '@/data/dataScope';
 
 export function useFirebaseSync<T>(key: string, initialValue: T) {
   // 1. Initial State from LocalStorage (for speed)
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
-      const item = window.localStorage.getItem(key);
+      const item = window.localStorage.getItem(storageKey(key));
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
       console.error(error);
@@ -24,21 +24,26 @@ export function useFirebaseSync<T>(key: string, initialValue: T) {
 
   // 2. Listen to Firestore changes (for sync across devices)
   useEffect(() => {
-    const docRef = doc(db, 'dashboard', key);
+    const docRef = scopedDoc(key);
+    // Signed out or not allowed in: only the local copy, nothing to listen to.
+    if (!docRef) {
+      setIsReady(true);
+      return;
+    }
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data().value as T;
         const serverUpdatedAt = docSnap.data().updatedAt;
-        const localUpdatedAt = window.localStorage.getItem(`${key}_updatedAt`);
+        const localUpdatedAt = window.localStorage.getItem(`${storageKey(key)}_updatedAt`);
 
         // Only apply if server data is newer or same as our last local update
         if (!localUpdatedAt || !serverUpdatedAt || new Date(serverUpdatedAt).getTime() >= new Date(localUpdatedAt).getTime()) {
           valueRef.current = data;
           setStoredValue(data);
-          window.localStorage.setItem(key, JSON.stringify(data));
+          window.localStorage.setItem(storageKey(key), JSON.stringify(data));
           if (serverUpdatedAt) {
-            window.localStorage.setItem(`${key}_updatedAt`, serverUpdatedAt);
+            window.localStorage.setItem(`${storageKey(key)}_updatedAt`, serverUpdatedAt);
           }
         }
       }
@@ -61,14 +66,14 @@ export function useFirebaseSync<T>(key: string, initialValue: T) {
       // Update local state first (Optimistic UI)
       valueRef.current = valueToStore;
       setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      window.localStorage.setItem(storageKey(key), JSON.stringify(valueToStore));
 
       // Sync to Firestore
       const now = new Date().toISOString();
-      window.localStorage.setItem(`${key}_updatedAt`, now);
+      window.localStorage.setItem(`${storageKey(key)}_updatedAt`, now);
 
-      const docRef = doc(db, 'dashboard', key);
-      await setDoc(docRef, { value: valueToStore, updatedAt: now });
+      const docRef = scopedDoc(key);
+      if (docRef) await setDoc(docRef, { value: valueToStore, updatedAt: now });
     } catch (error) {
       console.error("Firestore Sync Error:", error);
     }

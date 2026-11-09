@@ -21,16 +21,8 @@ export const Login: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      const whitelistedEmail = 'hamed.rakeeen@gmail.com';
-      const userEmail = user.email?.toLowerCase();
-
-      if (userEmail !== whitelistedEmail) {
-        await auth.signOut();
-        setError(`Unauthorized access: ${user.email} is not in the whitelist.`);
-      }
+      // Whether this account may come in is decided after sign-in (an invited guest, or the owner).
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
       console.error(err);
       setError('Login failed: ' + (err instanceof Error ? err.message : String(err)));

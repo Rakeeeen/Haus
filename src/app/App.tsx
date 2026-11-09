@@ -3,9 +3,9 @@ import { HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'r
 import { Home } from '@/features/home/Home';
 import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
+import { NoAccess } from '@/features/auth/NoAccess';
 import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
-import { Wordmark } from '@/ui/Wordmark';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
@@ -38,7 +38,7 @@ const AppRoutes: React.FC = () => {
   usePressHold();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading, biometricCleared, setBiometricCleared } = useAuth();
+  const { user, role, firstName, accessError, biometricCleared, setBiometricCleared } = useAuth();
 
   const nav = (to: string) => {
     const path = to === 'home' ? '/' : `/${to}`;
@@ -49,19 +49,21 @@ const AppRoutes: React.FC = () => {
   // Derive current page from location
   const currentPage = location.pathname.replace('/', '') || 'home';
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-paper flex items-center justify-center">
-        <Wordmark className="text-sepia font-black text-2xl animate-pulse" />
-      </div>
-    );
-  }
-
   if (!user) {
     return (
       <div className="min-h-screen">
         <CustomCursor />
         <Login />
+      </div>
+    );
+  }
+
+  // Signed in with Google but not invited (or the invitation couldn't be checked): nothing is loaded.
+  if (role === 'none') {
+    return (
+      <div className="min-h-screen">
+        <CustomCursor />
+        <NoAccess user={user} error={accessError} />
       </div>
     );
   }
@@ -79,14 +81,15 @@ const AppRoutes: React.FC = () => {
     <div className="min-h-screen overflow-x-hidden">
       <CustomCursor />
       <DailyResetManager />
-      <GoldPriceRefresher />
+      {role === 'owner' && <GoldPriceRefresher />}
 
       <AnimatePresence mode="wait">
         <Routes>
-          <Route path="/" element={<AnimatedPage><Home navigate={nav} /></AnimatedPage>} />
+          <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
           <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
           <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
-          <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />
+          {/* Finance is Hamed's alone. */}
+          {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>

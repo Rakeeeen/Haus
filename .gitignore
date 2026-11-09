@@ -40,3 +40,6 @@ backend/gold_cache.json
 
 # Serena (local code-intelligence cache)
 .serena/
+
+# The ruleset the last deploy replaced (backend/scripts/deploy-rules.js --rollback)
+backend/.rules-previous

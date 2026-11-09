@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// Haus — Firestore security rules.
+//
+// Everything is denied unless a rule below allows it. Signing in with Google is not enough:
+//  - the OWNER is one fixed account (by uid, which can't be spoofed or changed);
+//  - a GUEST is a Google account the owner has invited (a document in /members, keyed by the
+//    lower-case email) and has not switched off.
+// Anyone else — a stranger who signed in with Google — can read and write nothing.
+//
+// Deploy with `node backend/scripts/deploy-rules.js`; check them with `node backend/scripts/test-rules.js`
+// (both use the bot's service account). See docs/ARCHITECTURE.md, "Access".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Who is asking ────────────────────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    // Hamed. A uid, not an email: it is what Firebase Auth issues for that Google account.
+    function isOwner() {
+      return signedIn() && request.auth.uid == 'bPw2qdHsBJOwSmrNKMRtlZghfiU2';
+    }
+
+    function memberPath() {
+      return /databases/$(database)/documents/members/$(request.auth.token.email.lower());
+    }
+
+    // An invited guest whose access is switched on.
+    function isGuest() {
+      return signedIn() && exists(memberPath()) && get(memberPath()).data.active == true;
+    }
+
+    function isMember() {
+      return isOwner() || isGuest();
+    }
+
+    // The signed-in member's own area, named by their uid.
+    function isSelf(uid) {
+      return isMember() && request.auth.uid == uid;
+    }
+
+    // A document may only hold the fields it is meant to hold.
+    function onlyKeys(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
+
+    // ── The owner's dashboard (water, focus, finance …) ──────────────────────────────
+    // Exactly what useFirebaseSync and the bot write: { value, updatedAt }. Guests never touch it.
+    match /dashboard/{key} {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner()
+        && onlyKeys(['value', 'updatedAt'])
+        && request.resource.data.updatedAt is string;
+    }
+
+    // ── A guest's own dashboard: the same shape, in their own area ───────────────────
+    match /users/{uid}/data/{key} {
+      allow read, delete: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && onlyKeys(['value', 'updatedAt'])
+        && request.resource.data.updatedAt is string;
+    }
+
+    // ── Fingerprint sign-in and the new-device code: each member's own document ──────
+    match /biometric_credentials/{uid} {
+      allow read, delete: if isSelf(uid);
+      allow create, update: if isSelf(uid) && onlyKeys(['byHost']);
+    }
+
+    match /device_auth_codes/{uid} {
+      allow read, delete: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && onlyKeys(['pending', 'code', 'requestedAt', 'expiresAt', 'used']);
+    }
+
+    // ── Invitations: only the owner manages them; a guest can read just their own ────
+    match /members/{email} {
+      allow get: if isOwner() || (signedIn() && email == request.auth.token.email.lower());
+      allow list: if isOwner();
+      allow create, update: if isOwner()
+        && email == email.lower()
+        && onlyKeys(['email', 'active', 'addedAt', 'name'])
+        && request.resource.data.email == email
+        && request.resource.data.active is bool;
+      allow delete: if isOwner();
+    }
+
+    // Anything not named above is closed — including collections that don't exist yet.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -197,6 +197,28 @@ project folder is moved or renamed, edit the path there and run `launchctl booto
 don't run `start.sh` by hand while the agent is loaded — that starts a second copy. The community Discord bot (a separate
 project) has its own agent, `com.bommy.bot`; both log in with the same Discord application.
 
+## Access: the owner and invited guests
+
+Signing in with Google is not enough to get in. There are two kinds of people:
+
+- **The owner** (Hamed): one fixed Firebase uid (`constants/owner.ts`; `firestore.rules` names the same one).
+- **A guest**: a Google account the owner invited — a document in `members/{lower-case email}` with `active: true`.
+  The owner manages them from the header menu ("Guests", `features/home/components/GuestsModal.tsx`; data side in
+  `data/useMembers.ts`). Anyone else who signs in sees "Not invited" (`features/auth/NoAccess.tsx`) and nothing is loaded.
+
+`domain/access.ts` decides the role (`roleOf`) and the name a guest is greeted by (`firstNameOf`, the first word of their
+Google name). `AuthProvider` resolves it, then sets the **data scope** (`data/dataScope.ts`) before any screen that reads
+values is shown, and shows a fresh tree whenever the person changes. The scope decides where `useFirebaseSync` keeps a
+value: the owner's stay in `dashboard/{key}` (exactly as before, so the bots still read them); a guest's go in
+`users/{uid}/data/{key}`, with their localStorage keys prefixed. A guest sees Water, Focus and Time — no Finance (the route
+isn't even registered for them). Screens receive who is looking as a `viewer` prop (a feature never imports another).
+
+**`firestore.rules` is the real lock; the screens only follow it.** Everything is denied unless a rule allows it: the owner
+reads and writes `dashboard/*`; a guest only their own `users/{uid}/data/*`, fingerprint record and device code; only the
+owner reads or writes `members`. Publish with `node backend/scripts/deploy-rules.js` (the bot's service account; the ruleset it
+replaces is remembered, `--rollback` puts it back). The rules have no automated tests yet — the service account may not run
+Google's rules evaluator, and the local emulator needs Java; add them with the next collections.
+
 ## The website holds no secrets
 
 Everything compiled into the site is public, so nothing secret is a `VITE_` variable. When the app needs
