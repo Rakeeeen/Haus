@@ -12,6 +12,27 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- GitHub Pages lets a browser keep an old copy of this page for ten minutes, and every deploy replaces the
+         hashed files that copy points to. If one of our own files is gone, load the page again (once a minute at
+         most) to get the new one, instead of leaving a blank screen. -->
+    <script>
+      (function () {
+        function reloadOnce() {
+          try {
+            var last = Number(sessionStorage.getItem('haus_reloaded_at') || 0);
+            if (Date.now() - last < 60000) return;
+            sessionStorage.setItem('haus_reloaded_at', String(Date.now()));
+          } catch (e) {}
+          location.reload();
+        }
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          var url = t && (t.src || t.href);
+          if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK') && typeof url === 'string' && url.indexOf(location.origin) === 0) reloadOnce();
+        }, true);
+        window.addEventListener('vite:preloadError', reloadOnce);
+      })();
+    </script>
     <script type="module" src="./src/app/main.tsx"></script>
   </body>
 </html>
