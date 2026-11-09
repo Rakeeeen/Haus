@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
-import { ARROW_ICON, FINANCE_ICON, FOCUS_ICON, TIME_ICON, WATER_ICON } from '@/ui/sketchIcons.data';
+import { ARROW_ICON, FINANCE_ICON, FOCUS_ICON, TASKS_ICON, TIME_ICON, WATER_ICON } from '@/ui/sketchIcons.data';
 import { Boil, SketchSvg } from '@/ui/Sketch';
 import { ICON_STROKE_LINECAP, ICON_STROKE_WIDTH } from '@/ui/icons';
 
@@ -94,6 +94,13 @@ export const FinanceVector: React.FC<{ size?: number }> = ({ size = 20 }) => (
     <g className="sketch-float">
       <Boil frames={FINANCE_ICON.parts.coin} />
     </g>
+  </SketchSvg>
+);
+
+// TASKS — a clipboard with its ticked lines.
+export const TasksVector: React.FC<{ size?: number }> = ({ size = 20 }) => (
+  <SketchSvg size={size}>
+    <Boil frames={TASKS_ICON.frames} />
   </SketchSvg>
 );
 

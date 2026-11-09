@@ -70,6 +70,12 @@ describe('typing a code', () => {
     expect(normalizeCode('4829 1037')).toBe('48291037');
     expect(normalizeCode('48-29 10x37 99')).toBe('48291037');
   });
+  it('reads Arabic-Indic, Persian and full-width digits as the same code', () => {
+    expect(normalizeCode('٤٨٢٩ ١٠٣٧')).toBe('48291037');
+    expect(normalizeCode('۴۸۲۹۱۰۳۷')).toBe('48291037');
+    expect(normalizeCode('４８２９１０３７')).toBe('48291037');
+    expect(normalizeCode('٤٨٢٩ 1037')).toBe('48291037');
+  });
   it('shows a code in two groups', () => {
     expect(formatCode('48291037')).toBe('4829 1037');
     expect(formatCode('4829')).toBe('4829');

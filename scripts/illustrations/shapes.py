@@ -204,3 +204,19 @@ def hourglass_icon(seed):
 ICONS.update({
     'hourglass': {'still': hourglass_icon, 'parts': {}},
 })
+
+
+# ── Tasks: a clipboard with a clip and three ticked lines ────────────────────────────────
+def tasks_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.blob([(240, 190), (850, 180), (860, 920), (250, 930)], rough=11, corner=.14)
+    _poly(p, [(190, 150), (500, 142), (810, 150), (826, 500), (810, 850), (500, 858), (190, 850), (174, 500)])
+    p.line([(360, 100), (500, 86), (640, 100)], w=62)
+    for y in (360, 540, 720):
+        p.line([(300, y), (350, y + 56), (440, y - 50)], w=58)
+        p.line([(520, y), (610, y - 4), (700, y)], w=58)
+    return p
+
+ICONS.update({
+    'tasks': {'still': tasks_icon, 'parts': {}},
+})

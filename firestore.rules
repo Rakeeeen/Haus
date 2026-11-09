@@ -127,6 +127,28 @@ service cloud.firestore {
         && (resource == null || request.time >= resource.data.approvedAt + duration.value(30, 'd'));
     }
 
+    // ── Work: projects, tasks, their comments, and notes. The owner's alone for now; a project's own members get
+    //    in with the sharing step. A project's client is kept in its own document so it can stay his.
+    match /work_projects/{id} {
+      allow read, write: if isOwner();
+    }
+
+    match /work_projects_private/{id} {
+      allow read, write: if isOwner();
+    }
+
+    match /work_tasks/{id} {
+      allow read, write: if isOwner();
+
+      match /comments/{commentId} {
+        allow read, write: if isOwner();
+      }
+    }
+
+    match /work_notes/{id} {
+      allow read, write: if isOwner();
+    }
+
     // ── Invitations: only the owner manages them; a guest can read just their own ────
     match /members/{email} {
       allow get: if isOwner() || (signedIn() && email == request.auth.token.email.lower());

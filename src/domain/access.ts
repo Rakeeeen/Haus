@@ -63,8 +63,18 @@ export function codeFromBytes(bytes: ArrayLike<number>): string {
   return code;
 }
 
-/** What someone typed, reduced to digits ("4829 1037" → "48291037"). */
-export const normalizeCode = (input: string): string => input.replace(/\D/g, '').slice(0, CODE_LENGTH);
+/** Arabic-Indic (٠–٩), Persian (۰–۹) and full-width (０–９) digits as the plain 0–9 a keyboard in any language can type. */
+const toLatinDigits = (input: string): string =>
+  input.replace(/[\u0660-\u0669\u06F0-\u06F9\uFF10-\uFF19]/g, (digit) => {
+    const code = digit.charCodeAt(0);
+    return String(code >= 0xff10 ? code - 0xff10 : code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+  });
+
+/**
+ * What someone typed, reduced to the code's digits ("4829 1037" → "48291037"), whatever language their keyboard
+ * is in: "٤٨٢٩ ١٠٣٧" is the same code.
+ */
+export const normalizeCode = (input: string): string => toLatinDigits(input).replace(/\D/g, '').slice(0, CODE_LENGTH);
 
 /** A code as shown, in two groups: "48291037" → "4829 1037". */
 export const formatCode = (code: string): string => code.replace(/^(\d{4})(\d+)$/, '$1 $2');

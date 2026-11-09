@@ -159,6 +159,28 @@ instead of hardcoding its own numbers. Genuine exceptions, with their own hand-t
 system: the Pomodoro focus ring (scales with its own size), Recharts `ReferenceLine`/chart internals, the
 `MonthFingerprint` ray weight (encodes a data value, not a fixed style), and `CustomCursor`'s shape outline.
 
+## Work: projects, tasks and comments
+
+The work side (`features/work/`, routes `/work`, `/work/tasks`, `/work/projects`, `/work/projects/:id`) is Hamed's alone for
+now. It is the Notion setup he ran his work from: **projects** (each for a client, with a status, priority, lead and date),
+**tasks** (a title, status To do / Doing / Done / Dropped, priority, a date, a project, who it is for, tags, a description
+and comments) and, later, notes. Notion's sprints and the git field are left out.
+
+- **Data.** Each project and task is its own Firestore document (`work_projects`, `work_tasks`, and a task's `comments`
+  subcollection), listened to once by `WorkProvider` in `data/useWork.tsx` and read through `useWork()`. A project's
+  **client** is in its own document (`work_projects_private`), so it can stay the owner's when projects are shared.
+- **Rules of the work, as pure functions in `domain/work/`** (with tests): today's tasks and the other day filters, ordering,
+  grouping by status, what moving a task to another column does (stamps `doneAt`), the month grid (the week starts on
+  Saturday), a project's progress (finished over all, not counting dropped), grouping by client or status, and a project's
+  span on the timeline. "Today" is the device's calendar day, as in Notion.
+- **Screens.** Tasks as a board (cards are dragged between columns with `@dnd-kit`; touch works by pressing and holding),
+  a table or a calendar; filters by day (Today follows the date by itself, or pick one), status, project and a search.
+  Projects as cards (a column per client), a table grouped by status, or a timeline. The Home dock has a Tasks card
+  (today's open tasks, with a tick to finish each).
+- **Importing Notion.** `node backend/scripts/import-notion.js "<export folder>"` reads a Notion Markdown & CSV export
+  (`backend/src/lib/notionImport.js`, tested) and says what it found; `--write` imports it. Ids come from the export and
+  anything already in Haus is left alone, so it can be run again. Notion leaves comments out of its exports.
+
 ## The Discord bot (`backend/`)
 
 Separate package, not part of the web build. `bot.js` only wires things together and schedules them;
@@ -222,7 +244,7 @@ approval (`isApprovedGuest`), valid 30 days (`GUEST_APPROVAL_DAYS` in `domain/ac
 Switching a guest off in the Guests list cuts them off at once. `AuthProvider` exposes this as `approved`.
 
 **`firestore.rules` is the real lock; the screens only follow it.** Everything is denied unless a rule allows it: the owner
-reads and writes `dashboard/*`, his fingerprint record and device code; an approved guest only their own
+reads and writes `dashboard/*`, the work collections, his fingerprint record and device code; an approved guest only their own
 `users/{uid}/data/*`; only the owner reads or writes `members`. Publish with `node backend/scripts/deploy-rules.js` (the bot's service account; the ruleset it
 replaces is remembered, `--rollback` puts it back). The rules have no automated tests yet — the service account may not run
 Google's rules evaluator, and the local emulator needs Java; add them with the next collections.

@@ -59,12 +59,15 @@ export const GuestsModal: React.FC<{
               <p className="font-mono-main text-[12px] truncate text-ink">{guest.name || guest.email}</p>
               {guest.name && <p className="font-mono-main text-[9px] text-ink/40 truncate">{guest.email}</p>}
             </div>
-            <Button size="sm" tone={guest.active ? 'ink' : 'outline'} disabled={busy} onClick={() => run(() => onSetActive(guest, !guest.active))}>
-              {guest.active ? 'On' : 'Off'}
-            </Button>
-            <IconButton size="sm" tone="ghost" aria-label={`Remove ${guest.email}`} data-tip="Remove" disabled={busy} onClick={() => run(() => onRemove(guest.email))}>
-              <Trash2 size={14} />
-            </IconButton>
+            {/* Side by side, so a pressed one pushes its neighbour like every other button row. */}
+            <div className="spring-group flex items-center gap-2 shrink-0">
+              <Button size="sm" tone={guest.active ? 'ink' : 'outline'} disabled={busy} onClick={() => run(() => onSetActive(guest, !guest.active))}>
+                {guest.active ? 'On' : 'Off'}
+              </Button>
+              <IconButton size="sm" tone="outline" aria-label={`Remove ${guest.email}`} data-tip="Remove" disabled={busy} onClick={() => run(() => onRemove(guest.email))}>
+                <Trash2 size={14} />
+              </IconButton>
+            </div>
           </div>
         ))}
       </div>

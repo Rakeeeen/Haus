@@ -11,6 +11,7 @@ import { TooltipLayer } from '@/ui/TooltipLayer';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
+import { WorkProvider } from '@/data/useWork';
 import { DailyResetManager } from '@/app/DailyResetManager';
 import { GoldPriceRefresher } from '@/app/GoldPriceRefresher';
 import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
@@ -24,6 +25,10 @@ import '@/styles/global.css';
 const Water = lazy(() => import('@/features/water/Water').then((m) => ({ default: m.Water })));
 const Pomodoro = lazy(() => import('@/features/focus/Pomodoro').then((m) => ({ default: m.Pomodoro })));
 const Finance = lazy(() => import('@/features/finance/Finance').then((m) => ({ default: m.Finance })));
+const WorkHub = lazy(() => import('@/features/work/WorkHub').then((m) => ({ default: m.WorkHub })));
+const Tasks = lazy(() => import('@/features/work/Tasks').then((m) => ({ default: m.Tasks })));
+const Projects = lazy(() => import('@/features/work/Projects').then((m) => ({ default: m.Projects })));
+const ProjectPage = lazy(() => import('@/features/work/ProjectPage').then((m) => ({ default: m.ProjectPage })));
 
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <motion.div
@@ -90,22 +95,31 @@ const AppRoutes: React.FC = () => {
     );
   }
 
+  const routes = (
+    <AnimatePresence mode="wait">
+      <Routes>
+        <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
+        <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
+        <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
+        {/* Finance and the work side are Hamed's alone (for now). */}
+        {role === 'owner' && <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} /></AnimatedPage>} />}
+        {role === 'owner' && <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} /></AnimatedPage>} />}
+        {role === 'owner' && <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />}
+        {role === 'owner' && <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} /></AnimatedPage>} />}
+        {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       <CustomCursor />
       <DailyResetManager />
       {role === 'owner' && <GoldPriceRefresher />}
 
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
-          <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
-          <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
-          {/* Finance is Hamed's alone. */}
-          {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AnimatePresence>
+      {/* The work side's data (projects, tasks) is only listened to for Hamed. */}
+      {role === 'owner' ? <WorkProvider>{routes}</WorkProvider> : routes}
 
       <FloatingTimer currentPage={currentPage} onNavigate={() => nav('pomodoro')} />
       {role === 'owner' && <DeviceCodeBanner user={user} />}

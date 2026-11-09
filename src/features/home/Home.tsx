@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { IconButton } from '@/ui/Button';
 import { NAME } from '@/constants/brand';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -15,6 +15,8 @@ import { usePomodoro } from '@/data/usePomodoro';
 import { AppModal } from '@/ui/AppModal';
 import type { Viewer } from '@/domain/access';
 import { useGuests } from '@/data/useMembers';
+import { useWorkOptional } from '@/data/useWork';
+import { filterTasks, moveToStatus, sortTasks } from '@/domain/work/tasks';
 import { GuestsModal } from '@/features/home/components/GuestsModal';
 import { getLogicalDate } from '@/domain/day';
 import { usePrayer } from '@/data/usePrayer';
@@ -33,12 +35,13 @@ import { PixelDigits } from '@/ui/PixelFocusDisplay';
 import { PixelDateTile } from '@/ui/PixelCalendar';
 import { getDateParts } from '@/domain/month';
 import {
-  MaskedValue, SidebarActiveVector, WaterVector, FocusVector, FinanceVector, TimeVector, MonthFingerprint,
+  MaskedValue, SidebarActiveVector, WaterVector, FocusVector, FinanceVector, TasksVector, TimeVector, MonthFingerprint,
 } from '@/features/home/components/visuals';
 import { TimeCardBody } from '@/features/home/components/TimeCard';
 import { WaterCardBody } from '@/features/home/components/WaterCard';
 import { FocusCardBody } from '@/features/home/components/FocusCard';
 import { FinanceCardBody } from '@/features/home/components/FinanceCard';
+import { TasksCardBody } from '@/features/home/components/TasksCard';
 
 interface HomeProps {
   navigate: (to: string) => void;
@@ -59,7 +62,7 @@ const ZEN_RESUME_MS = 3 * 60_000;
 // consistent, physical motion instead of a collection of separately-tuned easings.
 
 // Persists last active card so remount starts on the correct card instantly
-type CardId = 'time' | 'water' | 'pomodoro' | 'finance';
+type CardId = 'time' | 'water' | 'pomodoro' | 'finance' | 'tasks';
 let _lastActiveCardId: CardId = 'time';
 // Persists greeting name so it doesn't change on every remount
 const _NAMES = ['Hamed', 'Ghorab', 'Shahyn', 'Rakeeen'];
@@ -71,6 +74,13 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const isOwner = viewer.role === 'owner';
   const { guests, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
   const [guestsOpen, setGuestsOpen] = useState(false);
+  // Today's tasks still to do (Hamed's only: the work data isn't there for anyone else).
+  const work = useWorkOptional();
+  const todayTasks = useMemo(
+    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'] })) : []),
+    [work],
+  );
+  const projectName = (id: string | null) => work?.projects.find((p) => p.id === id)?.name ?? null;
   const [activeCardId, setActiveCardId] = useState<CardId>(() => _lastActiveCardId);
   const [displayedCardId, setDisplayedCardId] = useState<CardId>(() => _lastActiveCardId);
   const [bigCardVisible, setBigCardVisible] = useState(false);
@@ -721,6 +731,14 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               subText: pomodoroOvertime ? 'OVERTIME' : pomodoroPaused ? 'PAUSED' : pomodoroRunning ? mode.toUpperCase() : 'FOCUSED TODAY',
             },
             {
+              id: 'tasks',
+              title: 'Tasks',
+              Vector: TasksVector,
+              route: 'work',
+              metric: String(todayTasks.length),
+              subText: 'DUE TODAY',
+            },
+            {
               id: 'finance',
               title: 'Finance',
               Vector: FinanceVector,
@@ -736,7 +754,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               metric: null, // drawn as dotted digits below instead of text
               subText: 'EGYPT',
             },
-          ] as const).filter((card) => isOwner || card.id !== 'finance').map((card, index, cards) => {
+          ] as const).filter((card) => isOwner || (card.id !== 'finance' && card.id !== 'tasks')).map((card, index, cards) => {
             const isActive = activeCardId === card.id;
             const { Vector } = card;
             const touchedId = reduceMotion ? null : pressedCardId ?? hoveredCardId;
@@ -835,7 +853,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               className="hidden lg:block absolute -left-10 z-10 pointer-events-none"
               style={{ top: 0 }}
               animate={{
-                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'finance', 'time'] : ['water', 'pomodoro', 'time']).indexOf(systemCardId) * (124 + 16),
+                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'tasks', 'finance', 'time'] : ['water', 'pomodoro', 'time']).indexOf(systemCardId) * (124 + 16),
                 opacity: 1,
               }}
               initial={false}
@@ -880,6 +898,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               const found = [
                 { id: 'pomodoro', route: 'pomodoro' },
                 { id: 'water', route: 'water' },
+                { id: 'tasks', route: 'work' },
                 { id: 'finance', route: 'finance' },
               ].find(c => c.id === activeCardId);
               if (found) navigate(found.route);
@@ -924,6 +943,15 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
                   nightLocked={focusNightLocked}
                   fridayLocked={focusFridayLocked}
                   onStart={(e) => { e.stopPropagation(); if (!focusNightLocked && !focusFridayLocked) pomodoroStart(); }}
+                />
+              )}
+
+              {displayedCardId === 'tasks' && (
+                <TasksCardBody
+                  today={todayTasks}
+                  projectName={projectName}
+                  onFinish={(task) => work?.updateTask(task.id, moveToStatus(task, 'done'))}
+                  onOpen={(e) => { e.stopPropagation(); navigate('work'); }}
                 />
               )}
 

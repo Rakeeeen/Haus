@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { signOut, type User } from 'firebase/auth';
 import { auth } from '@/data/firebase';
 import { requestGuestCode, submitGuestCode } from '@/data/guestAccess';
-import { formatCode, isCompleteCode, normalizeCode } from '@/domain/access';
+import { CODE_LENGTH, formatCode, normalizeCode } from '@/domain/access';
 import { Button } from '@/ui/Button';
 import { Boil, SketchSvg } from '@/ui/Sketch';
 import { LOCK_ICON } from '@/ui/sketchIcons.data';
@@ -26,6 +26,7 @@ export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
   const [state, setState] = useState<State>('asking');
   const [busy, setBusy] = useState(false);
   const asked = useRef(false);
+  const field = useRef<HTMLInputElement>(null);
 
   const ask = async () => {
     setState('asking');
@@ -44,18 +45,26 @@ export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
     ask();
   }, []);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isCompleteCode(code) || busy) return;
+  // No button to press: the moment the eighth digit is in, the code is tried.
+  const submit = async (digits: string) => {
+    if (busy) return;
     setBusy(true);
     try {
-      await submitGuestCode(user.uid, normalizeCode(code));
+      await submitGuestCode(user.uid, digits);
       // Accepted: AuthProvider sees the approval and swaps this screen for the system.
     } catch {
       setState('wrong');
       setCode('');
     }
     setBusy(false);
+    // A disabled field loses focus; put it back so they can type again straight away.
+    requestAnimationFrame(() => field.current?.focus());
+  };
+
+  const onType = (typed: string) => {
+    const digits = normalizeCode(typed);
+    setCode(digits);
+    if (digits.length === CODE_LENGTH) submit(digits);
   };
 
   return (
@@ -69,22 +78,28 @@ export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
           {MESSAGE[state]}
         </p>
 
-        <form onSubmit={submit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
+          {/* Always left to right and plain digits, whatever language the keyboard is in. */}
           <input
-            value={formatCode(normalizeCode(code))}
-            onChange={(e) => setCode(e.target.value)}
+            ref={field}
+            value={formatCode(code)}
+            onChange={(e) => onType(e.target.value)}
+            dir="ltr"
+            lang="en"
             inputMode="numeric"
             autoComplete="one-time-code"
+            autoFocus
+            disabled={busy}
             placeholder="0000 0000"
             aria-label="8-digit code"
-            className="w-full text-center font-mono-main text-3xl font-black tracking-[0.2em] outline-none bg-ink/5 border border-ink/12 focus:border-ink text-ink rounded-box px-4 py-4"
+            className="w-full text-center font-mono-main text-3xl font-black tracking-[0.2em] outline-none bg-ink/5 border border-ink/12 focus:border-ink text-ink rounded-box px-4 py-4 disabled:opacity-60"
           />
-          <Button type="submit" disabled={!isCompleteCode(code) || busy} className="w-full">
-            {busy ? 'Checking…' : 'Enter'}
-          </Button>
-          <Button tone="ghost" onClick={ask} disabled={busy || state === 'asking'} className="w-full">Ask again</Button>
-          <Button tone="outline" onClick={() => signOut(auth)} className="w-full">Sign out</Button>
-        </form>
+          <p className="font-mono-main text-[10px] text-ink/40 h-4">{busy ? 'Checking…' : ''}</p>
+          <div className="spring-group flex gap-3">
+            <Button tone="ghost" onClick={ask} disabled={busy || state === 'asking'} className="flex-1">Ask again</Button>
+            <Button tone="outline" onClick={() => signOut(auth)} className="flex-1">Sign out</Button>
+          </div>
+        </div>
       </div>
     </div>
   );
