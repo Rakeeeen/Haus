@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node bot.js",
     "report:preview": "node scripts/report-preview.js",
-    "report:send": "node scripts/report-send.js"
+    "report:send": "node scripts/report-send.js",
+    "mail:preview": "node scripts/mail-preview.js"
   },
   "dependencies": {
     "@slack/bolt": "^5.1.0",
@@ -16,6 +17,7 @@
     "express": "^4.22.2",
     "firebase-admin": "^12.7.0",
     "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.1",
     "pdfkit": "^0.15.2",
     "undici": "^6.24.1"
   }

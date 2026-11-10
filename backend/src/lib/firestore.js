@@ -56,3 +56,24 @@ export async function setDashboardValue(key, value) {
     updatedAt: new Date().toISOString(),
   });
 }
+
+/** One document of a collection (the data, or null). */
+export async function getDocument(collection, id) {
+  const snap = await getDb().collection(collection).doc(id).get();
+  return snap.exists ? snap.data() : null;
+}
+
+export async function setDocument(collection, id, data) {
+  await getDb().collection(collection).doc(id).set(data);
+}
+
+/**
+ * Calls `onSnapshot` with every snapshot of a collection, the first one included (that one is what was already there);
+ * returns a function that stops listening.
+ */
+export function watchCollection(collection, onSnapshot) {
+  return getDb().collection(collection).onSnapshot(
+    onSnapshot,
+    (error) => console.error(`⚠️ Lost the Firestore listener for ${collection}:`, error.message),
+  );
+}

@@ -46,3 +46,5 @@ backend/.rules-previous
 
 # Claude Code: this machine's own permissions (launch.json, which the preview uses, stays tracked)
 .claude/settings.local.json
+
+backend/mail-preview/

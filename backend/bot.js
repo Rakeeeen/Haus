@@ -7,6 +7,7 @@ import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
 import { cleanChannel } from './src/features/cleanup.js';
 import { watchFocusNotifications } from './src/features/focusNotifications.js';
+import { watchMailNotifications } from './src/features/mailNotifications.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
 import { afterAttempt, readState, reportDue, writeState } from './src/features/report/schedule.js';
@@ -86,6 +87,13 @@ try {
   watchFocusNotifications(process.env.DISCORD_POMODORO_WEBHOOK_URL);
 } catch (error) {
   console.error('❌ Could not watch the focus timer:', error.message);
+}
+
+// Email: an invitation, and a task given to someone — the same way, from Firestore (see features/mailNotifications.js).
+try {
+  watchMailNotifications();
+} catch (error) {
+  console.error('❌ Could not watch for email:', error.message);
 }
 
 // The Slack control panel (/firmus) — an alternative to the Discord one, started only when its tokens are set.
