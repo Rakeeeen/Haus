@@ -112,6 +112,21 @@ export function projectSpan(project: Project, tasks: readonly Task[], today: str
 }
 
 /** The first of each month from `from`'s month to `to`'s, with how many days in from the start — for the timeline's header. */
+/**
+ * The month labels of a timeline that fit: a label is drawn at its month's start (or at the left edge, for a month that began
+ * before the chart), and one that would sit closer than `minGapDays` to the label before it is left out, so labels never print
+ * on top of each other. A first month that is only a sliver gives way to the next one.
+ */
+export function spreadMonthLabels<T extends { offset: number }>(months: readonly T[], minGapDays: number): T[] {
+  const at = (m: T) => Math.max(0, m.offset);
+  const list = months.length > 1 && at(months[1]) - at(months[0]) < minGapDays ? months.slice(1) : months;
+  const kept: T[] = [];
+  for (const m of list) {
+    if (kept.length === 0 || at(m) - at(kept[kept.length - 1]) >= minGapDays) kept.push(m);
+  }
+  return kept;
+}
+
 export function monthStarts(from: string, to: string): Array<{ key: string; label: string; offset: number }> {
   const start = parseDayKey(from);
   const end = parseDayKey(to);

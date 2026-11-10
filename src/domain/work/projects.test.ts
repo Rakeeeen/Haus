@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareProjects, countTasks, filterProjectsByStatus, groupProjects, projectLabel, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
+import { compareProjects, countTasks, filterProjectsByStatus, groupProjects, spreadMonthLabels, projectLabel, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
 import { normalizeProject, normalizeTask } from '@/domain/work/sharing';
 import type { Project, Task } from '@/domain/work/types';
 
@@ -80,6 +80,20 @@ describe('compareProjects / groupProjects', () => {
     const clients: Record<string, string | null> = { a: 'Zed', b: 'Amr', c: null };
     const groups = groupProjects([project({ id: 'a' }), project({ id: 'b' }), project({ id: 'c' })], 'client', (id) => clients[id]);
     expect(groups.map((g) => g.label)).toEqual(['Amr', 'Zed', 'No client']);
+  });
+});
+
+describe('spreadMonthLabels', () => {
+  const m = (offset: number) => ({ key: String(offset), label: String(offset), offset });
+  it('keeps labels that are far enough apart', () => {
+    expect(spreadMonthLabels([m(0), m(30), m(61)], 20).map((x) => x.offset)).toEqual([0, 30, 61]);
+  });
+  it('drops a label that would print on the one before', () => {
+    expect(spreadMonthLabels([m(0), m(30), m(40), m(70)], 20).map((x) => x.offset)).toEqual([0, 30, 70]);
+  });
+  it('lets a sliver of a first month give way to the next one', () => {
+    // the first month began before the chart (offset -20, drawn at 0) and the next starts 14 days in
+    expect(spreadMonthLabels([m(-20), m(14), m(45)], 20).map((x) => x.offset)).toEqual([14, 45]);
   });
 });
 

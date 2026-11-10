@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { countTasks, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan } from '@/domain/work/projects';
+import { countTasks, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan, spreadMonthLabels } from '@/domain/work/projects';
 import { addDays, daysBetween, dayKey } from '@/domain/work/tasks';
 import type { Project, ProjectStatus, Task } from '@/domain/work/types';
 import { AutoHeight } from '@/ui/AutoHeight';
@@ -185,6 +185,8 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
 const PX_PER_DAY = 3;
 const ROW_HEIGHT = 40;
 const HEADER_HEIGHT = 30;
+/** Room under the rows for the "Today" label, so it never sits on a month label above. */
+const FOOTER_HEIGHT = 26;
 const NAMES_WIDTH = 176;
 
 /**
@@ -205,8 +207,10 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
   const to = addDays(rows.reduce((max, r) => (r.span.to > max ? r.span.to : max), today), 60);
   const width = (daysBetween(from, to) + 1) * PX_PER_DAY;
   const x = (day: string) => daysBetween(from, day) * PX_PER_DAY;
+  // A label is about 60 px wide; leave out the ones that would overprint their neighbour.
   const months = monthStarts(from, to);
-  const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT + 12;
+  const labelled = new Set(spreadMonthLabels(months, Math.ceil(70 / PX_PER_DAY)).map((m) => m.key));
+  const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
 
   return (
     <div className="card !p-0 overflow-x-auto no-scrollbar">
@@ -226,11 +230,12 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
         <div className="relative shrink-0" style={{ width }}>
           {months.map((m) => (
             <div key={m.key} className="absolute top-0 bottom-0 border-l border-ink/8" style={{ left: Math.max(0, m.offset * PX_PER_DAY) }}>
-              <span className="absolute top-2 left-2 font-mono-main text-[11px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>
+              {labelled.has(m.key) && <span className="absolute top-2 left-2 font-mono-main text-[11px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>}
             </div>
           ))}
-          <div className="absolute top-0 bottom-0 w-px bg-rust/70 z-10" style={{ left: x(today) }}>
-            <span className="absolute top-2 left-1.5 font-mono-main text-[11px] uppercase tracking-widest text-rust">Today</span>
+          {/* The today line starts under the month labels, so it never cuts through one. */}
+          <div className="absolute bottom-0 w-px bg-rust/70 z-10" style={{ left: x(today), top: HEADER_HEIGHT - 6 }}>
+            <span className="absolute bottom-1.5 left-1.5 font-mono-main text-[11px] uppercase tracking-widest text-rust">Today</span>
           </div>
           {rows.map(({ project, span, progress }, i) => (
             <div key={project.id} onClick={() => onOpen(project.id)} data-tip={project.name} className="absolute cursor-pointer" style={{ top: HEADER_HEIGHT + i * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2, left: x(span.from) }}>
