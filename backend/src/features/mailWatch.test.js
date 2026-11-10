@@ -49,6 +49,18 @@ describe('the first time the bot ever runs', () => {
   });
 });
 
+describe('a bot that has just begun', () => {
+  it('mails a task made after its first look, though it began with nothing told', async () => {
+    const world = await start({ ...GUESTS });
+    world.snapshot('work_tasks', [['added', 'old', task({ assigneeUids: ['g1'] })]]); // what was there: not announced
+    await settle();
+    world.snapshot('work_tasks', [['added', 'new', task({ assigneeUids: ['owner'], createdByUid: 'g2', updatedByUid: 'g2' })]]);
+    await settle();
+    expect(to('sara@x.co')).toEqual([]);
+    expect(to('hamed@x.co')).toHaveLength(1);
+  });
+});
+
 describe('catching up on what happened while the bot was off', () => {
   const told = { 'mail_state/tasks': { told: { t1: ['owner'], t2: ['g1'] } } };
 

@@ -70,10 +70,11 @@ describe('giving a task to someone as a project admin', () => {
     expect(await screen.findByRole('button', { name: 'For' })).toBeTruthy();
   });
 
-  it('hides it where the guest does not run the project', async () => {
+  it('keeps it, greyed, where the guest does not run the project', async () => {
     render(<TaskModal editing={draftTask} projects={[project]} author="Sara" guestUid="g1" canEdit canDelete={false}
       assigneesFor={() => []} onClose={() => {}} onCreate={async () => {}} onUpdate={async () => {}} onDelete={async () => {}} />);
-    await screen.findByText('Title');
-    expect(screen.queryByRole('button', { name: 'For' })).toBeNull();
+    const field = await screen.findByRole('button', { name: 'For' });
+    expect((field as HTMLButtonElement).disabled).toBe(true);
+    expect(field.textContent).toContain('Sara');
   });
 });

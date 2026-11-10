@@ -157,7 +157,7 @@ export const TaskModal: React.FC<{
                 />
               )}
             </Field>
-            {assignees.length > 1 && (
+            {assignees.length > 1 ? (
               <Field label="For">
                 <SelectMulti
                   ariaLabel="For"
@@ -166,6 +166,18 @@ export const TaskModal: React.FC<{
                   disabled={locked}
                   onChange={(v) => set('assigneeUids', v)}
                   options={choices.map((a) => ({ value: a.key, label: a.name, photoUrl: a.photoUrl, withAvatar: true }))}
+                />
+              </Field>
+            ) : guestUid !== undefined && (
+              // A guest who does not run this project gives a task to nobody: the field stays, greyed, showing whose it is.
+              <Field label="For">
+                <SelectMulti
+                  ariaLabel="For"
+                  empty={author}
+                  values={[]}
+                  disabled
+                  onChange={() => {}}
+                  options={[{ value: guestUid, label: author, photoUrl: null, withAvatar: true }]}
                 />
               </Field>
             )}

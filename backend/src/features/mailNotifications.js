@@ -184,7 +184,8 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
 
   await safely('Task watcher', async () => {
     const state = await getDocument('mail_state', 'tasks');
-    const firstRun = !state;
+    // Only the very first snapshot of a bot that has never run counts as "already told": a task made after it is new.
+    let baseline = !state;
     told = new Map(Object.entries(state?.told ?? {}));
 
     watchCollection('work_tasks', (snap) => {
@@ -194,7 +195,7 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
         const task = { id, ...change.doc.data() };
         const before = told.get(id);
         // The first time ever: everything already here counts as told.
-        if (firstRun && before === undefined) { told.set(id, assigneesOf(task)); return; }
+        if (baseline && before === undefined) { told.set(id, assigneesOf(task)); return; }
         const isNew = before === undefined;
         const actor = actorOf(task, isNew);
         const given = newlyGiven(before, task, actor);
@@ -202,9 +203,10 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
         told.set(id, [...new Set([...stillTold(before, task), ...(assigneesOf(task).includes(actor) ? [actor] : [])])]);
         for (const to of given) queue(actor, to, task, eventTime(task, isNew));
       });
+      baseline = false;
       save();
     });
-    console.log(firstRun ? '📧 First run: every task already here counts as told' : '📧 Caught up with the tasks given while the bot was off');
+    console.log(!state ? '📧 First run: every task already here counts as told' : '📧 Caught up with the tasks given while the bot was off');
   });
 
   console.log('📧 Watching invitations and task assignments for email');
