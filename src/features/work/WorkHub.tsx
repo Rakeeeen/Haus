@@ -68,7 +68,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
       {!ready ? (
         <WorkLoading />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section className="card flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Tasks</h2>
@@ -78,7 +78,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                 <FilterMulti label="Status" options={TASK_STATUS_OPTIONS} values={taskStatuses} onChange={setTaskStatuses} />
               </div>
             </div>
-            <div className="flex flex-col max-h-[22rem] overflow-y-auto pr-1">
+            <div className="flex flex-col flex-1 min-h-0 max-h-[34rem] overflow-y-auto pr-1">
               {shownTasks.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No tasks match.</p>}
               {shownTasks.map((task) => (
                 <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
@@ -98,7 +98,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
               <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Projects</h2>
               <FilterMulti label="Status" options={PROJECT_STATUSES} values={projectStatuses} onChange={setProjectStatuses} />
             </div>
-            <div className="flex flex-col gap-4 max-h-[22rem] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-4">
               {shownProjects.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No projects with that status.</p>}
               {shownProjects.map((project) => {
                 const mine = byProject.get(project.id) ?? [];
