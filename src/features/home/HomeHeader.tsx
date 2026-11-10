@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconButton } from '@/ui/Button';
-import { IconCamera as Camera, IconLogOut as LogOut, IconMoon as Moon, IconMoreVertical as MoreVertical, IconSun as Sun, IconUsers as Users } from '@/ui/icons';
+import { IconCamera as Camera, IconLogOut as LogOut, IconMoon as Moon, IconMoreVertical as MoreVertical, IconPause as Pause, IconPlay as Play, IconSun as Sun, IconUsers as Users } from '@/ui/icons';
 import { SPRING } from '@/ui/springPose';
 import { useDismiss } from '@/ui/useDismiss';
 import { AchievementRow } from '@/features/home/components/AchievementRow';
@@ -24,8 +24,11 @@ export const HomeHeader: React.FC<{
   isDark: boolean;
   onToggleTheme: () => void;
   onOpenGuests: () => void;
+  /** Hamed's switch for pausing Haus for every guest: `paused` is its state, `onTogglePause` asks to pause (or resumes at once). */
+  paused?: boolean;
+  onTogglePause?: () => void;
   onLogout: () => void;
-}> = ({ greeting, greetingVisible, journalEntry, onNameClick, photoUrl, initial, uploading, onAvatarClick, isOwner, isDark, onToggleTheme, onOpenGuests, onLogout }) => {
+}> = ({ greeting, greetingVisible, journalEntry, onNameClick, photoUrl, initial, uploading, onAvatarClick, isOwner, isDark, onToggleTheme, onOpenGuests, paused = false, onTogglePause, onLogout }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useDismiss(showMenu, () => setShowMenu(false), [menuRef]);
@@ -97,6 +100,18 @@ export const HomeHeader: React.FC<{
                 {isOwner && (
                   <IconButton onClick={() => { setShowMenu(false); onOpenGuests(); }} data-tip="Guests" aria-label="Guests">
                     <Users size={18} />
+                  </IconButton>
+                )}
+
+                {/* Pause Haus for every guest (Hamed's alone) */}
+                {isOwner && onTogglePause && (
+                  <IconButton
+                    onClick={() => { setShowMenu(false); onTogglePause(); }}
+                    className={paused ? '!text-rust' : ''}
+                    data-tip={paused ? 'Haus is paused for guests — resume' : 'Pause Haus for guests'}
+                    aria-label={paused ? 'Resume Haus for guests' : 'Pause Haus for guests'}
+                  >
+                    {paused ? <Play size={18} /> : <Pause size={18} />}
                   </IconButton>
                 )}
 

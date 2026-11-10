@@ -146,6 +146,20 @@ service cloud.firestore {
         && (resource == null || request.time >= resource.data.approvedAt + duration.value(30, 'd'));
     }
 
+    // ── Pausing Haus for everyone ─────────────────────────────────────────────────────
+    // One document, system/status: { paused, message?, updatedAt }. Hamed's switch writes it; every invited guest's screen
+    // listens to it and shows a "resting" page while it says paused. (It stops the screens, not the data: the rules above
+    // deliberately do not look it up, because each lookup in a rule is a billed read.)
+    match /system/status {
+      allow read: if isOwner() || isGuest();
+      allow create, update: if isOwner()
+        && onlyKeys(['paused', 'message', 'updatedAt'])
+        && request.resource.data.paused is bool
+        && request.resource.data.get('message', '') is string
+        && request.resource.data.get('message', '').size() <= 200
+        && request.resource.data.updatedAt is string;
+    }
+
     // ── What a guest does, for Hamed to read (and the bot to tell Discord) ────────────
     // A line per action: signing in, adding / moving / deleting a task, a comment. A guest can add one about themself
     // (never about someone else, never to change or remove one); only Hamed reads them.

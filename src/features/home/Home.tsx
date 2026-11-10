@@ -29,6 +29,8 @@ import { HomeHeader } from '@/features/home/HomeHeader';
 import { FinanceCardBody } from '@/features/home/components/FinanceCard';
 import { FocusCardBody } from '@/features/home/components/FocusCard';
 import { GuestsModal } from '@/features/home/components/GuestsModal';
+import { PauseModal } from '@/features/home/components/PauseModal';
+import { useSystemStatus } from '@/data/useSystemStatus';
 import { TasksCardBody } from '@/features/home/components/TasksCard';
 import { TimeCardBody } from '@/features/home/components/TimeCard';
 import { WaterCardBody } from '@/features/home/components/WaterCard';
@@ -62,6 +64,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
 
   // ── Data ───────────────────────────────────────────────────────────────────────────────────────
   const [guestsOpen, setGuestsOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const system = useSystemStatus(isOwner);
   const { guests, statuses: guestStatuses, error: guestsError, invite, setActive, remove } = useGuests(isOwner, guestsOpen);
   const work = useWorkOptional();
   // Whose tasks the card lists is chosen on the Tasks pages (one remembered choice); the card just follows it.
@@ -176,6 +180,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         isDark={isDark}
         onToggleTheme={toggleTheme}
         onOpenGuests={() => setGuestsOpen(true)}
+        paused={system.paused}
+        onTogglePause={() => (system.paused ? void system.setPaused(false) : setPauseOpen(true))}
         onLogout={handleLogout}
       />
 
@@ -258,7 +264,10 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         confirm={{ message: 'Something went wrong while uploading your avatar. Please try again.', confirmText: 'Got it', cancelText: 'Dismiss', onConfirm: avatar.dismissFailure }}
       />
       {isOwner && (
+        <>
+        <PauseModal isOpen={pauseOpen} onClose={() => setPauseOpen(false)} onPause={(message) => system.setPaused(true, message)} />
         <GuestsModal isOpen={guestsOpen} onClose={() => setGuestsOpen(false)} guests={guests} statuses={guestStatuses} error={guestsError} onInvite={invite} onSetActive={setActive} onRemove={remove} />
+        </>
       )}
       <AppModal
         isOpen={logoutModal}

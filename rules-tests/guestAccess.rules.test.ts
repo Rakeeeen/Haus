@@ -128,3 +128,22 @@ describe('the activity log', () => {
     await assertSucceeds(getDoc(doc(owner(), 'activity_log', 'a')));
   });
 });
+
+describe('the pause switch', () => {
+  const status = { paused: true, message: 'Back at 9', updatedAt: '2026-11-10T12:00:00Z' };
+  it('only Hamed can switch it, with only the fields it holds', async () => {
+    await assertSucceeds(setDoc(doc(owner(), 'system', 'status'), status));
+    await invite();
+    await assertFails(setDoc(doc(guest(), 'system', 'status'), status));
+    await assertFails(setDoc(doc(owner(), 'system', 'status'), { ...status, extra: 1 }));
+    await assertFails(setDoc(doc(owner(), 'system', 'status'), { ...status, paused: 'yes' }));
+    await assertFails(setDoc(doc(owner(), 'system', 'status'), { ...status, message: 'x'.repeat(300) }));
+  });
+  it('an invited guest can see it (even before they have a code), a stranger cannot', async () => {
+    await seed((db) => setDoc(doc(db, 'system', 'status'), status));
+    await assertFails(getDoc(doc(guest(), 'system', 'status')));              // not invited yet
+    await invite();
+    await assertSucceeds(getDoc(doc(guest(), 'system', 'status')));
+    await assertFails(getDoc(doc(guest('stranger', 'nobody@example.com'), 'system', 'status')));
+  });
+});

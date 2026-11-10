@@ -433,3 +433,11 @@ The free plan allows 50,000 reads a day, and every document a listener delivers 
 last listen); **notes** are read only once a notes screen asks (`useWork().loadNotes`); a guest's approvals are read only while the Guests list
 is open; and the bot's activity watcher asks only for lines after what it has told (`watchCollectionAfter`), its overdue check remembers what it
 has read. Before adding a listener on a whole collection, ask how many documents it will deliver on every page load.
+
+## Pausing Haus for guests
+
+Hamed's header menu has a pause button (`HomeHeader`, with `PauseModal` asking for an optional line). It writes `system/status`
+(`{ paused, message, updatedAt }`, only he can; any invited guest can read it). Every guest's `AppRoutes` watches it (`data/useSystemStatus.ts`)
+and, while it says paused, shows `features/auth/PausedScreen` instead of whatever they were about to see — the code screen included — and puts the
+system back by itself when he resumes. It stops the screens, not the data: the rules deliberately do not look the switch up, since each lookup in a
+rule is a billed read. A pause that cannot be read counts as "not paused", so a broken connection never locks anyone out.

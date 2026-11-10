@@ -7,6 +7,9 @@ import { NoAccess } from '@/features/auth/NoAccess';
 import { GuestCodeGate } from '@/features/auth/GuestCodeGate';
 import { GuestCodeBanner } from '@/features/auth/GuestCodeBanner';
 import { GuestEntered } from '@/features/auth/GuestEntered';
+import { PausedScreen } from '@/features/auth/PausedScreen';
+import { useSystemStatus } from '@/data/useSystemStatus';
+import { signOutUser } from '@/data/auth';
 import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
@@ -51,6 +54,9 @@ const AppRoutes: React.FC = () => {
   const location = useLocation();
   const { user, role, firstName, approved, accessError, biometricCleared, setBiometricCleared } = useAuth();
 
+  // Hamed can pause Haus for every guest; a guest's screen follows his switch live.
+  const system = useSystemStatus(role === 'guest');
+
   const nav = (to: string, replace = false) => {
     const path = to === 'home' ? '/' : `/${to}`;
     navigate(path, { replace });
@@ -75,6 +81,16 @@ const AppRoutes: React.FC = () => {
       <div className="min-h-screen">
         <CustomCursor />
         <NoAccess user={user} error={accessError} />
+      </div>
+    );
+  }
+
+  // Paused by Hamed: a guest (whatever else they were about to see) gets the resting page, and it lifts by itself.
+  if (role === 'guest' && system.paused) {
+    return (
+      <div className="min-h-screen">
+        <CustomCursor />
+        <PausedScreen message={system.message} onSignOut={() => signOutUser()} />
       </div>
     );
   }
