@@ -52,8 +52,6 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
   }
 
   const counts = countTasks(mine);
-  // A guest adds tasks only to a project they run; Hamed to any.
-  const canAdd = role === 'owner' || isProjectAdmin(project.id);
   const openNew = (status: Task['status'] = 'todo') => editor.open({ kind: 'new', defaults: { projectId: project.id, status, date: dayKey(new Date()) } });
 
   return (
@@ -63,7 +61,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
       title={project.name}
       actions={<>
         {(role === 'owner' || isProjectAdmin(project.id)) && <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>}
-        {canAdd && <Button onClick={() => openNew()}><Plus size={16} />New task</Button>}
+        <Button onClick={() => openNew()}><Plus size={16} />New task</Button>
       </>}
     >
       <div className="card flex flex-col gap-6">
@@ -92,7 +90,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
           canEdit={canEditTask}
           onMove={setTaskStatus}
           onToggleDone={toggleTaskDone}
-          onAdd={canAdd ? openNew : undefined}
+          onAdd={openNew}
         />
       )}
 

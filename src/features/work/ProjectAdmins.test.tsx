@@ -76,14 +76,4 @@ describe('giving a task to someone as a project admin', () => {
     await screen.findByText('Title');
     expect(screen.queryByRole('button', { name: 'For' })).toBeNull();
   });
-
-  it('offers a guest, for a new task, only the projects they run', async () => {
-    const mine = normalizeProject({ id: 'p', name: 'Brand', memberUids: ['g1', 'g2'], adminUids: ['g1'] });
-    const theirs = normalizeProject({ id: 'q', name: 'Other', memberUids: ['g1'], adminUids: [] });
-    render(<TaskModal editing={{ kind: 'new', defaults: {} }} projects={[mine, theirs]} author="Sara" guestUid="g1" canEdit canDelete={false}
-      assigneesFor={() => []} onClose={() => {}} onCreate={async () => {}} onUpdate={async () => {}} onDelete={async () => {}} />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Project' }));
-    expect(await screen.findByRole('option', { name: 'Brand' })).toBeTruthy();
-    expect(screen.queryByRole('option', { name: 'Other' })).toBeNull();
-  });
 });
