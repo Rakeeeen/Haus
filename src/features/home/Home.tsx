@@ -17,7 +17,7 @@ import { useWhoseTasks } from '@/data/useWhoseTasks';
 import { useWorkOptional } from '@/data/useWork';
 import type { Viewer } from '@/domain/access';
 import { getClockParts, HOME_TIME_ZONE } from '@/domain/clock';
-import { getDayMoments, isFocusNightLocked, isWaterClosed } from '@/domain/devotion/prayer';
+import { computeNextPrayer, getDayMoments, isFocusNightLocked, isWaterClosed } from '@/domain/devotion/prayer';
 import { getDateParts } from '@/domain/month';
 import { filterTasks, sortTasks } from '@/domain/work/tasks';
 import { BigCard } from '@/features/home/BigCard';
@@ -82,7 +82,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   // Started and with progress, but not ticking — different from "never started" (time left equals the whole session).
   const focusPaused = !pomodoro.running && !pomodoro.isOvertime && pomodoro.timeLeft > 0 && pomodoro.timeLeft < sessionTotalSecs;
 
-  const { times, hijriDate, nextPrayer } = usePrayer();
+  const { times, hijriDate } = usePrayer();
+  const nextPrayer = useMemo(() => computeNextPrayer(times, now), [times, now]);
   const weather = useWeather();
   const { dailyHistory, todayKey, journalEntry } = useDailySnapshot(glasses, focusMinutes, now);
 

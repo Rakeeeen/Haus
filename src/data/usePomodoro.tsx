@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
 import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
 import { getPomoTodayIdx } from '@/domain/day';
 import { getDayMoments } from '@/domain/devotion/prayer';
 import {
-  breakMinutesFor, recordSession, type FocusDayStats, type FocusLogEntry, type FocusNotification, type FocusWeekDay,
+  breakMinutesFor, breakTimer, idleTimer, minutesSoFar, minutesWithOvertime, newSessionTimer, recordSession, weekOrSeed,
+  type FocusCheckpoint, type FocusDayStats, type FocusLogEntry, type FocusNotification, type FocusWeekDay, type TimerState,
 } from '@/domain/focus/session';
 
 interface PomodoroContextType {
@@ -33,326 +34,231 @@ interface PomodoroContextType {
 
 const PomodoroContext = createContext<PomodoroContextType | null>(null);
 
+/** Focus sessions are always this long (minutes). */
+const FOCUS_MINUTES = 25;
+/** How often the running timer checks the clock: often, but it counts from timestamps, so a throttled background tab loses nothing. */
+const TICK_MS = 200;
+/**
+ * 3 s, not 45: this is also the heartbeat a remote actor (the Discord bot) reads to know how stale the snapshot is — the shorter
+ * the interval, the less a remote Done/save can be off by. Cheap at this scale (at most ~1200 writes an hour of continuous running).
+ */
+const CHECKPOINT_EVERY_MS = 3_000;
+const ISHA_CHECK_EVERY_MS = 30_000;
+
+/** The time of day as the log shows it: "9:41 AM". */
+const clockTime = (at: Date) => at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+/**
+ * The Pomodoro timer, shared by the Focus page, the Home card and the floating timer. It counts from timestamps (so a hidden tab
+ * can't make it lose time), keeps a checkpoint in Firestore (so a reload, another device or the Discord bot can take over), and
+ * tells the bot — through Firestore, so no webhook secret ships in the website — when a session ends.
+ */
 export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [focusDuration] = useState(25); // minutes (enforced 25m default)
-  const [breakDuration, setBreakDurationState] = useState(5);  // minutes (initially 5m)
-  const FOCUS = focusDuration * 60;
-  const [timeLeft, setTimeLeft] = useState(FOCUS);
+  const focusDuration = FOCUS_MINUTES;
+  const [breakDuration, setBreakDuration] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(focusDuration * 60);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [overtime, setOvertime] = useState(0);
   const [isOvertime, setIsOvertime] = useState(false);
+
   const [sessions, setSessions] = useFirebaseSync<number>('pomodoro_sessions', 0);
   const [rawWeekStats, setWeekStats] = useFirebaseSync<FocusWeekDay[]>('pomodoro_week', POMODORO_WEEKLY_MOCK);
-  const weekStats = Array.isArray(rawWeekStats) && rawWeekStats.length === 7 ? rawWeekStats : POMODORO_WEEKLY_MOCK;
+  const weekStats = weekOrSeed(rawWeekStats, POMODORO_WEEKLY_MOCK);
   const [logs, setLogs] = useFirebaseSync<FocusLogEntry[]>('pomodoro_logs', []);
   const [history] = useFirebaseSync<Record<string, FocusDayStats & { logs?: FocusLogEntry[] }>>('pomodoro_history', {});
   const [, setNotification] = useFirebaseSync<FocusNotification | null>('focus_notification', null);
   const todayIdx = getPomoTodayIdx();
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Checkpoint of the in-progress timer, so a reload/crash mid-session doesn't
-  // silently lose everything since the last completed session (see incident:
-  // ~5h of focus lost because nothing is persisted until "take a break"/"save").
+  /** Puts all five timer numbers at once. */
+  const applyTimer = useCallback((state: TimerState) => {
+    setTimeLeft(state.timeLeft);
+    setOvertime(state.overtime);
+    setIsOvertime(state.isOvertime);
+    setMode(state.mode);
+    setRunning(state.running);
+  }, []);
+
+  // ── The checkpoint ───────────────────────────────────────────────────────────────────────────────
+  // A snapshot of the in-progress timer, so a reload or crash mid-session doesn't lose everything since the last completed
+  // session (once ~5 h of focus was lost because nothing was saved until "take a break"/"save").
   //
-  // `writtenBy` tags which tab/actor last wrote this checkpoint — a random id
-  // generated once per tab load, or the fixed string the Discord bot uses.
-  // It's what lets this tab tell "that's just my own periodic write echoing
-  // back through Firestore's realtime listener" apart from "something else
-  // (another device, the bot) genuinely changed this" — see the adoption
-  // effect below. Comparing raw *values* instead doesn't work: a remote pause
-  // one second after a remote start writes a checkpoint value this tab could
-  // easily have produced itself, so there's no way to tell them apart without
-  // an explicit origin marker.
-  type Checkpoint = {
-    timeLeft: number; overtime: number; isOvertime: boolean; running: boolean; mode: 'focus' | 'break';
-    writtenBy?: string;
-  };
-  const [checkpoint, setCheckpoint, checkpointReady] = useFirebaseSync<Checkpoint | null>('pomodoro_checkpoint', null);
+  // `writtenBy` tags who wrote it — a random id per tab load, or the fixed name the bot uses. It is how this tab tells "my own
+  // periodic write echoing back through Firestore's listener" from "something else (another device, the bot) changed this".
+  // Comparing values doesn't work: a remote pause a second after a remote start writes a value this tab could have produced.
+  const [checkpoint, setCheckpoint, checkpointReady] = useFirebaseSync<FocusCheckpoint | null>('pomodoro_checkpoint', null);
+  const instanceId = useRef<string>(crypto.randomUUID());
   const hydratedFromCheckpoint = useRef(false);
-  const instanceIdRef = useRef<string>(crypto.randomUUID());
+  /** The timer as it is now, readable from timers and listeners without re-creating them on every tick. */
+  const liveTimer = useRef<TimerState>({ timeLeft, overtime, isOvertime, running, mode });
+  useEffect(() => { liveTimer.current = { timeLeft, overtime, isOvertime, running, mode }; }, [timeLeft, overtime, isOvertime, running, mode]);
 
-  // On first mount, always adopt whatever checkpoint exists (reload/crash
-  // recovery). After that, keep adopting LATER checkpoint changes too — but
-  // skip ones this exact tab just wrote itself (its own echo, nothing new to
-  // apply). Anything genuinely external — another device, the Discord bot —
-  // is adopted immediately and unconditionally, which is what makes a remote
-  // Start/Pause/Resume/Done actually take effect on an already-open tab
-  // instead of needing a reload, even mid-session.
+  const writeCheckpoint = useCallback((state: TimerState = liveTimer.current) => {
+    setCheckpoint({ ...state, writtenBy: instanceId.current });
+  }, [setCheckpoint]);
+
+  // On first mount, adopt whatever checkpoint exists (reload/crash recovery). After that, keep adopting later changes — except
+  // this tab's own echoes. Anything external is adopted at once and unconditionally, so a remote Start/Pause/Done takes effect
+  // on an already-open tab without a reload.
   //
-  // Two things this effect must get right, both found the hard way:
-  //
-  // 1. Wait for `checkpointReady`. useFirebaseSync seeds `checkpoint` from
-  //    localStorage synchronously on mount, before Firestore has actually
-  //    confirmed anything — acting on that pre-confirmation value is acting
-  //    on a cache that might be stale (e.g. a leftover "running" snapshot
-  //    from a session that's since ended on another device). Worse: once
-  //    adopted, this tab's own heartbeat writes a fresh `updatedAt` within
-  //    seconds, which then makes useFirebaseSync's "newest write wins" merge
-  //    permanently reject Firestore's real (older, by then) correction —
-  //    the stale session never self-heals, it just keeps ticking. Only once
-  //    `checkpointReady` is true does `checkpoint` reflect what Firestore
-  //    actually has.
-  //
-  // 2. `null` is a real, meaningful value (idle), not "nothing to do yet" —
-  //    it must be applied too, not skipped, so a genuine external clear
-  //    (Discord's Discard, this tab's own stale adoption self-correcting)
-  //    actually takes local state back to idle instead of leaving it as
-  //    whatever it was.
+  // Two things this must get right, both found the hard way:
+  // 1. Wait for `checkpointReady`. The value is seeded from localStorage before Firestore confirms anything, and may be stale
+  //    (a leftover "running" snapshot from a session that has since ended elsewhere). Worse, once adopted, this tab's own
+  //    heartbeat writes a fresh `updatedAt`, so useFirebaseSync's "newest write wins" merge would reject Firestore's real
+  //    correction for good, and the stale session would just keep ticking.
+  // 2. `null` is a real value (idle), not "nothing yet": it must be applied too, so a genuine external clear (the bot's Discard)
+  //    takes this tab back to idle instead of leaving it as it was.
   useEffect(() => {
     if (!checkpointReady) return;
     const isFirstRun = !hydratedFromCheckpoint.current;
     hydratedFromCheckpoint.current = true;
-    if (!isFirstRun && checkpoint?.writtenBy === instanceIdRef.current) return;
-    if (!checkpoint) {
-      setTimeLeft(FOCUS);
-      setOvertime(0);
-      setIsOvertime(false);
-      setMode('focus');
-      setRunning(false);
-      return;
-    }
-    setTimeLeft(checkpoint.timeLeft);
-    setOvertime(checkpoint.overtime);
-    setIsOvertime(checkpoint.isOvertime);
-    setMode(checkpoint.mode);
-    setRunning(checkpoint.running);
-  }, [checkpoint, checkpointReady, FOCUS]);
+    if (!isFirstRun && checkpoint?.writtenBy === instanceId.current) return;
+    applyTimer(checkpoint ?? idleTimer(focusDuration));
+  }, [checkpoint, checkpointReady, focusDuration, applyTimer]);
 
-  // Daily Reset handled by DailyResetManager (src/app/)
-
-
-  // Discord is told through Firestore: the bot watches this document and posts the message, so no
-  // webhook (a secret) has to ship inside the website.
+  // ── Telling the bot ──────────────────────────────────────────────────────────────────────────────
   const notifyFocus = useCallback((type: FocusNotification['type'], overtimeSeconds = 0) => {
     void setNotification({ id: crypto.randomUUID(), type, focusMinutes: focusDuration, overtimeSeconds, at: new Date().toISOString() });
   }, [focusDuration, setNotification]);
 
-  // Core timer logic - Robust against background throttling
-  const startTimeRef = useRef<number | null>(null);
-  const baseTimeLeftRef = useRef<number>(timeLeft);
-  const baseOvertimeRef = useRef<number>(overtime);
+  /** A finished focus session: one more session, a log line, today's minutes, and the bot told with the full time (base + overtime). */
+  const recordFinishedSession = useCallback((minutes: number, overtimeSeconds: number, at: Date = new Date()) => {
+    setSessions((s) => s + 1);
+    setLogs((l) => [{ time: clockTime(at), duration: minutes }, ...l]);
+    notifyFocus('focus_complete', overtimeSeconds);
+    setWeekStats(recordSession(weekStats, todayIdx, minutes));
+  }, [weekStats, todayIdx, setSessions, setLogs, setWeekStats, notifyFocus]);
 
-  useEffect(() => {
-    if (running) {
-      startTimeRef.current = Date.now();
-      baseTimeLeftRef.current = timeLeft;
-      baseOvertimeRef.current = overtime;
+  /** Ends a focus session that ran `minutes`: records it and goes into a break of a fifth of that. */
+  const finishIntoBreak = useCallback((minutes: number, overtimeSeconds: number) => {
+    const breakMinutes = breakMinutesFor(minutes);
+    setBreakDuration(breakMinutes);
+    recordFinishedSession(minutes, overtimeSeconds);
+    const next = breakTimer(breakMinutes);
+    applyTimer(next);
+    writeCheckpoint(next);
+  }, [recordFinishedSession, applyTimer, writeCheckpoint]);
 
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000);
-        
-        if (isOvertime) {
-          setOvertime(baseOvertimeRef.current + elapsed);
-        } else {
-          const newTime = Math.max(0, baseTimeLeftRef.current - elapsed);
-          setTimeLeft(newTime);
+  // ── The countdown ────────────────────────────────────────────────────────────────────────────────
+  // Counted from when it started plus how much was left (or how much overtime there was), never by adding up ticks, so
+  // background throttling can't make it lose time.
+  const startedAt = useRef<number | null>(null);
+  const baseTimeLeft = useRef<number>(timeLeft);
+  const baseOvertime = useRef<number>(overtime);
 
-          if (newTime <= 0) {
-            if (mode === 'focus') {
-              setIsOvertime(true);
-              notifyFocus('focus_timer_up');
-              // We only send a "Time's up" browser notification at 0, 
-              // but we'll send the final Discord report when they actually click "Start Break"
-              // to capture the full time spent.
-            } else {
-              // Break finished. The checkpoint only stores a snapshot, not a
-              // timestamp — on reload it resumes counting down from whatever
-              // `timeLeft` it last held, in real time, no matter how long ago
-              // that was. Since this transition sets `running` false, the
-              // periodic/on-hide checkpoint writer below stops running too and
-              // would never persist that — leaving a stale "still on break"
-              // checkpoint that replays its last few leftover seconds forever,
-              // on every future reload, even though nothing is actually running.
-              // Clearing it here (same as reset()) is what actually stops that.
-              setRunning(false);
-              setMode('focus');
-              setTimeLeft(FOCUS);
-              setCheckpoint(null);
-              notifyFocus('break_complete');
-            }
-          }
-        }
-      }, 200);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [running, mode, isOvertime, notifyFocus, FOCUS, focusDuration, setCheckpoint]);
-
-  // Periodic + on-hide checkpoint: keeps `pomodoro_checkpoint` in sync with the
-  // live timer so a reload/crash restores from here instead of losing progress.
-  const checkpointStateRef = useRef({ timeLeft, overtime, isOvertime, running, mode });
-  useEffect(() => {
-    checkpointStateRef.current = { timeLeft, overtime, isOvertime, running, mode };
-  }, [timeLeft, overtime, isOvertime, running, mode]);
-
-  // 3s, not the original 45s: this is also the heartbeat a remote actor (the
-  // Discord bot) reads to know "how stale is this snapshot" — the shorter
-  // the interval, the less a remote Done/save can be off by. Cheap at this
-  // scale (at most ~1200 writes/hour of continuous running).
   useEffect(() => {
     if (!running) return;
-    const writeCheckpoint = () => setCheckpoint({ ...checkpointStateRef.current, writtenBy: instanceIdRef.current });
-    const intervalId = setInterval(writeCheckpoint, 3000);
+    startedAt.current = Date.now();
+    baseTimeLeft.current = timeLeft;
+    baseOvertime.current = overtime;
+
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (startedAt.current ?? Date.now())) / 1000);
+      if (isOvertime) {
+        setOvertime(baseOvertime.current + elapsed);
+        return;
+      }
+      const left = Math.max(0, baseTimeLeft.current - elapsed);
+      setTimeLeft(left);
+      if (left > 0) return;
+      if (mode === 'focus') {
+        // The "time's up" goes to Discord now; the full report waits for "Take a break", to include the overtime.
+        setIsOvertime(true);
+        notifyFocus('focus_timer_up');
+      } else {
+        // A break is over. The checkpoint holds only a snapshot, no timestamp, so on reload it would resume counting down the last
+        // few seconds it held, in real time, however long ago that was. With `running` now false the writer below stops too and
+        // would never persist this — leaving a stale "still on break" checkpoint that replays forever. Clearing it (as reset() does) stops that.
+        applyTimer(idleTimer(focusDuration));
+        setCheckpoint(null);
+        notifyFocus('break_complete');
+      }
+    }, TICK_MS);
+    return () => clearInterval(timer);
+  }, [running, mode, isOvertime, notifyFocus, focusDuration, setCheckpoint, applyTimer]);
+
+  // While running: a checkpoint every few seconds, and one the moment the tab is hidden.
+  useEffect(() => {
+    if (!running) return;
+    const intervalId = setInterval(() => writeCheckpoint(), CHECKPOINT_EVERY_MS);
     const onVisibilityChange = () => { if (document.visibilityState === 'hidden') writeCheckpoint(); };
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [running, setCheckpoint]);
+  }, [running, writeCheckpoint]);
 
-  // start/pause also write the checkpoint immediately instead of waiting for
-  // the next periodic tick (up to 3s away) — so a Pause made here is visible
-  // to a remote reader (the bot) right away, not just "eventually".
+  // ── What the pages can do ────────────────────────────────────────────────────────────────────────
+  // Start and pause write the checkpoint at once instead of waiting for the next tick (up to 3 s away), so a remote reader
+  // (the bot) sees a pause made here right away, not "eventually".
   const start = useCallback(() => {
     setRunning(true);
-    setCheckpoint({ ...checkpointStateRef.current, running: true, writtenBy: instanceIdRef.current });
-  }, [setCheckpoint]);
+    writeCheckpoint({ ...liveTimer.current, running: true });
+  }, [writeCheckpoint]);
+
   const pause = useCallback(() => {
     setRunning(false);
-    setCheckpoint({ ...checkpointStateRef.current, running: false, writtenBy: instanceIdRef.current });
-  }, [setCheckpoint]);
+    writeCheckpoint({ ...liveTimer.current, running: false });
+  }, [writeCheckpoint]);
 
-  const reset = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setRunning(false);
-    setIsOvertime(false);
-    setOvertime(0);
-    setMode('focus');
-    setTimeLeft(FOCUS);
+  const goIdle = useCallback(() => {
+    applyTimer(idleTimer(focusDuration));
     setCheckpoint(null);
-  }, [FOCUS, setCheckpoint]);
-
-  const startBreak = useCallback(() => {
-    const focusGained = focusDuration + Math.floor(overtime / 60);
-    const calculatedBreakMins = breakMinutesFor(focusGained);
-    setBreakDurationState(calculatedBreakMins);
-
-    setSessions(s => s + 1);
-    const nowTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
-    
-    // Send Discord Report with full time (Base + Overtime)
-    notifyFocus('focus_complete', overtime);
-
-    const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
-    const updated = recordSession(currentWeekStats, todayIdx, focusGained);
-    setWeekStats(updated);
-
-    setMode('break');
-    setIsOvertime(false);
-    setOvertime(0);
-    setTimeLeft(calculatedBreakMins * 60);
-    setRunning(true);
-    setCheckpoint({
-      timeLeft: calculatedBreakMins * 60, overtime: 0, isOvertime: false, mode: 'break', running: true,
-      writtenBy: instanceIdRef.current,
-    });
-  }, [overtime, weekStats, todayIdx, setWeekStats, focusDuration, notifyFocus, setCheckpoint]);
+  }, [focusDuration, applyTimer, setCheckpoint]);
 
   const startNewSession = useCallback(() => {
-    setMode('focus');
-    setIsOvertime(false);
-    setOvertime(0);
-    setTimeLeft(FOCUS);
-    setRunning(true);
-    setCheckpoint({ timeLeft: FOCUS, overtime: 0, isOvertime: false, mode: 'focus', running: true, writtenBy: instanceIdRef.current });
-  }, [FOCUS, setCheckpoint]);
+    const next = newSessionTimer(focusDuration);
+    applyTimer(next);
+    writeCheckpoint(next);
+  }, [focusDuration, applyTimer, writeCheckpoint]);
 
-  const skipBreak = useCallback(() => {
-    setMode('focus');
-    setIsOvertime(false);
-    setOvertime(0);
-    setTimeLeft(FOCUS);
-    setRunning(false);
-    setCheckpoint(null);
-  }, [FOCUS, setCheckpoint]);
+  /** "Take a break", from overtime: the whole session plus the minutes it ran over. */
+  const startBreak = useCallback(() => {
+    finishIntoBreak(minutesWithOvertime(focusDuration, overtime), overtime);
+  }, [focusDuration, overtime, finishIntoBreak]);
 
+  /** "Done", before the timer ends: what has been focused so far. */
   const saveProgress = useCallback(() => {
     if (mode !== 'focus') return;
-    
-    const focusGained = Math.max(1, Math.floor((focusDuration * 60 - timeLeft + overtime) / 60));
-    const calculatedBreakMins = breakMinutesFor(focusGained);
-    setBreakDurationState(calculatedBreakMins);
+    finishIntoBreak(minutesSoFar(focusDuration, timeLeft, overtime), overtime);
+  }, [mode, focusDuration, timeLeft, overtime, finishIntoBreak]);
 
-    setSessions(s => s + 1);
-    const nowTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
-    
-    // Send Discord Report with full time (Base + Overtime)
-    notifyFocus('focus_complete', overtime);
-
-    const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
-    const updated = recordSession(currentWeekStats, todayIdx, focusGained);
-    setWeekStats(updated);
-
-    setMode('break');
-    setIsOvertime(false);
-    setOvertime(0);
-    setTimeLeft(calculatedBreakMins * 60);
-    setRunning(true);
-    setCheckpoint({
-      timeLeft: calculatedBreakMins * 60, overtime: 0, isOvertime: false, mode: 'break', running: true,
-      writtenBy: instanceIdRef.current,
-    });
-  }, [mode, focusDuration, timeLeft, overtime, weekStats, todayIdx, setWeekStats, notifyFocus, setLogs, setCheckpoint]);
-
-  // Focus is locked Isha→Fajr (Pomodoro.tsx's `nightLocked`), but that lock only blocks
-  // *starting* a new session — a session already running (or sitting in overtime) when
-  // Isha hits just keeps counting, uninterrupted, with no button left to save it since
-  // Start is now disabled. DailyResetManager's own Isha close-out can't catch this either:
-  // it only archives what's already been committed to `pomodoro_week` (via this same
-  // save/startBreak path), never the live in-memory timer. Without this, a session left
-  // running through Isha silently never gets archived or zeroed at all.
-  const { times: nightLockPrayerTimes } = usePrayer();
-  const firedIshaAutoSaveRef = useRef('');
+  // Focus is locked from Isha to Fajr (Pomodoro.tsx's `nightLocked`), but that only blocks *starting* a session: one already
+  // running (or in overtime) when Isha comes just keeps counting, with no button left to save it. DailyResetManager's Isha
+  // close-out can't catch it either: it archives only what was already committed to `pomodoro_week`, never the live timer.
+  // So here the session is saved by itself, once a day, and the timer goes idle — not into a break, which is locked too.
+  const { times: prayerTimes } = usePrayer();
+  const ishaSavedOn = useRef('');
   useEffect(() => {
     if (mode !== 'focus' || !(running || isOvertime)) return;
     const check = () => {
       const now = new Date();
-      const todayDateStr = now.toDateString();
-      if (firedIshaAutoSaveRef.current === todayDateStr) return;
-      if (now.getTime() < getDayMoments(nightLockPrayerTimes, now).isha) return;
-      firedIshaAutoSaveRef.current = todayDateStr;
-
-      // Read live timeLeft/overtime from the checkpoint ref (updated every render, see
-      // above) instead of closing over them directly — keeping them out of this effect's
-      // deps means the 30s interval below isn't torn down and recreated on every ~200ms
-      // countdown tick while running.
-      const { timeLeft: liveTimeLeft, overtime: liveOvertime } = checkpointStateRef.current;
-      const focusGained = Math.max(1, Math.floor((focusDuration * 60 - liveTimeLeft + liveOvertime) / 60));
-      setSessions(s => s + 1);
-      const nowTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
-      notifyFocus('focus_complete', liveOvertime);
-      const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
-      const updated = recordSession(currentWeekStats, todayIdx, focusGained);
-      setWeekStats(updated);
-
-      // Go fully idle rather than into a break — Focus (and, by extension, starting a
-      // break) is locked until Fajr, so there's nothing to run into.
-      setMode('focus');
-      setIsOvertime(false);
-      setOvertime(0);
-      setTimeLeft(FOCUS);
-      setRunning(false);
-      setCheckpoint(null);
+      if (ishaSavedOn.current === now.toDateString()) return;
+      if (now.getTime() < getDayMoments(prayerTimes, now).isha) return;
+      ishaSavedOn.current = now.toDateString();
+      // The live numbers come from the ref, not from this effect's closure: that keeps them out of its deps, so the interval
+      // isn't torn down and rebuilt on every countdown tick.
+      const live = liveTimer.current;
+      recordFinishedSession(minutesSoFar(focusDuration, live.timeLeft, live.overtime), live.overtime, now);
+      goIdle();
     };
-    const interval = setInterval(check, 30000);
+    const interval = setInterval(check, ISHA_CHECK_EVERY_MS);
     check();
     return () => clearInterval(interval);
-  }, [mode, running, isOvertime, nightLockPrayerTimes, focusDuration, weekStats, todayIdx, setWeekStats, notifyFocus, setLogs, FOCUS, setCheckpoint]);
+  }, [mode, running, isOvertime, prayerTimes, focusDuration, recordFinishedSession, goIdle]);
 
-  return (
-    <PomodoroContext.Provider value={{
-      timeLeft, overtime, isOvertime, running, mode, sessions, weekStats, history, todayIdx,
-      focusDuration, breakDuration,
-      setWeekStats, logs,
-      start, pause, reset, startBreak, startNewSession, skipBreak, saveProgress
-    }}>
-      {children}
-    </PomodoroContext.Provider>
-  );
+  // One value object per change, so the pages that read the timer re-render when it changes — not whenever this provider does.
+  const value = useMemo<PomodoroContextType>(() => ({
+    timeLeft, overtime, isOvertime, running, mode, sessions, weekStats, logs, history, todayIdx,
+    focusDuration, breakDuration,
+    setWeekStats, start, pause, reset: goIdle, startBreak, startNewSession, skipBreak: goIdle, saveProgress,
+  }), [
+    timeLeft, overtime, isOvertime, running, mode, sessions, weekStats, logs, history, todayIdx, focusDuration, breakDuration,
+    setWeekStats, start, pause, goIdle, startBreak, startNewSession, saveProgress,
+  ]);
+
+  return <PomodoroContext.Provider value={value}>{children}</PomodoroContext.Provider>;
 };
 
 export const usePomodoro = () => {

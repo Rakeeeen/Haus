@@ -46,3 +46,65 @@ export function recordSession(week: FocusWeekDay[], dayIndex: number, focusedMin
     i === dayIndex ? { ...day, sessions: day.sessions + 1, minutes: (day.minutes || 0) + focusedMinutes } : day,
   );
 }
+
+/** The week as stored, or `seed` when what is stored isn't a full week (a missing or half-written value). */
+export function weekOrSeed(stored: unknown, seed: FocusWeekDay[]): FocusWeekDay[] {
+  return Array.isArray(stored) && stored.length === 7 ? (stored as FocusWeekDay[]) : seed;
+}
+
+/** What the timer is doing: all five numbers that describe it at an instant. */
+export interface TimerState {
+  /** Seconds left in the current session or break. */
+  timeLeft: number;
+  /** Seconds past the end of a focus session. */
+  overtime: number;
+  isOvertime: boolean;
+  running: boolean;
+  mode: 'focus' | 'break';
+}
+
+/** A snapshot of the timer kept in Firestore, so a reload (or another device, or the bot) can pick it up. */
+export interface FocusCheckpoint extends TimerState {
+  /** Which tab (or the bot) wrote it, so a tab can tell its own echo from a change made elsewhere. */
+  writtenBy?: string;
+}
+
+/** Nothing running: a fresh focus session waiting to start. */
+export const idleTimer = (focusMinutes: number): TimerState => ({
+  timeLeft: focusMinutes * 60, overtime: 0, isOvertime: false, running: false, mode: 'focus',
+});
+
+/** A new focus session, already counting down. */
+export const newSessionTimer = (focusMinutes: number): TimerState => ({ ...idleTimer(focusMinutes), running: true });
+
+/** A break of `breakMinutes`, already counting down. */
+export const breakTimer = (breakMinutes: number): TimerState => ({
+  timeLeft: breakMinutes * 60, overtime: 0, isOvertime: false, running: true, mode: 'break',
+});
+
+/** Minutes of focus in a session whose timer ran out and then ran on for `overtimeSeconds`. */
+export const minutesWithOvertime = (focusMinutes: number, overtimeSeconds: number): number =>
+  focusMinutes + Math.floor(overtimeSeconds / 60);
+
+/** Minutes of focus so far in a session saved before (or after) its end — at least one. */
+export const minutesSoFar = (focusMinutes: number, timeLeftSeconds: number, overtimeSeconds: number): number =>
+  Math.max(1, Math.floor((focusMinutes * 60 - timeLeftSeconds + overtimeSeconds) / 60));
+
+/** Friday (Mon = 0 … Sun = 6) — the last day of the Focus week: its Isha close-out starts the next week. */
+const LAST_WEEKDAY_INDEX = 4;
+
+/**
+ * Closing out a focus day at Isha: what goes into the history (nothing, if no session was done) and what the week shows
+ * after it — today's slot zeroed, or, after Friday's Isha, the whole week started fresh from `seed`.
+ */
+export function closeOutFocusDay(
+  week: FocusWeekDay[],
+  dayIndex: number,
+  seed: FocusWeekDay[],
+): { archived: FocusDayStats | null; nextWeek: FocusWeekDay[] } {
+  const today = week[dayIndex] || { sessions: 0, minutes: 0 };
+  return {
+    archived: today.sessions > 0 ? { sessions: today.sessions, minutes: today.minutes || 0 } : null,
+    nextWeek: dayIndex === LAST_WEEKDAY_INDEX ? seed : week.map((day, i) => (i === dayIndex ? { sessions: 0, minutes: 0 } : day)),
+  };
+}

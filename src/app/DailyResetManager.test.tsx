@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import { useState } from 'react';
+import { act, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DailyResetManager } from '@/app/DailyResetManager';
+import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
+
+// Synced values as a plain in-memory store that also mirrors localStorage, as the real hook does.
+const store = new Map<string, unknown>();
+vi.mock('@/data/useFirebaseSync', () => ({
+  useFirebaseSync: <T,>(key: string, initial: T) => {
+    const [value, setValue] = useState<T>(() => (store.has(key) ? (store.get(key) as T) : initial));
+    const set = (next: T | ((v: T) => T)) => {
+      setValue((prev) => {
+        const resolved = next instanceof Function ? next(prev) : next;
+        store.set(key, resolved);
+        window.localStorage.setItem(key, JSON.stringify(resolved));
+        return resolved;
+      });
+    };
+    return [value, set, true] as const;
+  },
+}));
+vi.mock('@/data/usePrayer', () => ({ usePrayer: () => ({ times: undefined }) })); // fallbacks: Maghrib 18:00, Isha 19:00
+
+const seed = (key: string, value: unknown) => { store.set(key, value); window.localStorage.setItem(key, JSON.stringify(value)); };
+const week = (sessions: number[]) => sessions.map((s, i) => ({ day: POMODORO_WEEKLY_MOCK[i].day, sessions: s, minutes: s * 25 }));
+const run = () => { render(<DailyResetManager />); };
+
+beforeEach(() => {
+  store.clear();
+  window.localStorage.clear();
+  vi.useFakeTimers();
+});
+afterEach(() => vi.useRealTimers());
+
+describe('the Maghrib water close-out', () => {
+  it('archives the day\'s glasses under that day and zeroes the counter', () => {
+    vi.setSystemTime(new Date('2026-11-09T18:30:00')); // Monday, after Maghrib
+    seed('hydration_glasses', 7);
+    run();
+    expect(store.get('hydration_history')).toEqual({ [new Date('2026-11-09T12:00:00').toDateString()]: 7 });
+    expect(store.get('hydration_glasses')).toBe(0);
+    expect(store.get('system_last_reset_date')).toBe(new Date('2026-11-09T12:00:00').toDateString());
+  });
+
+  it('archives nothing when no glass was drunk', () => {
+    vi.setSystemTime(new Date('2026-11-09T18:30:00'));
+    seed('hydration_glasses', 0);
+    run();
+    expect(store.get('hydration_history')).toBeUndefined();
+  });
+
+  it('runs once a day, not again on later checks', () => {
+    vi.setSystemTime(new Date('2026-11-09T18:30:00'));
+    seed('hydration_glasses', 7);
+    run();
+    seed('hydration_glasses', 3); // drunk after the reset (a "late glass" is handled elsewhere)
+    act(() => { vi.advanceTimersByTime(10 * 60 * 1000); });
+    expect(store.get('hydration_glasses')).toBe(3);
+  });
+
+  it('before Maghrib the day still belongs to yesterday', () => {
+    vi.setSystemTime(new Date('2026-11-09T10:00:00'));
+    seed('hydration_glasses', 4);
+    seed('system_last_reset_date', new Date('2026-11-08T12:00:00').toDateString()); // yesterday's was already done
+    run();
+    expect(store.get('hydration_glasses')).toBe(4);
+  });
+});
+
+describe('the Isha focus close-out', () => {
+  it('archives today\'s sessions and zeroes just today\'s slot', () => {
+    vi.setSystemTime(new Date('2026-11-09T19:30:00')); // Monday = slot 0
+    seed('pomodoro_week', week([2, 1, 1, 1, 1, 0, 0]));
+    seed('pomodoro_sessions', 2);
+    run();
+    expect(store.get('pomodoro_history')).toEqual({ [new Date('2026-11-09T12:00:00').toDateString()]: { sessions: 2, minutes: 50 } });
+    expect(store.get('pomodoro_sessions')).toBe(0);
+    const next = store.get('pomodoro_week') as Array<{ sessions: number }>;
+    expect(next[0].sessions).toBe(0);
+    expect(next[1].sessions).toBe(1);
+  });
+
+  it('does nothing before Isha', () => {
+    vi.setSystemTime(new Date('2026-11-09T18:45:00'));
+    seed('pomodoro_week', week([2, 0, 0, 0, 0, 0, 0]));
+    run();
+    expect(store.get('pomodoro_history')).toBeUndefined();
+  });
+
+  it('starts the week over after Friday\'s Isha', () => {
+    vi.setSystemTime(new Date('2026-11-13T19:30:00')); // Friday = slot 4
+    seed('pomodoro_week', week([1, 1, 1, 1, 3, 0, 0]));
+    run();
+    expect(store.get('pomodoro_week')).toEqual(POMODORO_WEEKLY_MOCK);
+    expect((store.get('pomodoro_history') as Record<string, { sessions: number }>)[new Date('2026-11-13T12:00:00').toDateString()].sessions).toBe(3);
+  });
+
+  it('closes a day only once', () => {
+    vi.setSystemTime(new Date('2026-11-09T19:30:00'));
+    seed('pomodoro_week', week([2, 0, 0, 0, 0, 0, 0]));
+    run();
+    seed('pomodoro_week', week([4, 0, 0, 0, 0, 0, 0]));
+    act(() => { vi.advanceTimersByTime(10 * 60 * 1000); });
+    expect((store.get('pomodoro_week') as Array<{ sessions: number }>)[0].sessions).toBe(4);
+  });
+});

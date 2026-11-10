@@ -1,18 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { onSnapshot, setDoc } from 'firebase/firestore';
-import { scopedDoc, storageKey } from '@/data/dataScope';
+import { readStored, scopedDoc, storageKey, writeStored } from '@/data/dataScope';
 
+/**
+ * A value that lives in Firestore (the signed-in person's own `dashboard/{key}`) and in localStorage, as `[value, setValue, ready]`.
+ *
+ * - It starts from localStorage, so the screen paints at once; Firestore's answer replaces it when it arrives (`ready`).
+ * - `setValue` (also in the `prev => next` form) is optimistic: state and localStorage change first, then Firestore is written.
+ * - Every write carries an `updatedAt`; a snapshot older than the last local write is ignored, so a slow server copy can't
+ *   undo what was just typed. (And `setValue` keeps one identity across renders on purpose — see CLAUDE.md.)
+ */
 export function useFirebaseSync<T>(key: string, initialValue: T) {
-  // 1. Initial State from LocalStorage (for speed)
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(storageKey(key));
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(error);
-      return initialValue;
-    }
-  });
+  const [storedValue, setStoredValue] = useState<T>(() => readStored(key, initialValue));
 
   const [isReady, setIsReady] = useState(false);
 
@@ -63,14 +62,11 @@ export function useFirebaseSync<T>(key: string, initialValue: T) {
         ? (value as (val: T) => T)(valueRef.current)
         : value;
 
-      // Update local state first (Optimistic UI)
+      // Local first (optimistic), then Firestore.
+      const now = new Date().toISOString();
       valueRef.current = valueToStore;
       setStoredValue(valueToStore);
-      window.localStorage.setItem(storageKey(key), JSON.stringify(valueToStore));
-
-      // Sync to Firestore
-      const now = new Date().toISOString();
-      window.localStorage.setItem(`${storageKey(key)}_updatedAt`, now);
+      writeStored(key, valueToStore, now);
 
       const docRef = scopedDoc(key);
       if (docRef) await setDoc(docRef, { value: valueToStore, updatedAt: now });

@@ -49,7 +49,7 @@ export function computeNextPrayer(times: PrayerTimes, now: Date = new Date()): N
     at.setHours(h, m, 0, 0);
     return { name: 'Fajr', time: timeStr, ...countdown(at.getTime() - now.getTime()) };
   }
-  return { name: 'Fajr', time: timeStr, countdown: '--:--', remainingMinutes: 999, totalRemainingSeconds: 0 };
+  return { name: 'Fajr', time: '', countdown: '--:--', remainingMinutes: 999, totalRemainingSeconds: 0 };
 }
 
 /** Water is closed from Maghrib (when the day is archived) until Fajr. */
