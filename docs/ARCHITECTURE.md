@@ -282,6 +282,13 @@ else (or to him). It is not always on, so it keeps in Firestore what it has told
 `mail_state/invites`: when invitations began) and, when it wakes, sends what it missed with the time it happened. The very first run
 only learns what is already there. `mail_state` and `mail_sent` have no rule, so only the bot (Admin SDK) reads or writes them.
 
+**Overdue.** From 9 in the morning (Cairo) the bot checks every few minutes, and tells each person who a task is for (guests, and Hamed
+for his own) about their tasks whose last day (`endDate`, or its `date`) has passed without being done — one mail with all of
+theirs, once per task and last day (`mail_sent`, `overdue:<task>:<day>:<who>`). Only what became late after the day the check first ran
+(`mail_state/overdue.since`) is announced, so the old backlog is not mailed. A bot that was off at 9 sends when it wakes.
+
+**A guest's picture** is the one from their Google account; only Hamed picks his own (Home's header).
+
 ## The website holds no secrets
 
 Everything compiled into the site is public, so nothing secret is a `VITE_` variable. When the app needs

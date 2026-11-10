@@ -19,7 +19,7 @@ const C = {
 const NAME_AR = 'هاوس';
 
 /** The pictures the emails use: file in `backend/assets/mail`, and the cid it is attached under. */
-export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'hero-notice.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
+export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'hero-notice.jpg', 'hero-overdue.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
 export const cidOf = (file) => file.replace(/\.[a-z]+$/, '');
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -65,6 +65,20 @@ export function tasksPhrase(count) {
   if (count === 1) return 'مهمة جديدة';
   if (count === 2) return 'مهمتين جديدتين';
   return count <= 10 ? `${count} مهام جديدة` : `${count} مهمة جديدة`;
+}
+
+/** "يوم واحد", "يومان", "3 أيام", "12 يومًا" — a number of days the way Arabic says it. */
+export function daysPhrase(days) {
+  if (days === 1) return 'يوم واحد';
+  if (days === 2) return 'يومان';
+  return days <= 10 ? `${days} أيام` : `${days} يومًا`;
+}
+
+/** "مهمة", "مهمتين", "3 مهام", "12 مهمة" — a count of tasks, without "new". */
+export function tasksCount(count) {
+  if (count === 1) return 'مهمة';
+  if (count === 2) return 'مهمتين';
+  return count <= 10 ? `${count} مهام` : `${count} مهمة`;
 }
 
 /** The first `max` characters of some text, cut at a word where it can be, with an ellipsis. */
@@ -181,12 +195,13 @@ export function invitationEmail({ inviter, name, appUrl, at }) {
 export const MAX_LISTED = 8;
 
 /** A task as the details box shows it. */
-function taskCard(b, task, projectName) {
+function taskCard(b, task, projectName, late = 0) {
   const rows = [];
   const when = whenOf(task);
   if (projectName) rows.push(['المشروع', projectName, {}]);
   if (when) rows.push([task.endDate && task.date && task.endDate !== task.date ? 'المدة' : 'الموعد', when, {}]);
   if (task.priority && PRIORITY[task.priority]) rows.push(['الأولوية', PRIORITY[task.priority], { color: PRIORITY_COLOR[task.priority] }]);
+  if (late > 0) rows.push(['التأخير', daysPhrase(late), { color: C.rust }]);
   const note = snippet(task.description);
   return box(`
     ${b.words(task.title || 'بدون عنوان', { size: 19, weight: 700, width: 450, lineHeight: 1.6 })}
@@ -195,8 +210,8 @@ function taskCard(b, task, projectName) {
 }
 
 /** One task in a list of several: its title, and what it is for / when, on a hairline row. */
-function taskLine(b, task, projectName) {
-  const sub = [projectName, whenOf(task)].filter(Boolean).join('  ·  ');
+function taskLine(b, task, projectName, late = 0) {
+  const sub = [projectName, whenOf(task), late > 0 ? `متأخرة ${daysPhrase(late)}` : null].filter(Boolean).join('  ·  ');
   return `
     <div style="padding:12px 0;border-top:1px solid ${C.line};">
       ${b.words(task.title || 'بدون عنوان', { size: 16, weight: 700, width: 492, lineHeight: 1.6 })}
@@ -241,6 +256,37 @@ export function tasksAssignedEmail({ giver, name, items, appUrl, at, forName }) 
       ...(whenSent(at) ? [`وقت التعيين: ${whenSent(at)}`] : []),
       '',
       ...shown.map(({ task, projectName }) => `• ${oneLine(task.title) || 'بدون عنوان'}${projectName ? ` (${projectName})` : ''}${whenOf(task) ? ` — ${whenOf(task)}` : ''}`),
+      ...(items.length > shown.length ? [`... و${items.length - shown.length} أخرى`] : []),
+      '',
+      appUrl,
+    ].join('\n'),
+    attachments: b.attachments,
+  };
+}
+
+/**
+ * A task (or several) whose end has passed without being finished, told to who it is for. `items` is
+ * `[{ task, projectName, late }]` with `late` the days since the end.
+ */
+export function tasksOverdueEmail({ name, items, appUrl }) {
+  const b = builder();
+  const first = oneLine(name).split(' ')[0];
+  const hello = first ? `${first}، ` : '';
+  const many = items.length > 1;
+  const shown = items.slice(0, MAX_LISTED);
+  const listing = many
+    ? `<div style="margin:0 0 22px;">${shown.map((i) => taskLine(b, i.task, i.projectName, i.late)).join('')}${items.length > shown.length ? `<div style="margin-top:8px;">${b.words(`و${items.length - shown.length} أخرى`, { size: 13, color: C.faded, width: 492, lineHeight: 1.7 })}</div>` : ''}</div>`
+    : taskCard(b, items[0].task, items[0].projectName, items[0].late);
+  const intro = many ? `${hello}فات موعد ${tasksCount(items.length)} ولم تُنجَز بعد.` : `${hello}فات موعد هذه المهمة ولم تُنجَز بعد.`;
+  const body = `${paragraph(b, intro)}${listing}${button(b, appUrl, many ? 'افتح مهامي' : 'افتح المهمة')}${SPACER}`;
+  const html = frame(b, { title: 'فات الموعد', preheader: many ? `فات موعد ${tasksCount(items.length)}.` : `فات موعد: ${oneLine(items[0].task.title) || 'مهمة'}.`, hero: 'hero-overdue.jpg', icon: 'icon-tasks.gif', body });
+  return {
+    subject: many ? `فات موعد ${tasksCount(items.length)}` : `فات موعد المهمة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`,
+    html,
+    text: [
+      many ? `فات موعد ${tasksCount(items.length)} ولم تُنجَز بعد:` : 'فات موعد هذه المهمة ولم تُنجَز بعد:',
+      '',
+      ...shown.map(({ task, projectName, late }) => `• ${oneLine(task.title) || 'بدون عنوان'}${projectName ? ` (${projectName})` : ''} — متأخرة ${daysPhrase(late)}`),
       ...(items.length > shown.length ? [`... و${items.length - shown.length} أخرى`] : []),
       '',
       appUrl,

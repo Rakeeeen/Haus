@@ -159,17 +159,18 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
 
   return (
     <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300 relative">
-      <input type="file" ref={avatar.fileInputRef} className="hidden" accept="image/*" onChange={avatar.onFileChange} />
+      {/* Hamed picks his own picture; a guest's is the one from their Google account, and can't be changed here. */}
+      {isOwner && <input type="file" ref={avatar.fileInputRef} className="hidden" accept="image/*" onChange={avatar.onFileChange} />}
 
       <HomeHeader
         greeting={greeting.displayed}
         greetingVisible={greeting.visible}
         journalEntry={journalEntry}
         onNameClick={() => setShowFingerprint(true)}
-        photoUrl={avatar.avatarUrl ?? (isOwner ? null : viewer.photoUrl)}
+        photoUrl={isOwner ? avatar.avatarUrl : viewer.photoUrl}
         initial={isOwner ? 'R' : viewer.firstName.charAt(0).toUpperCase()}
         uploading={avatar.uploading}
-        onAvatarClick={avatar.openPicker}
+        onAvatarClick={isOwner ? avatar.openPicker : undefined}
         isOwner={isOwner}
         isDark={isDark}
         onToggleTheme={toggleTheme}

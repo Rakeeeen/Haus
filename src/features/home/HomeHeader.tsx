@@ -18,7 +18,8 @@ export const HomeHeader: React.FC<{
   photoUrl: string | null;
   initial: string;
   uploading: boolean;
-  onAvatarClick: () => void;
+  /** Hamed changes his picture by pressing it; a guest has none to press (theirs is their Google photo). */
+  onAvatarClick?: () => void;
   isOwner: boolean;
   isDark: boolean;
   onToggleTheme: () => void;
@@ -52,16 +53,18 @@ export const HomeHeader: React.FC<{
       <div className="flex items-center gap-4 relative" ref={menuRef}>
         <div
           onClick={onAvatarClick}
-          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-ink bg-paper-dark relative overflow-hidden cursor-pointer group flex items-center justify-center"
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-ink bg-paper-dark relative overflow-hidden group flex items-center justify-center ${onAvatarClick ? 'cursor-pointer' : ''}`}
         >
           {uploading ? (
             <div className="text-[8px] font-mono-main font-bold animate-pulse text-ink/80 text-center">Syncing</div>
           ) : photoUrl ? (
             <>
               <img src={photoUrl} alt="Avatar" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-paper-dark/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Camera size={14} className="text-ink" />
-              </div>
+              {onAvatarClick && (
+                <div className="absolute inset-0 bg-paper-dark/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera size={14} className="text-ink" />
+                </div>
+              )}
             </>
           ) : (
             <span className="text-xl font-black font-sans-main text-ink/30">{initial}</span>

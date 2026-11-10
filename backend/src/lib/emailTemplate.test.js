@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
-import { IMAGE_FILES, MAX_LISTED, cidOf, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksPhrase, whenOf, whenSent } from './emailTemplate.js';
+import { IMAGE_FILES, MAX_LISTED, cidOf, daysPhrase, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksCount, tasksOverdueEmail, tasksPhrase, whenOf, whenSent } from './emailTemplate.js';
 
 const APP = 'https://example.com/Haus/';
 const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets', 'mail');
@@ -39,6 +39,32 @@ describe('small helpers', () => {
     const cut = snippet('word '.repeat(100), 50);
     expect(cut.endsWith('…')).toBe(true);
     expect(cut.length).toBeLessThanOrEqual(51);
+  });
+});
+
+describe('counting in Arabic', () => {
+  it('days and tasks', () => {
+    expect([1, 2, 3, 10, 11].map(daysPhrase)).toEqual(['يوم واحد', 'يومان', '3 أيام', '10 أيام', '11 يومًا']);
+    expect([1, 2, 3, 11].map(tasksCount)).toEqual(['مهمة', 'مهمتين', '3 مهام', '11 مهمة']);
+  });
+});
+
+describe('tasksOverdueEmail', () => {
+  const task = { title: 'Send the guide', date: '2026-11-10', endDate: '2026-11-11', priority: 'high' };
+  it('says one task is late, by how much, and links to the app', () => {
+    const mail = tasksOverdueEmail({ name: 'Sara', items: [{ task, projectName: 'Brand', late: 2 }], appUrl: APP });
+    expect(mail.subject).toBe('فات موعد المهمة: Send the guide');
+    expect(mail.html).toContain('Sara، فات موعد هذه المهمة ولم تُنجَز بعد');
+    expect(mail.html).toContain('يومان');
+    expect(mail.html).toContain('cid:hero-overdue');
+    expect(mail.html).toContain(`href="${APP}"`);
+    expect(mail.text).toContain('متأخرة يومان');
+  });
+  it('lists several in one mail, longest late first as given, and counts the rest', () => {
+    const items = Array.from({ length: MAX_LISTED + 2 }, (_, i) => ({ task: { title: `Task ${i}`, date: '2026-11-10' }, projectName: null, late: 1 }));
+    const mail = tasksOverdueEmail({ name: 'Sara', items, appUrl: APP });
+    expect(mail.subject).toBe('فات موعد 10 مهام');
+    expect(mail.html).toContain('و2 أخرى');
   });
 });
 

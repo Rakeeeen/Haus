@@ -24,7 +24,7 @@ const SCALE = 2;
 const STACK = "'General Sans','Thmanyah'";
 
 /** Breaks `text` into lines no wider than `width` (px), at spaces. */
-export function wrapLines(measure, text, width) {
+function wrapLines(measure, text, width) {
   const lines = [];
   for (const paragraph of String(text).split('\n')) {
     let line = '';

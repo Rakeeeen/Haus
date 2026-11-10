@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { invitationEmail, tasksAssignedEmail } from '../src/lib/emailTemplate.js';
+import { invitationEmail, tasksAssignedEmail, tasksOverdueEmail } from '../src/lib/emailTemplate.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = path.resolve(process.argv[2] || path.join(here, '..', 'mail-preview'));
@@ -18,6 +18,7 @@ const task = { title: 'إرسال دليل الهوية البصرية المع�
 const samples = {
   invitation: invitationEmail({ inviter: 'حامد', name: 'سارة أحمد', email: 'sara@example.com', appUrl }),
   task: tasksAssignedEmail({ giver: 'حامد', name: 'سارة أحمد', items: [{ task, projectName: 'تجديد الهوية' }], appUrl, at: '2026-11-10T09:05:00Z' }),
+  overdue: tasksOverdueEmail({ name: 'سارة أحمد', items: [{ task, projectName: 'تجديد الهوية', late: 2 }], appUrl }),
   notice: tasksAssignedEmail({ giver: 'سارة', name: 'حامد', forName: 'عمر', items: [{ task, projectName: 'تجديد الهوية' }], appUrl, at: '2026-11-10T09:05:00Z' }),
   tasks: tasksAssignedEmail({ giver: 'حامد', name: 'سارة أحمد', appUrl, items: [
     { task, projectName: 'تجديد الهوية' },

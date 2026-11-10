@@ -1,5 +1,5 @@
 import { getDocument, setDocument, watchCollection } from '../lib/firestore.js';
-import { invitationEmail, tasksAssignedEmail } from '../lib/emailTemplate.js';
+import { invitationEmail, tasksAssignedEmail, tasksOverdueEmail } from '../lib/emailTemplate.js';
 import { createMailer } from '../lib/mailer.js';
 
 // Email for the moments a person is brought in: being invited to Haus, and being given a task — and, for Hamed, a guest who
@@ -7,12 +7,14 @@ import { createMailer } from '../lib/mailer.js';
 // can't live in a website): it writes to Firestore as always, and this watches for it and sends through the account in the
 // bot's own .env.
 //
+// A task whose end has passed without being finished is told to who it is for, once, in a morning mail (see `checkOverdue`).
+//
 // The bot is not always on, so what it has told people is kept in Firestore (`mail_state/tasks`: for each task, who has been
 // told it is theirs; `mail_state/invites`: when the invitations began; `mail_sent`: each invitation mailed). When the bot wakes it
 // compares what is there with what it has told, and sends what it missed — with the time the thing happened, not the time it woke.
 
 /** Hamed's own key in a task's `assigneeUids`. */
-export const OWNER_KEY = 'owner';
+const OWNER_KEY = 'owner';
 /** Tasks given to one person by one person within this window go out together as one email (an import is one email, not fifty). */
 const BATCH_MS = 20 * 1000;
 /** A save of the "who has been told" record waits this long, so a burst of changes is one write. */
@@ -55,6 +57,40 @@ export function invitationToMail(member, since) {
   return `invite:${member.email}:${member.addedAt}`.replace(/\//g, '_');
 }
 
+/** A task's last day: its end, or its day when it has no end. Null for a task with no date. */
+export const deadlineOf = (task) => {
+  if (!task.date) return task.endDate || null;
+  return task.endDate && task.endDate > task.date ? task.endDate : task.date; // an end before the start counts for nothing (as in the app)
+};
+
+/** Today's date in Cairo, "YYYY-MM-DD" (the day Haus's people live by). */
+export function cairoDay(now) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/** The hour in Cairo, 0–23. */
+export const cairoHour = (now) => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', hour: 'numeric', hourCycle: 'h23' }).format(now));
+
+/** Whole days from `from` to `to` (both "YYYY-MM-DD"). */
+export const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+
+/**
+ * How many days late a task is, when it is to be told about: still open, its last day passed, and that day no earlier than `since`
+ * (what was already late when this began is not announced). Null otherwise.
+ */
+export function overdueBy(task, today, since) {
+  const deadline = deadlineOf(task);
+  if (!deadline || !isOpenTask(task) || deadline >= today || deadline < since) return null;
+  return daysBetween(deadline, today);
+}
+
+/** The id an overdue notice to one person is kept under: once per task, per last day, per person. */
+export const overdueKey = (task, who) => `overdue:${task.id}:${deadlineOf(task)}:${who}`.replace(/\//g, '_');
+
+/** The morning hour (Cairo) from which overdue notices go out. */
+const OVERDUE_FROM_HOUR = 9;
+
 /** Whether a task is still worth telling someone about. */
 export const isOpenTask = (task) => task.status !== 'done' && task.status !== 'dropped';
 
@@ -74,7 +110,7 @@ export function watchMailNotifications() {
  * The watching itself, with its mailer and its store handed in (so it can be tried against a pretend Firestore). Resolves once
  * the invitations and the tasks are being watched; what it sends later goes out on its own.
  */
-export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs = SAVE_MS }) {
+export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs = SAVE_MS, overdueEveryMs = 10 * 60 * 1000 }) {
   const { getDocument, setDocument, watchCollection } = store;
   const { ownerName, ownerEmail, appUrl } = mailer.config;
   const safely = (what, job) => job().catch((error) => console.error(`❌ ${what}:`, error.message));
@@ -126,6 +162,8 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
   // ── Tasks ──────────────────────────────────────────────────────────────────────
   /** Who has been told about each task: task id → uids. Null until it is read; a bot that has never run starts from what is there. */
   let told = null;
+  /** Every task as last seen, for the overdue check. */
+  const current = new Map();
   let saveTimer = null;
   const save = () => {
     clearTimeout(saveTimer);
@@ -191,8 +229,9 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
     watchCollection('work_tasks', (snap) => {
       snap.docChanges().forEach((change) => {
         const id = change.doc.id;
-        if (change.type === 'removed') { told.delete(id); save(); return; }
+        if (change.type === 'removed') { told.delete(id); current.delete(id); save(); return; }
         const task = { id, ...change.doc.data() };
+        current.set(id, task);
         const before = told.get(id);
         // The first time ever: everything already here counts as told.
         if (baseline && before === undefined) { told.set(id, assigneesOf(task)); return; }
@@ -209,5 +248,43 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
     console.log(!state ? '📧 First run: every task already here counts as told' : '📧 Caught up with the tasks given while the bot was off');
   });
 
+  // ── Overdue ────────────────────────────────────────────────────────────────────
+  /**
+   * From 9 in the morning (Cairo), tells each person whose task's last day has passed without it being done — one mail with all of
+   * theirs, once per task. Run every few minutes, so a bot that was off at 9 sends when it wakes. What was late before this first
+   * ran is not announced.
+   */
+  const checkOverdue = (now = new Date()) => safely('Overdue check', async () => {
+    if (cairoHour(now) < OVERDUE_FROM_HOUR) return;
+    const today = cairoDay(now);
+    let state = await getDocument('mail_state', 'overdue');
+    if (!state) { state = { since: today }; await setDocument('mail_state', 'overdue', state); }
+    const byPerson = new Map();
+    for (const task of current.values()) {
+      const late = overdueBy(task, today, state.since);
+      if (late === null) continue;
+      for (const who of assigneesOf(task)) byPerson.set(who, [...(byPerson.get(who) ?? []), { task, late }]);
+    }
+    for (const [who, list] of byPerson) {
+      const fresh = [];
+      for (const item of list) if (!(await getDocument('mail_sent', overdueKey(item.task, who)))) fresh.push(item);
+      if (!fresh.length) continue;
+      const contact = who === OWNER_KEY ? { email: ownerEmail, name: ownerName } : await contactOf(who);
+      if (!contact) continue;
+      const items = [];
+      for (const { task, late } of fresh.sort((a, b) => b.late - a.late)) {
+        const project = task.projectId ? await getDocument('work_projects', task.projectId) : null;
+        items.push({ task, late, projectName: project && (who === OWNER_KEY || project.memberUids?.includes(who)) ? project.name : null });
+      }
+      await mailer.send({ to: contact.email, ...tasksOverdueEmail({ name: contact.name, items, appUrl }) });
+      for (const { task } of items) await setDocument('mail_sent', overdueKey(task, who), { at: new Date().toISOString() });
+      console.log(`📧 Told ${contact.email} that ${items.length} task(s) are overdue`);
+    }
+  });
+  // Once the tasks have been read, and then every few minutes.
+  setTimeout(() => checkOverdue(), 5000).unref?.();
+  setInterval(() => checkOverdue(), overdueEveryMs).unref?.();
+
   console.log('📧 Watching invitations and task assignments for email');
+  return { checkOverdue };
 }

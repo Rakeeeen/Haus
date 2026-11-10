@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actorOf, assigneesOf, eventTime, invitationToMail, isOpenTask, newlyGiven, stillTold } from './mailNotifications.js';
+import { actorOf, assigneesOf, cairoDay, cairoHour, daysBetween, deadlineOf, eventTime, invitationToMail, isOpenTask, newlyGiven, overdueBy, overdueKey, stillTold } from './mailNotifications.js';
 import { mailConfig } from '../lib/mailer.js';
 
 describe('invitationToMail', () => {
@@ -60,6 +60,39 @@ describe('who a task is given to', () => {
     expect(isOpenTask({ status: 'todo' })).toBe(true);
     expect(isOpenTask({ status: 'done' })).toBe(false);
     expect(isOpenTask({ status: 'dropped' })).toBe(false);
+  });
+});
+
+describe('overdue', () => {
+  const t = (over) => ({ id: 't', status: 'todo', date: '2026-11-10', endDate: null, ...over });
+  it('takes a task\'s last day from its end, or its day', () => {
+    expect(deadlineOf(t({ endDate: '2026-11-14' }))).toBe('2026-11-14');
+    expect(deadlineOf(t({}))).toBe('2026-11-10');
+    expect(deadlineOf(t({ date: null }))).toBeNull();
+    expect(deadlineOf(t({ endDate: '2026-11-08' }))).toBe('2026-11-10'); // an end before the start counts for nothing
+  });
+  it('knows today and the hour in Cairo', () => {
+    expect(cairoDay(new Date('2026-11-11T22:30:00Z'))).toBe('2026-11-12');
+    expect(cairoHour(new Date('2026-11-11T22:30:00Z'))).toBe(0);
+    expect(cairoHour(new Date('2026-11-12T07:00:00Z'))).toBe(9);
+  });
+  it('counts days between two dates', () => {
+    expect(daysBetween('2026-11-10', '2026-11-12')).toBe(2);
+    expect(daysBetween('2026-10-31', '2026-11-02')).toBe(2);
+  });
+  it('is how many days late an open task is once its last day has passed', () => {
+    expect(overdueBy(t({}), '2026-11-11', '2026-11-01')).toBe(1);
+    expect(overdueBy(t({}), '2026-11-15', '2026-11-01')).toBe(5);
+    expect(overdueBy(t({}), '2026-11-10', '2026-11-01')).toBeNull(); // its last day is today
+    expect(overdueBy(t({ status: 'done' }), '2026-11-15', '2026-11-01')).toBeNull();
+    expect(overdueBy(t({ status: 'dropped' }), '2026-11-15', '2026-11-01')).toBeNull();
+    expect(overdueBy(t({ date: null }), '2026-11-15', '2026-11-01')).toBeNull();
+    expect(overdueBy(t({}), '2026-11-15', '2026-11-12')).toBeNull(); // was already late before the start
+  });
+  it('is told once per task, last day and person', () => {
+    expect(overdueKey(t({}), 'g1')).toBe('overdue:t:2026-11-10:g1');
+    expect(overdueKey(t({ endDate: '2026-11-12' }), 'g1')).not.toBe(overdueKey(t({}), 'g1')); // a moved end is a new notice
+    expect(overdueKey(t({}), 'g2')).not.toBe(overdueKey(t({}), 'g1'));
   });
 });
 

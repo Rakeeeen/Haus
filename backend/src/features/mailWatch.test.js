@@ -30,8 +30,8 @@ const task = (over) => ({ title: 'Do it', status: 'todo', projectId: 'p', create
 
 const start = async (docs) => {
   const world = pretend(docs);
-  await startMailWatch({ mailer, store: world.store, batchMs: 1000, saveMs: 500 });
-  return world;
+  const watch = await startMailWatch({ mailer, store: world.store, batchMs: 1000, saveMs: 500 });
+  return { ...world, ...watch };
 };
 const settle = async () => { await vi.advanceTimersByTimeAsync(2000); };
 const to = (address) => sent.filter((m) => m.to === address);
@@ -156,5 +156,73 @@ describe('invitations', () => {
     world.snapshot('members', [['modified', 'new@x.co', member('2026-11-10T11:00:00Z')]]);
     await settle();
     expect(to('new@x.co')).toHaveLength(1);
+  });
+});
+
+describe('overdue tasks', () => {
+  const MORNING = new Date('2026-11-12T08:00:00Z'); // 10:00 in Cairo, the 12th
+  const told = { 'mail_state/tasks': { told: {} }, 'mail_state/overdue': { since: '2026-11-09' } };
+  const late = (over) => task({ date: '2026-11-10', endDate: null, ...over });
+
+  it('tells each person once, in one mail, about their tasks whose last day has passed', async () => {
+    const world = await start({ ...GUESTS, ...told });
+    world.snapshot('work_tasks', [
+      ['added', 'a', late({ title: 'First', assigneeUids: ['g1'], createdByUid: 'g1' })],
+      ['added', 'b', late({ title: 'Second', assigneeUids: ['g1'], createdByUid: 'g1', endDate: '2026-11-11' })],
+      ['added', 'c', late({ title: 'Mine', assigneeUids: ['owner'] })],
+    ]);
+    await settle();
+    sent.length = 0;
+    await world.checkOverdue(MORNING);
+    expect(to('sara@x.co')).toHaveLength(1);
+    expect(to('sara@x.co')[0].subject).toBe('فات موعد مهمتين');
+    expect(to('sara@x.co')[0].html).toContain('متأخرة يوم واحد'); // the one ending on the 11th
+    expect(to('hamed@x.co')).toHaveLength(1);
+    expect(to('hamed@x.co')[0].subject).toBe('فات موعد المهمة: Mine');
+    expect(to('hamed@x.co')[0].html).toContain('التأخير');
+    // and not again
+    sent.length = 0;
+    await world.checkOverdue(new Date('2026-11-12T12:00:00Z'));
+    await world.checkOverdue(new Date('2026-11-13T08:00:00Z'));
+    expect(sent).toEqual([]);
+  });
+
+  it('waits for the morning', async () => {
+    const world = await start({ ...GUESTS, ...told });
+    world.snapshot('work_tasks', [['added', 'a', late({ assigneeUids: ['g1'], createdByUid: 'g1' })]]);
+    await settle();
+    await world.checkOverdue(new Date('2026-11-11T22:30:00Z')); // 00:30 in Cairo
+    expect(sent).toEqual([]);
+  });
+
+  it('skips what is done, has no date, ends today or later, or was already late before this began', async () => {
+    const world = await start({ ...GUESTS, ...told });
+    world.snapshot('work_tasks', [
+      ['added', 'done', late({ assigneeUids: ['g1'], createdByUid: 'g1', status: 'done' })],
+      ['added', 'undated', late({ assigneeUids: ['g1'], createdByUid: 'g1', date: null })],
+      ['added', 'today', late({ assigneeUids: ['g1'], createdByUid: 'g1', date: '2026-11-12' })],
+      ['added', 'later', late({ assigneeUids: ['g1'], createdByUid: 'g1', date: '2026-11-20' })],
+      ['added', 'ancient', late({ assigneeUids: ['g1'], createdByUid: 'g1', date: '2026-11-01' })],
+    ]);
+    await settle();
+    await world.checkOverdue(MORNING);
+    expect(sent).toEqual([]);
+  });
+
+  it('begins from the day it first runs: what was late before is not announced', async () => {
+    const world = await start({ ...GUESTS, 'mail_state/tasks': { told: {} } });
+    world.snapshot('work_tasks', [['added', 'a', late({ date: '2026-11-11', assigneeUids: ['g1'], createdByUid: 'g1' })]]);
+    await settle();
+    await world.checkOverdue(MORNING);
+    expect(sent).toEqual([]);
+    expect(world.writes.some(([col, id, data]) => col === 'mail_state' && id === 'overdue' && data.since === '2026-11-12')).toBe(true);
+  });
+
+  it('does not write to a guest who is switched off', async () => {
+    const world = await start({ ...GUESTS, ...told, 'members/sara@x.co': { email: 'sara@x.co', active: false } });
+    world.snapshot('work_tasks', [['added', 'a', late({ assigneeUids: ['g1'], createdByUid: 'g1' })]]);
+    await settle();
+    await world.checkOverdue(MORNING);
+    expect(sent).toEqual([]);
   });
 });
