@@ -633,8 +633,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             )}
           </div>
 
-          {/* Today's date: the same tile and logic as before, a circle the size of the avatar, with no month. */}
-          <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center"><PixelDateTile date={getDateParts(now)} width="100%" /></div>
+          {/* Today's date: the same tile and logic as before, sized so tile + month fit the avatar's height. */}
+          <PixelDateTile date={getDateParts(now)} width="clamp(32px, 5vw, 40px)" />
 
           {/* Three dots dropdown — a circle the size of the avatar's */}
           <div className="relative">
