@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/ui/Button';
 import { IconChevronDown as ChevronDown, IconChevronRight as ChevronRight } from '@/ui/icons';
 import { addDays, dayKey, monthGrid, parseDayKey } from '@/domain/work/tasks';
@@ -11,8 +12,10 @@ const label = (key: string | null, now: Date = new Date()) => {
 };
 
 /**
- * Picks a day from a small calendar, with Today and Tomorrow a click away (they are worked out when the list opens, so
- * they follow the real date). `flow` opens the calendar in the page's flow (inside a scrolling form) instead of over it.
+ * Picks a day from a small calendar that floats over the page (never pushing it), with Today and Tomorrow a click away.
+ * It stays open while you pick — Today and Tomorrow are worked out as it draws, so they follow the real date — and
+ * closes when you click outside it, press Escape, or press the button again.
+ * `flow` makes the button fill its row (in a form).
  */
 export function DatePicker({ value, onChange, allowClear = true, disabled = false, flow = false, ariaLabel, label: prefix, className = '' }: {
   value: string | null;
@@ -28,10 +31,12 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(() => parseDayKey(value ?? dayKey(new Date())));
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
+    const close = (e: MouseEvent) => { const t = e.target as Node; if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', esc, true);
@@ -39,7 +44,23 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
   }, [open]);
 
   const today = dayKey(new Date());
-  const pick = (day: string | null) => { onChange(day); setOpen(false); };
+  const pick = (day: string | null) => { onChange(day); if (day) setShown(parseDayKey(day)); };
+
+  // Placed from the button each time it opens or the page moves, below it (above, if there is no room).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = rootRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const height = panelRef.current?.offsetHeight ?? 340;
+      const below = r.bottom + 6 + height <= window.innerHeight || r.top - 6 - height < 0;
+      setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - 280)), top: below ? r.bottom + 6 : r.top - 6 - height });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  }, [open, shown]);
   const step = (by: number) => setShown((d) => new Date(d.getFullYear(), d.getMonth() + by, 1));
   const toggle = () => {
     if (!open) setShown(parseDayKey(value ?? today));
@@ -47,7 +68,7 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
   };
 
   const panel = (
-    <div className={`${flow ? 'mt-2' : 'absolute left-0 top-full mt-1 z-30'} w-[272px] max-w-full bg-paper-dark border border-ink/14 rounded-box p-3 flex flex-col gap-2`}>
+    <div ref={panelRef} style={{ position: 'fixed', left: at?.left ?? 0, top: at?.top ?? 0, visibility: at ? 'visible' : 'hidden' }} className="z-[10000] w-[272px] bg-paper-dark border border-ink/14 rounded-box p-3 flex flex-col gap-2 shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
       <div className="flex items-center justify-between">
         <Button tone="ghost" size="sm" aria-label="Previous month" onClick={() => step(-1)} className="!px-2"><ChevronRight size={12} className="rotate-180" /></Button>
         <span className="font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold">{shown.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>
@@ -76,13 +97,13 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
   );
 
   return (
-    <div ref={rootRef} className={`relative ${flow ? '' : 'inline-block'} ${className}`}>
+    <div ref={rootRef} className={`${flow ? 'block' : 'inline-block'} ${className}`}>
       <Button tone="outline" size="sm" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={ariaLabel} onClick={toggle} className={flow ? 'w-full !justify-between !py-3' : ''}>
         {prefix && <span className="text-ink/40">{prefix}</span>}
         <span>{label(value) ?? 'No date'}</span>
         <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </Button>
-      {open && panel}
+      {open && createPortal(panel, document.body)}
     </div>
   );
 }

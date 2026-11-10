@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { countTasks, filterProjectsByStatus, isWorkedOn, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
@@ -36,10 +37,11 @@ const TASK_STATUS_OPTIONS = [{ value: 'todo', label: 'To do' }, { value: 'doing'
 export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { role, projects, tasks, notes, privates, ready, canEditTask, updateTask } = useWork();
   const editor = useTaskEditor(author, authorPhoto);
-  const [projectStatuses, setProjectStatuses] = useState<ProjectStatus[]>([]);
-  const [dayChoice, setDayChoice] = useState<DayChoice>('all');
-  const [picked, setPicked] = useState(() => dayKey(new Date()));
-  const [taskStatuses, setTaskStatuses] = useState<TaskStatus[]>([]);
+  // What is chosen here is remembered (even after a refresh); "Today" is remembered as "Today", not as one date.
+  const [projectStatuses, setProjectStatuses] = useStoredState<ProjectStatus[]>('work_hub_project_statuses', [], manyOf(PROJECT_STATUSES.map((s) => s.value)));
+  const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_hub_day', 'all', oneOf(DAYS.map((d) => d.value)));
+  const [picked, setPicked] = useStoredState('work_hub_picked_day', dayKey(new Date()), isDay);
+  const [taskStatuses, setTaskStatuses] = useStoredState<TaskStatus[]>('work_hub_task_statuses', [], manyOf(TASK_STATUS_OPTIONS.map((s) => s.value)));
 
   useEffect(() => { document.title = `${NAME} — Work`; }, []);
 
@@ -95,7 +97,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
           <section className="card flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Tasks</h2>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="spring-group flex flex-wrap items-center gap-2">
                 <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />
                 {dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
                 <FilterMulti label="Status" options={TASK_STATUS_OPTIONS} values={taskStatuses} onChange={setTaskStatuses} />
@@ -108,8 +110,9 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                   {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0" />}
                   <div className="min-w-0 flex-1 cursor-pointer" onClick={() => editor.open({ kind: 'edit', task })}>
                     <p dir="auto" className={`font-sans-main text-[13px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
-                    <p dir="auto" className="font-mono-main text-[9px] tracking-wider text-ink/40 truncate text-left">{projectName(task.projectId) ?? 'No project'}{task.date ? ` · ${shortDate(task.date)}` : ''}</p>
+                    {task.date && <p className="font-mono-main text-[10px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}
                   </div>
+                  {projectName(task.projectId) && <Chip tone="neutral" className="max-w-[120px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectName(task.projectId)}</span></Chip>}
                   <TaskStatusChip status={task.status} />
                 </div>
               ))}

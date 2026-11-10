@@ -6,7 +6,7 @@ import { Field, SelectMenu, TextArea, TextInput } from '@/ui/Form';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
 import { useComments } from '@/data/useWork';
-import { shortDate } from '@/features/work/components/chips';
+import { PRIORITY_COLOR, shortDate } from '@/features/work/components/chips';
 
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
@@ -22,13 +22,14 @@ const toDraft = (editing: TaskEditing): Draft => {
 };
 
 /** A row of buttons to pick one value from; they share space like every button row. */
-function Choose<T extends string>({ options, value, onChange, disabled = false }: {
-  options: ReadonlyArray<{ value: T; label: string }>; value: T; onChange: (value: T) => void; disabled?: boolean;
+function Choose<T extends string>({ options, value, onChange, disabled = false, colors }: {
+  options: ReadonlyArray<{ value: T; label: string }>; colors?: Partial<Record<T, string>>; value: T; onChange: (value: T) => void; disabled?: boolean;
 }) {
   return (
     <div className="spring-group flex flex-wrap gap-2">
       {options.map((o) => (
-        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} disabled={disabled} onClick={() => onChange(o.value)}>{o.label}</Button>
+        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} disabled={disabled} onClick={() => onChange(o.value)}
+          className={o.value === value ? colors?.[o.value] ?? '' : ''}>{o.label}</Button>
       ))}
     </div>
   );
@@ -110,6 +111,7 @@ export const TaskModal: React.FC<{
               options={[...PRIORITIES, { value: 'none', label: 'None' }]}
               value={draft.priority ?? 'none'}
               disabled={locked}
+              colors={PRIORITY_COLOR}
               onChange={(v) => set('priority', v === 'none' ? null : v)}
             />
           </Field>

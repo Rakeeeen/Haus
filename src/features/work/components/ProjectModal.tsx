@@ -3,6 +3,7 @@ import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
 import { Field, SelectMenu, TextInput } from '@/ui/Form';
+import { PRIORITY_COLOR } from '@/features/work/components/chips';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
 import { PRIORITIES } from '@/domain/work/tasks';
 import type { Invitation } from '@/domain/access';
@@ -24,13 +25,14 @@ export interface ProjectDraft {
 
 const NEW = '__new__';
 
-function Choose<T extends string>({ options, value, onChange }: {
-  options: ReadonlyArray<{ value: T; label: string }>; value: T; onChange: (value: T) => void;
+function Choose<T extends string>({ options, value, onChange, colors }: {
+  options: ReadonlyArray<{ value: T; label: string }>; colors?: Partial<Record<T, string>>; value: T; onChange: (value: T) => void;
 }) {
   return (
     <div className="spring-group flex flex-wrap gap-2">
       {options.map((o) => (
-        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} onClick={() => onChange(o.value)}>{o.label}</Button>
+        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} onClick={() => onChange(o.value)}
+          className={o.value === value ? colors?.[o.value] ?? '' : ''}>{o.label}</Button>
       ))}
     </div>
   );
@@ -91,7 +93,7 @@ export const ProjectModal: React.FC<{
           </Field>
           <Field label="Status"><Choose<ProjectStatus> options={PROJECT_STATUSES} value={draft.status} onChange={(v) => set('status', v)} /></Field>
           <Field label="Priority">
-            <Choose<Priority | 'none'> options={[...PRIORITIES, { value: 'none', label: 'None' }]} value={draft.priority ?? 'none'} onChange={(v) => set('priority', v === 'none' ? null : v)} />
+            <Choose<Priority | 'none'> options={[...PRIORITIES, { value: 'none', label: 'None' }]} colors={PRIORITY_COLOR} value={draft.priority ?? 'none'} onChange={(v) => set('priority', v === 'none' ? null : v)} />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Client">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { manyOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useGuests } from '@/data/useMembers';
 import { useWork } from '@/data/useWork';
@@ -50,7 +51,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
   const { tasks, privates, ready, setClient } = useWork();
   const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
-  const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+  const [statuses, setStatuses] = useStoredState<ProjectStatus[]>('work_projects_statuses', [], manyOf(PROJECT_STATUSES.map((p) => p.value)));
 
   useEffect(() => { document.title = `${NAME} — Projects`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
@@ -69,14 +70,14 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       actions={role === 'owner' ? <Button onClick={() => setEditing({ kind: 'new', client: null })}><Plus size={16} />New project</Button> : undefined}
     >
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-projects-view" ruled />
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="spring-group flex flex-wrap items-center gap-3">
         <FilterMulti label="Show" options={PROJECT_STATUSES} values={statuses} onChange={setStatuses} />
       </div>
 
       {!ready ? (
         <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
       ) : view === 'cards' ? (
-        <ProjectCards {...common} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
+        <ProjectCards {...common} clients={clients} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
       ) : view === 'table' ? (
         <ProjectTable {...common} />
       ) : (

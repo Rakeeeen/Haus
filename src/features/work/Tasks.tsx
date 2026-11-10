@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { isDay, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { addDays, dayKey, filterTasks, moveToStatus, type DayFilter } from '@/domain/work/tasks';
@@ -38,9 +39,9 @@ const readView = (): View => {
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { tasks, projects, ready, canEditTask, updateTask } = useWork();
   const [view, setView] = useState<View>(readView);
-  const [dayChoice, setDayChoice] = useState<DayChoice>('all');
-  const [picked, setPicked] = useState(() => dayKey(new Date()));
-  const [statusChoice, setStatusChoice] = useState<StatusChoice>('all');
+  const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_tasks_day', 'all', oneOf(DAYS.map((d) => d.value)));
+  const [picked, setPicked] = useStoredState('work_tasks_picked_day', dayKey(new Date()), isDay);
+  const [statusChoice, setStatusChoice] = useStoredState<StatusChoice>('work_tasks_status', 'all', oneOf(STATUSES.map((s) => s.value)));
   const [projectChoice, setProjectChoice] = useState<string>('all');
   const [query, setQuery] = useState('');
   const editor = useTaskEditor(author, authorPhoto);
@@ -75,7 +76,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
     >
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-tasks-view" ruled />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="spring-group flex flex-wrap items-center gap-3">
         {view !== 'calendar' && <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />}
         {view !== 'calendar' && dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
         <FilterSelect label="Status" options={STATUSES} value={statusChoice} onChange={setStatusChoice} />

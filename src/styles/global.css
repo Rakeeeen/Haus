@@ -63,6 +63,7 @@
   --color-sepia: var(--sepia);
   --color-rust: var(--rust);
   --color-forest: var(--forest);
+  --color-amber: var(--amber);
 }
 
 @layer base {
@@ -80,6 +81,8 @@
     --rust: #B7410E;
     /* Only the real gain signal now; as readable on a card as --rust (4.9:1 against 5.0:1). */
     --forest: #0F7A36;
+    /* The middle of three: a medium priority. */
+    --amber: #A86A0A;
     --pomo-focus: var(--ink);
     --pomo-break: var(--ink-faded);
     --pomo-overtime: var(--rust);
@@ -117,6 +120,7 @@
     --sepia: #4D14A2;
     --rust: #E2583A;
     --forest: #3AE272;
+    --amber: #E8A93A;
     --pomo-focus: var(--ink);
     --pomo-break: var(--ink-faded);
     --pomo-overtime: var(--rust);

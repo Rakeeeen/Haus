@@ -6,11 +6,15 @@ import type { Priority, ProjectStatus, TaskStatus } from '@/domain/work/types';
 
 const TASK_TONE: Record<TaskStatus, ChipTone> = { todo: 'neutral', doing: 'sepia', done: 'forest', dropped: 'rust' };
 const PROJECT_TONE: Record<ProjectStatus, ChipTone> = { active: 'sepia', planning: 'neutral', maintenance: 'neutral', paused: 'neutral', done: 'forest' };
-const PRIORITY_TONE: Record<Priority, ChipTone> = { high: 'rust', medium: 'neutral', low: 'neutral' };
+const PRIORITY_TONE: Record<Priority, ChipTone> = { high: 'rust', medium: 'amber', low: 'sepia' };
 const PRIORITY_LABEL: Record<Priority, string> = { high: 'High', medium: 'Medium', low: 'Low' };
 
 export const TaskStatusChip: React.FC<{ status: TaskStatus }> = ({ status }) => <Chip tone={TASK_TONE[status]}>{statusLabel(status)}</Chip>;
 export const ProjectStatusChip: React.FC<{ status: ProjectStatus }> = ({ status }) => <Chip tone={PROJECT_TONE[status]}>{projectStatusLabel(status)}</Chip>;
+/** The colour a priority wears wherever it is shown or chosen. */
+export const PRIORITY_COLOR: Record<Priority, string> = {
+  high: '!bg-rust !text-white', medium: '!bg-amber !text-white', low: '!bg-sepia !text-white',
+};
 export const PriorityChip: React.FC<{ priority: Priority | null }> = ({ priority }) =>
   priority ? <Chip tone={PRIORITY_TONE[priority]}>{PRIORITY_LABEL[priority]}</Chip> : null;
 
