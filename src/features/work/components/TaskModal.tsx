@@ -103,7 +103,9 @@ export const TaskModal: React.FC<{
   const assignees = assigneesFor(draft?.projectIds[0]);
   const memberUids = projects.filter((p) => draft?.projectIds.includes(p.id)).flatMap((p) => p.memberUids);
   const choices = assignees.filter((a) => a.key === OWNER_KEY || !draft?.projectIds.length || memberUids.includes(a.key));
-  const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
+  // A guest makes a new task only in a project they run (or in none): the others are not offered. An existing task keeps its project shown.
+  const offered = guestUid !== undefined && editing?.kind === 'new' ? projects.filter((p) => p.adminUids.includes(guestUid)) : projects;
+  const projectOptions = [...offered].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
   const locked = !canEdit;
 
   return (
