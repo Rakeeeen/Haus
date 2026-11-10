@@ -66,8 +66,8 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
           {found.map((o) => {
             const selected = o.value === value;
             return (
-              <li key={o.value} role="option" aria-selected={selected}>
-                <button
+              <li key={o.value} role="none">
+                <button role="option" aria-selected={selected}
                   type="button"
                   onClick={() => { onChange(o.value); setOpen(false); }}
                   className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
@@ -120,8 +120,8 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
           {found.map((o) => {
             const selected = values.includes(o.value);
             return (
-              <li key={o.value} role="option" aria-selected={selected}>
-                <button
+              <li key={o.value} role="none">
+                <button role="option" aria-selected={selected}
                   type="button"
                   onClick={() => toggle(o.value)}
                   className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}

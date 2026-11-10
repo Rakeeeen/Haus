@@ -141,8 +141,8 @@ export const SelectMenu: React.FC<{
         <FloatingList anchor={rootRef} listRef={listRef}>
           {shown.length === 0 && <li className="px-3.5 py-2.5 font-mono-main text-[13px] text-ink/40">Nothing matches.</li>}
           {shown.map((o) => (
-            <li key={o.value} role="option" aria-selected={o.value === value}>
-              <button type="button" onClick={() => pick(o.value)} className={`${ROW} ${o.value === value ? 'text-ink font-bold' : 'text-ink/60'}`}>
+            <li key={o.value} role="none">
+              <button role="option" aria-selected={o.value === value} type="button" onClick={() => pick(o.value)} className={`${ROW} ${o.value === value ? 'text-ink font-bold' : 'text-ink/60'}`}>
                 {o.withAvatar && <Avatar name={o.label} photoUrl={o.photoUrl} size={22} />}
                 <span dir="auto" className="truncate">{o.label}</span>
               </button>
@@ -181,8 +181,8 @@ export const SelectMulti: React.FC<{
           {shown.map((o) => {
             const on = values.includes(o.value);
             return (
-              <li key={o.value} role="option" aria-selected={on}>
-                <button type="button" onClick={() => toggleValue(o.value)} className={`${ROW} ${on ? 'text-ink font-bold' : 'text-ink/60'}`}>
+              <li key={o.value} role="none">
+                <button role="option" aria-selected={on} type="button" onClick={() => toggleValue(o.value)} className={`${ROW} ${on ? 'text-ink font-bold' : 'text-ink/60'}`}>
                   <span aria-hidden className="shrink-0 w-4">{on ? '■' : '□'}</span>
                   {o.withAvatar && <Avatar name={o.label} photoUrl={o.photoUrl} size={22} />}
                   <span dir="auto" className="truncate">{o.label}</span>
