@@ -256,6 +256,14 @@ export function buildHighlights({ water, focus, finance }) {
   return out;
 }
 
+/** The date block every report carries: the key, the weekday, the long label and the time of day. */
+export const describeDate = (now) => ({
+  iso: isoKey(now),
+  weekday: now.toLocaleDateString('en-GB', { weekday: 'long' }),
+  label: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+  time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+});
+
 /** Everything the report shows, from the raw dashboard values. */
 export function buildReport(raw, now = new Date()) {
   const water = buildWater(raw, now);
@@ -263,12 +271,7 @@ export function buildReport(raw, now = new Date()) {
   const finance = buildFinance(raw, now);
   return {
     generatedAt: now,
-    date: {
-      iso: isoKey(now),
-      weekday: now.toLocaleDateString('en-GB', { weekday: 'long' }),
-      label: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-      time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    },
+    date: describeDate(now),
     water, focus, finance,
     logs: buildLogs(raw, focus.sessions),
     highlights: buildHighlights({ water, focus, finance }),

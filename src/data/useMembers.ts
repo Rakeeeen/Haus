@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
-import { isValidEmail, normalizeEmail, type Invitation } from '@/domain/access';
+import { guestStatus, isValidEmail, normalizeEmail, type GuestStatus, type Invitation } from '@/domain/access';
 
 const COL = 'members';
 
@@ -16,6 +16,7 @@ export async function fetchInvitation(email: string | null | undefined): Promise
 export function useGuests(enabled = true) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [profiles, setProfiles] = useState<Array<{ uid: string; email: string; name?: string; photoUrl?: string }>>([]);
+  const [approvals, setApprovals] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -34,7 +35,16 @@ export function useGuests(enabled = true) {
       (snap) => setProfiles(snap.docs.map((d) => ({ ...(d.data() as { email: string; name?: string; photoUrl?: string }), uid: d.id }))),
       () => { /* nothing to join yet */ },
     );
-    return () => { stopInvitations(); stopProfiles(); };
+    // When each guest last typed a valid code (a document per uid): that is what "in" means.
+    const stopApprovals = onSnapshot(
+      collection(db, 'guest_approvals'),
+      (snap) => setApprovals(Object.fromEntries(snap.docs.flatMap((d) => {
+        const at = d.data().approvedAt as { toMillis?: () => number } | null;
+        return at?.toMillis ? [[d.id, at.toMillis()] as const] : [];
+      }))),
+      () => { /* nothing to join yet */ },
+    );
+    return () => { stopInvitations(); stopProfiles(); stopApprovals(); };
   }, [enabled]);
 
   // An invited guest with what is known about them from their own sign-in.
@@ -42,6 +52,12 @@ export function useGuests(enabled = true) {
     const profile = profiles.find((p) => p.email === invitation.email);
     return profile ? { ...invitation, uid: profile.uid, name: invitation.name ?? profile.name, photoUrl: profile.photoUrl } : invitation;
   }), [invitations, profiles]);
+
+  /** Where each guest stands (by email): invited, signed in, in, or off. */
+  const statuses = useMemo<Record<string, GuestStatus>>(
+    () => Object.fromEntries(guests.map((g) => [g.email, guestStatus(g, g.uid ? approvals[g.uid] ?? null : null, Date.now())])),
+    [guests, approvals],
+  );
 
   const invite = useCallback(async (email: string, name?: string) => {
     if (!isValidEmail(email)) throw new Error('That is not an email address');
@@ -64,5 +80,5 @@ export function useGuests(enabled = true) {
     await deleteDoc(doc(db, COL, normalizeEmail(email)));
   }, []);
 
-  return { guests, error, invite, setActive, remove };
+  return { guests, statuses, error, invite, setActive, remove };
 }

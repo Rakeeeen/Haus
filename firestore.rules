@@ -146,6 +146,21 @@ service cloud.firestore {
         && (resource == null || request.time >= resource.data.approvedAt + duration.value(30, 'd'));
     }
 
+    // ── What a guest does, for Hamed to read (and the bot to tell Discord) ────────────
+    // A line per action: signing in, adding / moving / deleting a task, a comment. A guest can add one about themself
+    // (never about someone else, never to change or remove one); only Hamed reads them.
+    match /activity_log/{id} {
+      allow read, delete: if isOwner();
+      allow create: if isApprovedGuest()
+        && onlyKeys(['uid', 'name', 'type', 'text', 'taskId', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.type in ['entered', 'task_created', 'task_status', 'task_deleted', 'comment']
+        && request.resource.data.text is string && request.resource.data.text.size() <= 240
+        && request.resource.data.get('taskId', '') is string
+        && request.resource.data.at == request.time;
+    }
+
     // ── Work: projects, tasks, their comments, and notes ─────────────────────────────
     // Hamed reads and writes all of it. A guest (let in by a code) sees only a project they are a member of, and a task
     // whose `viewerUids` lists them — Hamed's app writes those lists from each project's sharing (domain/work/sharing.ts).

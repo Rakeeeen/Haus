@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useWhoseTasks, WHOSE_OPTIONS } from '@/data/useWhoseTasks';
+import { useWhoseTasks } from '@/data/useWhoseTasks';
+import { forMeOf, validWhose, whoseOptions } from '@/domain/work/whose';
 import { isDay, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
@@ -40,7 +41,7 @@ const readView = (): View => {
 
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { tasks, projects, ready, canEditTask, setTaskStatus, toggleTaskDone, me } = useWork();
-  const [whose, setWhose] = useWhoseTasks();
+  const [storedWhose, setWhose] = useWhoseTasks();
   const [view, setView] = useState<View>(readView);
   const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_tasks_day', 'all', oneOf(DAYS.map((d) => d.value)));
   const [picked, setPicked] = useStoredState('work_tasks_picked_day', dayKey(new Date()), isDay);
@@ -48,6 +49,8 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   const [projectChoice, setProjectChoice] = useState<string>('all');
   const [query, setQuery] = useState('');
   const editor = useTaskEditor(author, authorPhoto);
+  const whoseChoices = useMemo(() => whoseOptions(editor.people, me), [editor.people, me]);
+  const whose = validWhose(storedWhose, whoseChoices);
 
   useEffect(() => { document.title = `${NAME} — All tasks`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
@@ -61,7 +64,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   const day: DayFilter = dayChoice === 'pick' ? { kind: 'day', day: picked }
     : dayChoice === 'tomorrow' ? { kind: 'day', day: addDays(dayKey(new Date()), 1) } : { kind: dayChoice };
   const statuses: TaskStatus[] | undefined = statusChoice === 'all' ? undefined : statusChoice === 'open' ? ['todo', 'doing'] : [statusChoice];
-  const base = { statuses, projectId: projectChoice === 'all' ? undefined : projectChoice, query, forMe: whose === 'mine' ? me : undefined };
+  const base = { statuses, projectId: projectChoice === 'all' ? undefined : projectChoice, query, forMe: forMeOf(whose, me) };
   const shown = filterTasks(tasks, { ...base, day });
   const calendarTasks = filterTasks(tasks, { ...base, day: { kind: 'all' } });
 
@@ -79,7 +82,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-tasks-view" ruled />
 
       <div className="spring-group flex flex-wrap items-center gap-3">
-        <FilterSelect label="Whose" options={WHOSE_OPTIONS} value={whose} onChange={setWhose} />
+        <FilterSelect label="Whose" options={whoseChoices} value={whose} onChange={setWhose} />
         {view !== 'calendar' && <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />}
         {view !== 'calendar' && dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
         <FilterSelect label="Status" options={STATUSES} value={statusChoice} onChange={setStatusChoice} />
@@ -108,7 +111,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
           onAdd={(status) => openNew({ status })}
         />
       ) : view === 'table' ? (
-        <TaskTable tasks={shown} projectName={projectName} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleTaskDone} />
+        <TaskTable tasks={shown} projectName={projectName} personOf={editor.personOf} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleTaskDone} onSetStatus={setTaskStatus} />
       ) : (
         <TaskCalendar tasks={calendarTasks} onOpen={openTask} onAddOnDay={(d) => openNew({ date: d })} />
       )}

@@ -101,3 +101,30 @@ describe('what an approved guest may reach', () => {
     await assertFails(getDoc(doc(guest('stranger', 'nobody@example.com'), 'dashboard', 'water')));
   });
 });
+
+describe('the activity log', () => {
+  const entry = (extra: object = {}) => ({ uid: GUEST, name: 'Mona', type: 'task_status', text: 'Moved a task', at: serverTimestamp(), ...extra });
+  const approve = async () => { await invite(); await issueCode('12345678'); await assertSucceeds(submit('12345678')); };
+
+  it('an approved guest can log their own action, and nothing before approval', async () => {
+    await invite();
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'a'), entry()));
+    await issueCode('12345678'); await assertSucceeds(submit('12345678'));
+    await assertSucceeds(setDoc(doc(guest(), 'activity_log', 'a'), entry()));
+  });
+  it('cannot log as someone else, with a made-up time, an unknown type or extra fields', async () => {
+    await approve();
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'b'), entry({ uid: 'someone-else' })));
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'c'), entry({ at: new Date('2020-01-01') })));
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'd'), entry({ type: 'hack' })));
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'e'), entry({ extra: 1 })));
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'f'), entry({ text: 'x'.repeat(300) })));
+  });
+  it('cannot be read, changed or removed by a guest; the owner reads it', async () => {
+    await approve();
+    await assertSucceeds(setDoc(doc(guest(), 'activity_log', 'a'), entry()));
+    await assertFails(getDoc(doc(guest(), 'activity_log', 'a')));
+    await assertFails(setDoc(doc(guest(), 'activity_log', 'a'), entry({ text: 'edited' }), { merge: true }));
+    await assertSucceeds(getDoc(doc(owner(), 'activity_log', 'a')));
+  });
+});

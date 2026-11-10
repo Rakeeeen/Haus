@@ -90,3 +90,22 @@ export function isApprovalValid(approvedAtMs: number, nowMs: number): boolean {
 /** Whole seconds left on a code (never below 0). */
 export const secondsLeft = (expiresAtMs: number, nowMs: number): number =>
   Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
+
+// ── Where an invitation stands ──────────────────────────────────────────────────────────────────
+
+/** Invited (not opened yet) → signed in (asked for a code) → in (typed a valid code); or switched off. */
+export type GuestStatus = 'off' | 'invited' | 'signed-in' | 'in';
+
+export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {
+  off: 'Off', invited: 'Invited', 'signed-in': 'Signed in, no code yet', in: 'In',
+};
+
+/**
+ * Where a guest stands, for the owner's list: `uid` is known once they have signed in, and `approvedAtMs` is when they
+ * last typed a valid code (null if never).
+ */
+export function guestStatus(guest: Pick<Invitation, 'active' | 'uid'>, approvedAtMs: number | null, nowMs: number): GuestStatus {
+  if (!guest.active) return 'off';
+  if (approvedAtMs !== null && isApprovalValid(approvedAtMs, nowMs)) return 'in';
+  return guest.uid ? 'signed-in' : 'invited';
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CODE_LENGTH, GUEST_APPROVAL_DAYS, codeFromBytes, firstNameOf, formatCode, isApprovalValid,
+  CODE_LENGTH, GUEST_APPROVAL_DAYS, codeFromBytes, firstNameOf, formatCode, guestStatus, isApprovalValid,
   isValidEmail, normalizeCode, normalizeEmail, roleOf, secondsLeft,
 } from '@/domain/access';
 
@@ -98,5 +98,21 @@ describe('secondsLeft', () => {
   it('rounds up and never goes below zero', () => {
     expect(secondsLeft(10_500, 10_000)).toBe(1);
     expect(secondsLeft(10_000, 12_000)).toBe(0);
+  });
+});
+
+describe('guestStatus', () => {
+  const now = Date.UTC(2026, 10, 10);
+  const day = 86_400_000;
+  it('is off when switched off, whatever else is true', () => {
+    expect(guestStatus({ active: false, uid: 'g' }, now - day, now)).toBe('off');
+  });
+  it('is invited until they sign in, signed in until they type a code, then in', () => {
+    expect(guestStatus({ active: true }, null, now)).toBe('invited');
+    expect(guestStatus({ active: true, uid: 'g' }, null, now)).toBe('signed-in');
+    expect(guestStatus({ active: true, uid: 'g' }, now - day, now)).toBe('in');
+  });
+  it('goes back to signed in once the approval is 30 days old', () => {
+    expect(guestStatus({ active: true, uid: 'g' }, now - 31 * day, now)).toBe('signed-in');
   });
 });

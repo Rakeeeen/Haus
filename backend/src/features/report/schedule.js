@@ -28,7 +28,40 @@ export function afterAttempt(state, now, sent) {
   return { day, sent, attempts };
 }
 
+/**
+ * Which guests' reports go out now: Maghrib has come, and the guest has not been sent one today (nor failed too many times).
+ * `state` is `{ day, sent: [uid…], attempts: { uid: n } }` for the day it was last written.
+ * @param {{ now: Date, maghrib: string, state: { day: string, sent: string[], attempts: Record<string, number> } | null, uids: string[] }} input
+ */
+export function guestsDue({ now, maghrib, state, uids }) {
+  const [hours, minutes] = (maghrib || '18:00').split(':').map(Number);
+  const maghribToday = new Date(now);
+  maghribToday.setHours(hours, minutes, 0, 0);
+  if (now < maghribToday) return [];
+  const today = state && state.day === dayKey(now) ? state : { sent: [], attempts: {} };
+  return uids.filter((uid) => !today.sent.includes(uid) && (today.attempts[uid] ?? 0) < MAX_ATTEMPTS);
+}
+
+/** The state after trying `uid` today. */
+export function afterGuestAttempt(state, now, uid, sent) {
+  const day = dayKey(now);
+  const base = state && state.day === day ? state : { day, sent: [], attempts: {} };
+  return {
+    day,
+    sent: sent ? [...new Set([...base.sent, uid])] : base.sent,
+    attempts: { ...base.attempts, [uid]: (base.attempts[uid] ?? 0) + 1 },
+  };
+}
+
 const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.report-state.json');
+
+const GUEST_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.guest-report-state.json');
+export function readGuestState() {
+  try { return JSON.parse(fs.readFileSync(GUEST_FILE, 'utf8')); } catch { return null; }
+}
+export function writeGuestState(state) {
+  fs.writeFileSync(GUEST_FILE, JSON.stringify(state));
+}
 
 export function readState() {
   try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { return null; }

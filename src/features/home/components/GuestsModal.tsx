@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button, IconButton } from '@/ui/Button';
 import { IconTrash2 as Trash2 } from '@/ui/icons';
-import type { Invitation } from '@/domain/access';
+import { GUEST_STATUS_LABEL, type GuestStatus, type Invitation } from '@/domain/access';
+import { Avatar } from '@/ui/Avatar';
+import { Chip } from '@/ui/Chip';
 
 const input = 'w-full font-mono-main outline-none transition-colors bg-ink/5 border border-ink/12 focus:border-ink text-ink rounded-box px-4 py-3 text-[14px]';
 
@@ -14,11 +16,12 @@ export const GuestsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   guests: readonly Invitation[];
+  statuses?: Record<string, GuestStatus>;
   error: string;
   onInvite: (email: string, name?: string) => Promise<void>;
   onSetActive: (guest: Invitation, active: boolean) => Promise<void>;
   onRemove: (email: string) => Promise<void>;
-}> = ({ isOpen, onClose, guests, error, onInvite, onSetActive, onRemove }) => {
+}> = ({ isOpen, onClose, guests, statuses = {}, error, onInvite, onSetActive, onRemove }) => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -55,10 +58,13 @@ export const GuestsModal: React.FC<{
         {guests.length === 0 && <p className="font-mono-main text-[10px] text-ink/40">No guests yet.</p>}
         {guests.map((guest) => (
           <div key={guest.email} className="flex items-center gap-3 py-3 border-t border-ink/10">
+            <Avatar name={guest.name || guest.email} photoUrl={guest.photoUrl} size={30} />
             <div className="min-w-0 flex-1">
               <p className="font-mono-main text-[12px] truncate text-ink">{guest.name || guest.email}</p>
               {guest.name && <p className="font-mono-main text-[9px] text-ink/40 truncate">{guest.email}</p>}
-              {!guest.uid && <p className="font-mono-main text-[9px] text-ink/30">Shows up here once they open Haus again</p>}
+              {statuses[guest.email] && (
+                <Chip tone={statuses[guest.email] === 'in' ? 'forest' : statuses[guest.email] === 'off' ? 'neutral' : 'sepia'} className="mt-1 !text-[10px]">{GUEST_STATUS_LABEL[statuses[guest.email]]}</Chip>
+              )}
             </div>
             {/* Side by side, so a pressed one pushes its neighbour like every other button row. */}
             <div className="spring-group flex items-center gap-2 shrink-0">

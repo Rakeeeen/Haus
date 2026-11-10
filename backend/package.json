@@ -8,7 +8,8 @@
     "start": "node bot.js",
     "report:preview": "node scripts/report-preview.js",
     "report:send": "node scripts/report-send.js",
-    "mail:preview": "node scripts/mail-preview.js"
+    "mail:preview": "node scripts/mail-preview.js",
+    "report:preview-guests": "node scripts/report-preview-guest.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.1.0",

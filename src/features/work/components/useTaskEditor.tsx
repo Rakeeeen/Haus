@@ -77,5 +77,5 @@ export function useTaskEditor(author: string, authorPhoto: string | null = null)
     />
   );
 
-  return { open: setEditing, modal, personOf };
+  return { open: setEditing, modal, personOf, people: assignees };
 }

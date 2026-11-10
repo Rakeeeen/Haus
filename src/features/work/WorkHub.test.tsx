@@ -55,12 +55,13 @@ describe('the Tasks home', () => {
     expect(within(row as HTMLElement).getByText('Haus')).toBeTruthy();
   });
 
-  it('hides the "To do" tag (the usual state) but shows others', () => {
+  it('shows each task\'s status, and changes it from the row without opening the task', async () => {
     renderHub();
     const mine = screen.getByText('Write the report').closest('div.flex.items-center') as HTMLElement;
-    expect(within(mine).queryByText('To do')).toBeNull();
-    const done = screen.getByText('Done thing').closest('div.flex.items-center') as HTMLElement;
-    expect(within(done).getByText('Done')).toBeTruthy();
+    await userEvent.click(within(mine).getByRole('button', { name: 'Change status' }));
+    await userEvent.click(screen.getByRole('option', { name: /Doing/ }));
+    expect(work.setTaskStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }), 'doing');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('the tick finishes a task', async () => {

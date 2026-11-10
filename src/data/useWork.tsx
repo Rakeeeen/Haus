@@ -3,6 +3,8 @@ import {
   collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { logActivity } from '@/data/activityLog';
+import { commentedText, createdText, deletedText, statusChangeText, type ActivityType } from '@/domain/activity';
 import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
 import { blankTask, moveToStatus, nextTaskNo } from '@/domain/work/tasks';
@@ -90,6 +92,10 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   projectsRef.current = projects;
   const uid = scope.kind === 'guest' ? scope.uid : null;
   const guestName = scope.kind === 'guest' ? scope.name : null;
+  /** A guest's own actions are written to the log Hamed reads; Hamed's are not. */
+  const note = useCallback((type: ActivityType, text: string, taskId?: string) => {
+    if (uid) void logActivity({ uid, name: guestName ?? 'Guest', type, text, taskId });
+  }, [uid, guestName]);
 
   useEffect(() => {
     const fail = (name: string) => (error: Error) => console.warn(`Could not listen to ${name}:`, error.message);
@@ -143,6 +149,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       // The rules know no `projectIds` on a guest's task, nor an end date that is not set.
       const { projectIds: _ids, endDate, ...others } = body;
       await setDoc(ref, clean({ ...others, ...(endDate ? { endDate } : {}) }));
+      note('task_created', createdText(title), ref.id);
       return ref.id;
     }
     // A guest's task is for themself, made by themself, and numbered 0 (the numbers are Hamed's running count).
@@ -157,8 +164,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       ? (({ projectIds: _ids, assigneeUids: _who, endDate, ...others }) => ({ ...others, ...(endDate ? { endDate } : {}) }))(withProjects)
       : withProjects;
     await setDoc(ref, clean({ ...body, viewerUids }));
+    note('task_created', createdText(title), ref.id);
     return ref.id;
-  }, [uid, guestName]);
+  }, [uid, guestName, note]);
 
   const updateTask = useCallback(async (id: string, patch: Partial<Omit<Task, 'id'>>) => {
     const stamped = { ...patch, updatedAt: patch.updatedAt ?? new Date().toISOString() };
@@ -185,6 +193,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       const allowed = Object.fromEntries(Object.entries(fields)
         .filter(([k]) => names.includes(k) && (k !== 'endDate' || stamped.endDate || current?.endDate)));
       await setDoc(doc(db, TASKS, id), clean(allowed), { merge: true });
+      if (current && stamped.status && stamped.status !== current.status) note('task_status', statusChangeText(current.title, current.status, stamped.status), id);
       return;
     }
     // Hamed moving a task to another project, or to someone else, changes who may see it.
@@ -200,7 +209,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       : stamped;
     // Hamed's own change: an earlier change by a project's admin must not be taken for this one.
     await setDoc(doc(db, TASKS, id), clean({ ...withViewers, updatedByUid: null }), { merge: true });
-  }, [uid]);
+  }, [uid, note]);
 
   const setTaskStatus = useCallback(async (task: Task, status: TaskStatus) => {
     if (canEditTask(task)) await updateTask(task.id, moveToStatus(task, status));
@@ -209,8 +218,10 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const toggleTaskDone = useCallback((task: Task) => setTaskStatus(task, task.status === 'done' ? 'todo' : 'done'), [setTaskStatus]);
 
   const removeTask = useCallback(async (id: string) => {
+    const gone = tasksRef.current.find((t) => t.id === id);
     await deleteDoc(doc(db, TASKS, id));
-  }, []);
+    if (gone) note('task_deleted', deletedText(gone.title), id);
+  }, [note]);
 
   const addProject = useCallback(async (input: NewProject, client: string | null = null) => {
     const ref = doc(collection(db, PROJECTS));
@@ -310,11 +321,12 @@ export function useComments(taskId: string | null) {
   }, [taskId]);
 
   /** `authorUid` is a guest's own uid (the rules require it of a guest); Hamed's comments have none. */
-  const add = useCallback(async (author: string, text: string, authorUid?: string) => {
+  const add = useCallback(async (author: string, text: string, authorUid?: string, taskTitle = '') => {
     if (!taskId || !text.trim()) return;
     await setDoc(doc(collection(db, TASKS, taskId, 'comments')), {
       author, text: text.trim(), at: new Date().toISOString(), ...(authorUid ? { authorUid } : {}),
     });
+    if (authorUid) void logActivity({ uid: authorUid, name: author, type: 'comment', text: commentedText(taskTitle), taskId });
   }, [taskId]);
 
   const remove = useCallback(async (id: string) => {

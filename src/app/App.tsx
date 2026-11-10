@@ -6,6 +6,7 @@ import { TouchIDGate } from '@/features/auth/TouchIDGate';
 import { NoAccess } from '@/features/auth/NoAccess';
 import { GuestCodeGate } from '@/features/auth/GuestCodeGate';
 import { GuestCodeBanner } from '@/features/auth/GuestCodeBanner';
+import { GuestEntered } from '@/features/auth/GuestEntered';
 import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
@@ -30,6 +31,7 @@ const Tasks = lazy(() => import('@/features/work/Tasks').then((m) => ({ default:
 const Projects = lazy(() => import('@/features/work/Projects').then((m) => ({ default: m.Projects })));
 const Notes = lazy(() => import('@/features/work/Notes').then((m) => ({ default: m.Notes })));
 const NotePage = lazy(() => import('@/features/work/NotePage').then((m) => ({ default: m.NotePage })));
+const Activity = lazy(() => import('@/features/work/Activity').then((m) => ({ default: m.Activity })));
 const ProjectPage = lazy(() => import('@/features/work/ProjectPage').then((m) => ({ default: m.ProjectPage })));
 
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -108,6 +110,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
+        {role === 'owner' && <Route path="/work/activity" element={<AnimatedPage><Activity navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
@@ -128,6 +131,7 @@ const AppRoutes: React.FC = () => {
       <FloatingTimer currentPage={currentPage} onNavigate={() => nav('pomodoro')} />
       {role === 'owner' && <DeviceCodeBanner user={user} />}
       {role === 'owner' && <GuestCodeBanner />}
+      {role === 'guest' && <GuestEntered uid={user.uid} name={firstName} />}
     </div>
   );
 };

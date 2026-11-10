@@ -77,3 +77,23 @@ export function watchCollection(collection, onSnapshot) {
     (error) => console.error(`⚠️ Lost the Firestore listener for ${collection}:`, error.message),
   );
 }
+
+/** A guest's own dashboard value (`users/{uid}/data/{key}` — the same `{ value }` shape as the owner's). */
+export async function getUserValue(uid, key, fallback) {
+  const snap = await getDb().collection('users').doc(uid).collection('data').doc(key).get();
+  if (!snap.exists) return fallback;
+  const data = snap.data();
+  return data && data.value !== undefined ? data.value : fallback;
+}
+
+/** Every document of a collection, as `{ id, ...data }`. */
+export async function listDocuments(collection) {
+  const snap = await getDb().collection(collection).get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/** The documents of a collection whose array field contains `value`. */
+export async function listWhereContains(collection, field, value) {
+  const snap = await getDb().collection(collection).where(field, 'array-contains', value).get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}

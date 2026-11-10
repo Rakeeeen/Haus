@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { THNDR_PARTS, egp, signedEgp, duration, countdown } from './data.js';
 import { NAME } from '../../lib/brand.js';
+import { textImage } from '../../lib/textImage.js';
 
 // The daily report as a PDF, kept as quiet as the dashboard itself: no boxes, just hairlines and
 // a lot of space; small mono caps for labels, large light numerals for the figures, and one accent
@@ -141,7 +142,7 @@ function footers(doc, report) {
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
-    label(doc, `Daily report  ·  generated ${report.date.time} Cairo`, M, PAGE.h - 44, { size: 5.8 });
+    label(doc, `Daily report  ·  ${report.person ? `${report.person.name}  ·  ` : ''}generated ${report.date.time} Cairo`, M, PAGE.h - 44, { size: 5.8 });
     label(doc, `${i + 1} / ${range.count}`, M, PAGE.h - 44, { size: 5.8, width: W, align: 'right' });
   }
 }
@@ -155,12 +156,12 @@ function hero(doc, report, y) {
   return y + 104;
 }
 
-function headlineStats(doc, report, y) {
+function headlineStats(doc, report, y, third) {
   const { water, focus, finance } = report;
   const cols = [
     { name: 'Water', value: `${water.glasses}`, unit: `/ ${water.goal}`, sub: water.glasses >= water.goal ? 'goal reached' : `${water.goal - water.glasses} to go` },
     { name: 'Focus', value: duration(focus.minutes), sub: `${focus.sessions} ${focus.sessions === 1 ? 'session' : 'sessions'}  ·  target ${duration(focus.targetMinutes)}` },
-    { name: "Hamed's share", amount: finance.share.amount, sub: `${egp(finance.share.salary).replace(' EGP', '')} less Payit`, color: finance.share.amount < 0 ? C.warn : C.ink },
+    third ?? { name: "Hamed's share", amount: finance.share.amount, sub: `${egp(finance.share.salary).replace(' EGP', '')} less Payit`, color: finance.share.amount < 0 ? C.warn : C.ink },
   ];
   const cw = W / 3;
   line(doc, M, y, M + W);
@@ -314,10 +315,9 @@ function debts(doc, report, y) {
   return twoColumns(y, list('Owed to me', d.toMe, d.owedToMe, C.gain), list('I owe', d.byMe, d.owedByMe, d.owedByMe > 0 ? C.warn : C.ink));
 }
 
-function logs(doc, report, y) {
-  const { focus } = report.logs;
-  const { today } = report.finance;
-  const focusCol = (x, ly, w) => {
+/** The focus sessions list, as a column: `(x, y, width) => bottom`. */
+function focusColumn(doc, focus) {
+  return (x, ly, w) => {
     label(doc, 'Focus sessions today', x, ly);
     let cy = ly + 14;
     if (!focus.entries.length) { note(doc, 'None logged.', x, cy + 6, { size: 8 }); cy += ROW; }
@@ -331,6 +331,12 @@ function logs(doc, report, y) {
     doc.font(F.sansBold).fontSize(9.5).fillColor(C.ink).text(duration(focus.total), x, cy + 6, { lineBreak: false, width: w, align: 'right' });
     return cy + 26;
   };
+}
+
+function logs(doc, report, y) {
+  const { focus } = report.logs;
+  const { today } = report.finance;
+  const focusCol = focusColumn(doc, focus);
   const moneyCol = (x, ly, w) => {
     label(doc, 'Money movements today', x, ly);
     let cy = ly + 14;
@@ -360,6 +366,78 @@ function thndrReadings(doc, report, y) {
     y += ROW;
   });
   return y;
+}
+
+// ─── A guest's report: the same page, about one person, with their tasks in place of the money ──────────
+
+function guestHero(doc, report, y) {
+  label(doc, `Daily report  ·  ${report.person.name}`, M, y);
+  figure(doc, report.date.label.replace(/ \d{4}$/, ''), M, y + 16, 44);
+  note(doc, `${report.date.weekday}  ·  ${report.date.iso.slice(0, 4)}`, M, y + 72, { size: 8.5 });
+  return y + 104;
+}
+
+/** A list of task titles under a heading, one per hairline row; says so when there are none. */
+function taskList(doc, heading, titles, empty, x, y, w, { color = C.ink } = {}) {
+  label(doc, heading, x, y);
+  let cy = y + 14;
+  if (!titles.length) { note(doc, empty, x, cy + 6, { size: 8 }); return cy + ROW + 4; }
+  titles.slice(0, 8).forEach((title) => {
+    // A title can be Arabic, which the PDF's built-in fonts cannot draw: it is set as a picture in the app's own fonts.
+    const arabic = /[\u0600-\u06FF]/.test(title);
+    const pic = textImage({ text: title, size: 12, width: Math.round(w), color: color, align: arabic ? 'right' : 'left', maxLines: 1, lineHeight: 1.4 });
+    doc.image(pic.png, x, cy + 3, { width: pic.width, height: pic.height });
+    line(doc, x, cy + ROW, x + w);
+    cy += ROW;
+  });
+  if (titles.length > 8) { note(doc, `and ${titles.length - 8} more`, x, cy + 8, { size: 7.5 }); cy += 18; }
+  return cy + 8;
+}
+
+function guestTasks(doc, report, y) {
+  const t = report.tasks;
+  const open = [...t.late, ...t.dueToday.filter((title) => !t.late.includes(title))];
+  return twoColumns(
+    y,
+    (x, ly, w) => taskList(doc, 'Finished today', t.doneToday, 'None finished today.', x, ly, w),
+    (x, ly, w) => taskList(doc, t.lateCount ? 'Late and due today' : 'Due today', open, 'Nothing due.', x, ly, w, { color: t.lateCount ? C.warn : C.ink }),
+  );
+}
+
+/** Renders a guest's daily report to a PDF; resolves with the file's bytes. */
+export function renderGuestReportPdf(report) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4', margin: 0, bufferPages: true,
+      info: { Title: `${NAME} daily report - ${report.person.name} - ${report.date.iso}`, Author: NAME, Subject: 'Daily report' },
+    });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const paintPage = () => doc.save().rect(0, 0, PAGE.w, PAGE.h).fill(C.bg).restore();
+    paintPage();
+    doc.on('pageAdded', paintPage);
+
+    const t = report.tasks;
+    masthead(doc, report);
+    let y = guestHero(doc, report, 112);
+    y = headlineStats(doc, report, y, {
+      name: 'Tasks done', value: String(t.doneCount), sub: `${t.openCount} open  ·  ${t.lateCount} late`,
+    }) + 22;
+    y = inBrief(doc, report, y) + 14;
+    line(doc, M, y, M + W);
+    y = weekRow(doc, report, y + 22) + 6;
+    line(doc, M, y, M + W);
+    y = section(doc, 'Tasks', y + 22);
+    y = guestTasks(doc, report, y) + 14;
+    if (y + 26 + (report.logs.focus.entries.length + 2) * ROW > BOTTOM) { doc.addPage(); masthead(doc, report); y = 110; }
+    focusColumn(doc, report.logs.focus)(M, y, W);
+
+    footers(doc, report);
+    doc.end();
+  });
 }
 
 // ─── The document ───────────────────────────────────────────────────────────

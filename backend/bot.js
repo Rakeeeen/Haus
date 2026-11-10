@@ -2,15 +2,17 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import cron from 'node-cron';
 import { Agent } from 'undici';
-import { CONTROL_CHANNEL_ID } from './src/config.js';
+import { ACTIVITY_CHANNEL_ID, CONTROL_CHANNEL_ID } from './src/config.js';
+import { watchActivity } from './src/features/activityNotifications.js';
 import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
 import { cleanChannel } from './src/features/cleanup.js';
 import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { watchMailNotifications } from './src/features/mailNotifications.js';
-import { sendDailyReport } from './src/features/report/send.js';
+import { sendDailyReport, sendGuestReport } from './src/features/report/send.js';
+import { reportRecipients } from './src/features/report/guest.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
-import { afterAttempt, readState, reportDue, writeState } from './src/features/report/schedule.js';
+import { afterAttempt, afterGuestAttempt, guestsDue, readGuestState, readState, reportDue, writeGuestState, writeState } from './src/features/report/schedule.js';
 import { getMaghrib } from './src/lib/prayerTimes.js';
 import { startServer } from './src/server.js';
 import { startSlack } from './src/slack/app.js';
@@ -65,6 +67,27 @@ client.once('clientReady', async () => {
     writeState(afterAttempt(state, now, false));
     await sendDailyReport(client, CHANNEL_ID);
     writeState(afterAttempt(readState(), now, true));
+  }), TIME_ZONE);
+  // What guests do in Haus, told to its own channel as it happens.
+  try { watchActivity(client, ACTIVITY_CHANNEL_ID); } catch (error) { console.error('❌ Could not watch guest activity:', error.message); }
+  // Each guest's own report goes out the same evening, right after Hamed's: one message per person, tried again (up to five
+  // times) only for the ones that did not get through.
+  cron.schedule('* * * * *', guarded('Guest reports', async () => {
+    const now = new Date();
+    const maghrib = await getMaghrib();
+    const people = await reportRecipients();
+    const due = guestsDue({ now, maghrib, state: readGuestState(), uids: people.map((p) => p.uid) });
+    for (const uid of due) {
+      const person = people.find((p) => p.uid === uid);
+      // Written before trying, so a send that takes longer than a minute isn't started twice.
+      writeGuestState(afterGuestAttempt(readGuestState(), now, uid, false));
+      try {
+        await sendGuestReport(client, CHANNEL_ID, person);
+        writeGuestState(afterGuestAttempt(readGuestState(), now, uid, true));
+      } catch (error) {
+        console.error(`❌ ${person.name}'s report failed:`, error.message);
+      }
+    }
   }), TIME_ZONE);
   console.log('⏰ Scheduled: channel cleanup 02:00 · Payit reminders every minute · daily report at Maghrib');
 });

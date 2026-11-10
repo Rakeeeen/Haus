@@ -97,7 +97,7 @@ export const TaskModal: React.FC<{
     });
   };
 
-  const sendComment = () => run(async () => { await add(author, comment, guestUid); setComment(''); });
+  const sendComment = () => run(async () => { await add(author, comment, guestUid, draft?.title ?? ""); setComment(''); });
 
   // For a task in projects, who it can be for is those projects' members (and Hamed); outside any project, any guest.
   const assignees = assigneesFor(draft?.projectIds[0]);

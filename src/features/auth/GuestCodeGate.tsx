@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { signOutUser, type AuthUser } from '@/data/auth';
+import { logActivity } from '@/data/activityLog';
 import { requestGuestCode, submitGuestCode } from '@/data/guestAccess';
-import { CODE_LENGTH, formatCode, normalizeCode } from '@/domain/access';
+import { enteredText } from '@/domain/activity';
+import { markEntered } from '@/features/auth/GuestEntered';
+import { CODE_LENGTH, firstNameOf, formatCode, normalizeCode } from '@/domain/access';
 import { Button } from '@/ui/Button';
 import { Boil, SketchSvg } from '@/ui/Sketch';
 import { LOCK_ICON } from '@/ui/sketchIcons.data';
@@ -51,6 +54,8 @@ export const GuestCodeGate: React.FC<{ user: AuthUser }> = ({ user }) => {
     try {
       await submitGuestCode(user.uid, digits);
       // Accepted: AuthProvider sees the approval and swaps this screen for the system.
+      markEntered();
+      void logActivity({ uid: user.uid, name: firstNameOf(user.displayName, user.email), type: 'entered', text: enteredText(true) });
     } catch (error) {
       // The rules refuse without saying why; the code in the error at least tells a wrong code from a network fault.
       console.warn('The code was refused:', (error as { code?: string }).code ?? error);

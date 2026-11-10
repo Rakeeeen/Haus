@@ -13,6 +13,7 @@ import { useGuests } from '@/data/useMembers';
 import { usePomodoro } from '@/data/usePomodoro';
 import { usePrayer } from '@/data/usePrayer';
 import { useWeather } from '@/data/useWeather';
+import { forMeOf } from '@/domain/work/whose';
 import { useWhoseTasks } from '@/data/useWhoseTasks';
 import { useWorkOptional } from '@/data/useWork';
 import type { Viewer } from '@/domain/access';
@@ -60,12 +61,12 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   useEffect(() => { document.title = NAME; }, []);
 
   // ── Data ───────────────────────────────────────────────────────────────────────────────────────
-  const { guests, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
+  const { guests, statuses: guestStatuses, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
   const work = useWorkOptional();
   // Whose tasks the card lists is chosen on the Tasks pages (one remembered choice); the card just follows it.
   const [whose] = useWhoseTasks();
   const dueToday = useMemo(
-    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: whose === 'mine' ? work.me : undefined })) : []),
+    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: forMeOf(whose, work.me) })) : []),
     [work, whose],
   );
   const projectName = (id: string | null) => work?.projects.find((p) => p.id === id)?.name ?? null;
@@ -257,7 +258,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         confirm={{ message: 'Something went wrong while uploading your avatar. Please try again.', confirmText: 'Got it', cancelText: 'Dismiss', onConfirm: avatar.dismissFailure }}
       />
       {isOwner && (
-        <GuestsModal isOpen={guestsOpen} onClose={() => setGuestsOpen(false)} guests={guests} error={guestsError} onInvite={invite} onSetActive={setActive} onRemove={remove} />
+        <GuestsModal isOpen={guestsOpen} onClose={() => setGuestsOpen(false)} guests={guests} statuses={guestStatuses} error={guestsError} onInvite={invite} onSetActive={setActive} onRemove={remove} />
       )}
       <AppModal
         isOpen={logoutModal}

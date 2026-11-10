@@ -1,14 +1,11 @@
-import { oneOf, useStoredState } from '@/lib/useStoredState';
+import { useStoredState } from '@/lib/useStoredState';
 
-/** Whose tasks to show: only the ones that are for me, or everyone's that I can see. */
-export type Whose = 'mine' | 'all';
+/** Whose tasks to show: 'mine', 'all', or one person's key (see domain/work/whose.ts). */
+export type Whose = string;
 
-export const WHOSE_OPTIONS = [
-  { value: 'mine', label: 'Mine' },
-  { value: 'all', label: 'Everyone' },
-] as const;
+const isText = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 
 /** The choice is remembered, and shared by every screen that lists tasks (Tasks home, All tasks, the Home card). */
 export function useWhoseTasks(): [Whose, (value: Whose) => void] {
-  return useStoredState<Whose>('work_whose', 'mine', oneOf(WHOSE_OPTIONS.map((o) => o.value)));
+  return useStoredState<Whose>('work_whose', 'mine', isText);
 }

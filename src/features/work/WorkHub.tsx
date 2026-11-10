@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
-import { useWhoseTasks, WHOSE_OPTIONS } from '@/data/useWhoseTasks';
+import { useWhoseTasks } from '@/data/useWhoseTasks';
+import { forMeOf, validWhose, whoseOptions } from '@/domain/work/whose';
+import { Avatar } from '@/ui/Avatar';
 import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
@@ -14,7 +16,8 @@ import { DatePicker } from '@/ui/DatePicker';
 import { FilterMulti, FilterSelect } from '@/ui/FilterSelect';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { DoneTick } from '@/features/work/components/DoneTick';
-import { shortDate, TaskStatusChip } from '@/features/work/components/chips';
+import { shortDate } from '@/features/work/components/chips';
+import { StatusPicker } from '@/features/work/components/StatusPicker';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
@@ -28,9 +31,11 @@ const TASK_STATUS_OPTIONS = [{ value: 'todo', label: 'To do' }, { value: 'doing'
 
 /** The way into the work side: Projects, Tasks, Notes; the projects and the tasks, each narrowed the way you choose. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { role, me, projects, tasks, notes, privates, ready, canEditTask, toggleTaskDone } = useWork();
-  const [whose, setWhose] = useWhoseTasks();
+  const { role, me, projects, tasks, notes, privates, ready, canEditTask, toggleTaskDone, setTaskStatus } = useWork();
+  const [storedWhose, setWhose] = useWhoseTasks();
   const editor = useTaskEditor(author, authorPhoto);
+  const whoseChoices = useMemo(() => whoseOptions(editor.people, me), [editor.people, me]);
+  const whose = validWhose(storedWhose, whoseChoices);
   // What is chosen here is remembered (even after a refresh); "Today" is remembered as "Today", not as one date.
   const [projectStatuses, setProjectStatuses] = useStoredState<ProjectStatus[]>('work_hub_project_statuses', [], manyOf(PROJECT_STATUSES.map((s) => s.value)));
   const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_hub_day', 'all', oneOf(DAYS.map((d) => d.value)));
@@ -44,7 +49,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   // "Today" and "Tomorrow" are worked out as the page draws, so they follow the real date.
   const day: DayFilter = dayChoice === 'pick' ? { kind: 'day', day: picked }
     : dayChoice === 'tomorrow' ? { kind: 'day', day: addDays(dayKey(new Date()), 1) } : { kind: dayChoice };
-  const forMe = whose === 'mine' ? me : undefined;
+  const forMe = forMeOf(whose, me);
   const shownTasks = sortTasks(filterTasks(tasks, { day, statuses: taskStatuses, forMe }));
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
   const open = tasks.filter((t) => (t.status === 'todo' || t.status === 'doing') && (!forMe || t.assigneeUids.includes(forMe))).length;
@@ -56,6 +61,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
         <Button tone="outline" size="sm" onClick={() => navigate('work/projects')}>Projects<span className="text-ink/40">{projects.length}</span></Button>
         <Button tone="outline" size="sm" onClick={() => navigate('work/tasks')}>All tasks<span className="text-ink/40">{open} open</span></Button>
         {role === 'owner' && <Button tone="outline" size="sm" onClick={() => navigate('work/notes')}>Notes<span className="text-ink/40">{notes.length}</span></Button>}
+        {role === 'owner' && <Button tone="outline" size="sm" onClick={() => navigate('work/activity')}>Logs</Button>}
       </div>
       <hr className="border-0 border-t border-ink/10 w-full my-2" />
 
@@ -67,7 +73,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-mono-main text-[13px] font-semibold uppercase tracking-[0.22em] text-ink/50">Tasks</h2>
               <div className="spring-group flex flex-wrap items-center gap-2">
-                <FilterSelect label="Whose" options={WHOSE_OPTIONS} value={whose} onChange={setWhose} />
+                <FilterSelect label="Whose" options={whoseChoices} value={whose} onChange={setWhose} />
                 <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />
                 {dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
                 <FilterMulti label="Status" options={TASK_STATUS_OPTIONS} values={taskStatuses} onChange={setTaskStatuses} />
@@ -83,8 +89,11 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                     <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
                     {task.date && <p className="font-mono-main text-[12px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}
                   </div>
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {editor.personOf(task).slice(0, 3).map((p, i) => <Avatar key={i} name={p.name} photoUrl={p.photoUrl} size={22} className="ring-2 ring-[var(--paper-dark)]" />)}
+                  </div>
                   {projectLabel(task, projectName) && <Chip tone="neutral" className="max-w-[180px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectLabel(task, projectName)}</span></Chip>}
-                  {task.status !== 'todo' && <TaskStatusChip status={task.status} />}
+                  {(task.status !== 'todo' || canEditTask(task)) && <StatusPicker status={task.status} editable={canEditTask(task)} onPick={(next) => setTaskStatus(task, next)} />}
                 </div>
               ))}
               <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 mt-2">
