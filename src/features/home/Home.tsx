@@ -951,7 +951,6 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
                   today={todayTasks}
                   projectName={projectName}
                   onFinish={(task) => work?.updateTask(task.id, moveToStatus(task, 'done'))}
-                  onOpen={(e) => { e.stopPropagation(); navigate('work'); }}
                 />
               )}
 

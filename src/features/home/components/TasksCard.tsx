@@ -1,17 +1,14 @@
 import React from 'react';
-import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
-import { IconPlus as Plus } from '@/ui/icons';
 import type { Task } from '@/domain/work/types';
 import { TasksVector } from '@/features/home/components/visuals';
 
-/** The big card's body for Tasks: what is still to do today, with a tick to finish each, and the way in to the work side. */
+/** The big card's body for Tasks: what is still to do today, with a tick to finish each. Clicking the card opens the work side. */
 export const TasksCardBody: React.FC<{
   today: readonly Task[];
   projectName: (id: string | null) => string | null;
   onFinish: (task: Task) => void;
-  onOpen: (e: React.MouseEvent) => void;
-}> = ({ today, projectName, onFinish, onOpen }) => (
+}> = ({ today, projectName, onFinish }) => (
   <div className="flex-1 flex flex-col justify-between">
     <div className="flex justify-between items-start">
       <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">TASKS</h2>
@@ -42,7 +39,6 @@ export const TasksCardBody: React.FC<{
         })}
         {today.length > 5 && <span className="font-mono-main text-[12px] text-ink/45">+{today.length - 5} more today</span>}
       </div>
-      <Button onClick={onOpen}><Plus size={18} />Open tasks</Button>
     </div>
   </div>
 );
