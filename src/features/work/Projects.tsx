@@ -58,7 +58,7 @@ export function useProjectEditing() {
 }
 
 export const Projects: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { tasks, privates, ready, setClient } = useWork();
+  const { tasks, privates, ready, setClient, updateProject } = useWork();
   const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
   const [statuses, setStatuses] = useStoredState<ProjectStatus[]>('work_projects_statuses', [], manyOf(PROJECT_STATUSES.map((p) => p.value)));
@@ -88,7 +88,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void; author: string
       {!ready ? (
         <WorkLoading />
       ) : view === 'cards' ? (
-        <ProjectCards {...common} clients={clients} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
+        <ProjectCards {...common} clients={clients} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} onMoveStatus={role === 'owner' ? (id, status) => updateProject(id, { status }) : undefined} />
       ) : view === 'table' ? (
         <ProjectTable {...common} />
       ) : (

@@ -38,23 +38,40 @@ const ClientColumn: React.FC<{ id: string; children: React.ReactNode }> = ({ id,
   return <div ref={setNodeRef} className={`w-[270px] shrink-0 rounded-card p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors ${isOver ? 'bg-ink/8' : 'bg-ink/4'}`}>{children}</div>;
 };
 
+/** A stage's block under the client cards: where a project dropped on it takes that status. */
+const StatusBlock: React.FC<{ status: ProjectStatus; count: number; dropping: boolean; children: React.ReactNode }> = ({ status, count, dropping, children }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: `status:${status}` });
+  return (
+    <section ref={setNodeRef} className={`rounded-card transition-colors ${dropping ? `p-3 -m-3 ${isOver ? 'bg-ink/8' : 'bg-ink/4'}` : ''}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <ProjectStatusChip status={status} />
+        <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{count}</span>
+      </div>
+      {children}
+    </section>
+  );
+};
+
 /** The blocks under the client cards, in the order a project moves through them. */
 const BLOCKS: ReadonlyArray<ProjectStatus> = ['active', 'maintenance', 'paused', 'done'];
 
 /**
  * The projects as cards, in two parts. On top, a card for each client holding the projects still being planned (a card
  * stays even with none, so a project can be dragged into it). Below, a block for each stage a project is in — in
- * progress, maintenance, on hold, done. Dragging a project onto a client's card changes whose project it is; it
- * moves at once, before the change is saved. A guest sees no clients, so their planning projects get a block too.
+ * progress, maintenance, on hold, done. Dragging a project onto a client's card makes it a planning project of that client;
+ * dragging it down onto a stage's block gives it that status. It moves at once, before the change is saved. A guest sees no
+ * clients, so their planning projects get a block too.
  */
 export const ProjectCards: React.FC<ProjectViewProps & {
   clients?: readonly string[];
   onNew?: (client: string | null) => void;
   onMoveClient?: (projectId: string, client: string | null) => void;
-}> = ({ projects, tasksOf, clientOf, onOpen, clients = [], onNew, onMoveClient }) => {
+  onMoveStatus?: (projectId: string, status: ProjectStatus) => void;
+}> = ({ projects: saved, tasksOf, clientOf, onOpen, clients = [], onNew, onMoveClient, onMoveStatus }) => {
   const clientsRowRef = useWheelToSide();
   const [moved, setMoved] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState<Project | null>(null);
+  const [movedStatus, setMovedStatus] = useState<Record<string, ProjectStatus>>({});
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
@@ -66,6 +83,15 @@ export const ProjectCards: React.FC<ProjectViewProps & {
       return keep.length === Object.keys(m).length ? m : Object.fromEntries(keep);
     });
   }, [clientOf]);
+  useEffect(() => {
+    setMovedStatus((m) => {
+      const keep = Object.entries(m).filter(([id, status]) => saved.find((p) => p.id === id)?.status !== status);
+      return keep.length === Object.keys(m).length ? m : Object.fromEntries(keep);
+    });
+  }, [saved]);
+  // A project dropped on a stage shows there at once, before its new status is saved.
+  const projects = saved.map((p) => (movedStatus[p.id] && movedStatus[p.id] !== p.status ? { ...p, status: movedStatus[p.id] } : p));
+  const canDrag = !!onMoveClient || !!onMoveStatus;
   const shownClientOf = (id: string): string | null => (id in moved ? moved[id] || null : clientOf(id));
   const withClients = !!onMoveClient || !!onNew;
 
@@ -76,8 +102,20 @@ export const ProjectCards: React.FC<ProjectViewProps & {
   const onDragEnd = (e: DragEndEvent) => {
     setDragging(null);
     const id = String(e.active.id);
-    const to = e.over ? String(e.over.id).replace(/^client:/, '') : null;
-    if (to === null || !onMoveClient || (shownClientOf(id) ?? '') === to) return;
+    const over = e.over ? String(e.over.id) : null;
+    const project = projects.find((p) => p.id === id);
+    if (!over || !project) return;
+    const toStatus = (status: ProjectStatus) => {
+      if (!onMoveStatus || project.status === status) return;
+      setMovedStatus((m) => ({ ...m, [id]: status }));
+      onMoveStatus(id, status);
+    };
+    if (over.startsWith('status:')) { toStatus(over.slice('status:'.length) as ProjectStatus); return; }
+    const to = over.replace(/^client:/, '');
+    if (!onMoveClient) return;
+    // A client's card holds planning projects: dropping one there makes it a planning project of that client.
+    toStatus('planning');
+    if ((shownClientOf(id) ?? '') === to) return;
     setMoved((m) => ({ ...m, [id]: to }));
     onMoveClient(id, to || null);
   };
@@ -99,7 +137,7 @@ export const ProjectCards: React.FC<ProjectViewProps & {
                   <AutoHeight>
                     <div className="flex flex-col gap-2.5">
                       {mine.map((project) => (
-                        <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
+                        <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={canDrag} onOpen={() => onOpen(project.id)} />
                       ))}
                       {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
                     </div>
@@ -112,21 +150,20 @@ export const ProjectCards: React.FC<ProjectViewProps & {
 
         {blocks.map((status) => {
           const list = projects.filter((p) => p.status === status);
-          if (list.length === 0) return null;
+          // While a project is being dragged, every stage shows (even an empty one) so it can be dropped there.
+          const dropping = !!dragging && !!onMoveStatus;
+          if (list.length === 0 && !dropping) return null;
           return (
-            <section key={status}>
-              <div className="flex items-center gap-3 mb-3">
-                <ProjectStatusChip status={status} />
-                <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{list.length}</span>
-              </div>
+            <StatusBlock key={status} status={status} count={list.length} dropping={dropping}>
+              {list.length === 0 && <p className="font-mono-main text-[12px] text-ink/35 py-3">Drop a project here</p>}
               <AutoHeight>
                 <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
                   {list.map((project) => (
-                    <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} client={withClients ? shownClientOf(project.id) : null} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
+                    <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} client={withClients ? shownClientOf(project.id) : null} draggable={canDrag} onOpen={() => onOpen(project.id)} />
                   ))}
                 </div>
               </AutoHeight>
-            </section>
+            </StatusBlock>
           );
         })}
       </div>
