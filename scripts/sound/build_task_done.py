@@ -1,109 +1,66 @@
 #!/usr/bin/env python3
 """
-Renders the sound a finished task makes.
-    python3 scripts/sound/build_task_done.py [felt|bowl] [--out PATH]
-With no argument it renders the chosen one (`felt`) to src/assets/sounds/task-done.wav. Pure Python, no libraries, so every
-number can be tuned by ear.
+Renders the sound a finished task makes: src/assets/sounds/task-done.wav.      python3 scripts/sound/build_task_done.py
+Pure Python, no libraries, so every number below can be tuned by ear.
 
-What it is, and why (the aim: a reward that is certain and small, and that the ear never has to brace for):
+What it is, and why (the aim: a reward that is small, certain, and that the ear never has to brace for):
 
-  * Open, rising notes. A stack of fifths (A4 - E5 - B5) climbing in three soft steps: up reads as "done, forward";
-    fifths are stable and open — no tension to resolve, nothing sweet or sharp. It lives between 440 Hz and 1 kHz, the
-    range the ear finds most comfortable. High, bright sounds (above ~2 kHz) are what make a chime irritating, so there
-    is almost no energy up there.
-  * The timbre is a felt-mallet vibraphone bar, modelled by its real vibration modes (1 : 4 : 10) rather than by added
-    harmonics: round and woody, with no metallic ring. A 9 ms soft attack (no click, no tick) so it is never startling.
-  * A slow, dark "bloom" underneath (A3/E4, 250 ms to swell): the breath that makes a short sound feel satisfying.
-  * A long, soft room (eight damped combs, four all-passes, different on each side) so it ends by dissolving, not stopping.
-  * Quiet: mastered to -9 dBFS peak, and the app plays it at a modest volume on top.
-
-`bowl` is the calmer alternative: one glass-bowl note (E5) whose two slightly detuned strings beat slowly.
+  * Short and dry. About half a second you actually hear, and no reverb or echo at all — an echo is the first thing that
+    makes a repeated sound tiring. Nothing is delayed; it is just two notes.
+  * Two soft notes rising a fifth, D5 -> A5, the second a touch later (90 ms) and a touch longer. Up reads as "done,
+    forward"; a fifth is open and stable, with no tension to resolve. It sits in the ear's most comfortable range and
+    has almost no energy above 3 kHz, which is what makes chimes harsh.
+  * The timbre is a felt-mallet marimba bar modelled by its real vibration modes (1 : 4 : 10), so it is round and woody,
+    not metallic. A 6 ms soft attack: no click, no tick.
+  * It is fuller than a single tone without any echo: each note is two voices a couple of cents apart, one a little left
+    and one a little right (width, and a gentle shimmer), plus a very quiet low thump under the strike for body.
+  * It ends by dying away, never by stopping: every note decays smoothly to well under -70 dB, and the last 350 ms also
+    fades by a smooth curve, so the file's final samples are silence. (A clip that is still audible when it ends is
+    what produces the abrupt "cut".)
+  * Mastered to -7 dBFS peak; the app plays it at a modest volume on top.
 """
-import math, os, struct, sys, wave
+import math, os, struct, wave
 
 SR = 44100
 TAU = 2 * math.pi
+LENGTH = 0.9                       # seconds; the last 350 ms are the tail
+N = int(SR * LENGTH)
 
-def new(length):
-    n = int(SR * length)
-    return n, [0.0] * n, [0.0] * n
-
-def pan_gains(pan):
+def gains(pan):
     a = (pan + 1) * math.pi / 4
     return math.cos(a), math.sin(a)
 
-def bar(freq, start, amp, decay, pan, L, R, attack=0.009):
-    """A felt-mallet vibraphone bar: modes at 1 : 4 : 10, the upper ones quieter and much shorter-lived."""
-    gl, gr = pan_gains(pan)
-    n = len(L)
+def bar(freq, start, amp, decay, L, R, spread=0.35, cents=2.5):
+    """A felt-mallet marimba bar, as two voices a few cents apart, one leaning left and one right."""
+    modes = ((1.0, 1.0, decay), (4.0, 0.07, decay * 0.20), (9.9, 0.010, decay * 0.05))
     first = int(start * SR)
-    modes = ((1.0, 1.0, decay), (4.0, 0.085, decay * 0.22), (10.0, 0.012, decay * 0.06))
-    for i in range(first, n):
-        t = (i - first) / SR
-        a = 0.5 - 0.5 * math.cos(math.pi * min(1.0, t / attack))          # raised-cosine: no click
-        s = sum(g * math.exp(-t / d) * math.sin(TAU * freq * r * t) for r, g, d in modes)
-        v = amp * a * s
-        L[i] += v * gl
-        R[i] += v * gr
-        if t > decay * 6:
-            break
+    for pan, detune in ((-spread, 1 - cents / 1200), (spread, 1 + cents / 1200)):
+        gl, gr = gains(pan)
+        f = freq * detune
+        for i in range(first, N):
+            t = (i - first) / SR
+            attack = 0.5 - 0.5 * math.cos(math.pi * min(1.0, t / 0.006))      # raised cosine: no click
+            s = sum(g * math.exp(-t / d) * math.sin(TAU * f * r * t) for r, g, d in modes)
+            v = 0.5 * amp * attack * s
+            L[i] += v * gl
+            R[i] += v * gr
+            if t > decay * 8:
+                break
 
-def bloom(freq, start, amp, rise, decay, L, R):
+def thump(freq, start, amp, L, R):
+    """A very quiet low pulse under the strike, for body."""
     first = int(start * SR)
-    for i in range(first, len(L)):
+    for i in range(first, N):
         t = (i - first) / SR
-        v = amp * (1 - math.exp(-t / rise)) * math.exp(-t / decay) * math.sin(TAU * freq * t)
+        a = (0.5 - 0.5 * math.cos(math.pi * min(1.0, t / 0.012))) * math.exp(-t / 0.045)
+        v = amp * a * math.sin(TAU * freq * t)
         L[i] += v
         R[i] += v
-
-def glass(freq, start, amp, decay, pan, L, R):
-    """A glass bowl: two strings a little apart (so it slowly shimmers), a soft inharmonic mode, a slow attack."""
-    gl, gr = pan_gains(pan)
-    first = int(start * SR)
-    for i in range(first, len(L)):
-        t = (i - first) / SR
-        a = 0.5 - 0.5 * math.cos(math.pi * min(1.0, t / 0.04))
-        body = math.exp(-t / decay)
-        s = (math.sin(TAU * freq * t) + math.sin(TAU * (freq + 0.65) * t)) * 0.5
-        s += 0.16 * math.sin(TAU * freq * 2.71 * t) * math.exp(-t / (decay * 0.35))
-        s += 0.03 * math.sin(TAU * freq * 5.2 * t) * math.exp(-t / (decay * 0.12))
-        v = amp * a * body * s
-        L[i] += v * gl
-        R[i] += v * gr
-        if t > decay * 6:
+        if t > 0.4:
             break
 
-def room(dry_l, dry_r, wet, predelay=0.018, rt=1.5):
-    """Eight damped combs and four all-passes per side (different delays each side), darker with every pass."""
-    n = len(dry_l)
-    def side(src, delays, aps):
-        out = [0.0] * n
-        for d in delays:
-            g = 10 ** (-3 * d / (rt * SR))     # feedback that gives the chosen decay time
-            buf, damp, pos = [0.0] * d, 0.0, 0
-            for i in range(n):
-                y = buf[pos]
-                damp += 0.30 * (y - damp)
-                buf[pos] = src[i] + g * damp
-                out[i] += y * 0.125
-                pos = (pos + 1) % d
-        for d in aps:
-            buf, pos = [0.0] * d, 0
-            for i in range(n):
-                x = out[i]
-                y = buf[pos]
-                buf[pos] = x + 0.5 * y
-                out[i] = y - 0.5 * x
-                pos = (pos + 1) % d
-        return out
-    pd = int(predelay * SR)
-    pad = [0.0] * pd
-    wl = side(pad + dry_l[:n - pd], (1687, 1747, 1823, 1901, 1999, 2053, 2137, 2213), (347, 113, 37, 211))
-    wr = side(pad + dry_r[:n - pd], (1699, 1759, 1831, 1913, 2011, 2063, 2143, 2221), (359, 127, 41, 223))
-    return [a + wet * b for a, b in zip(dry_l, wl)], [a + wet * b for a, b in zip(dry_r, wr)]
-
-def master(L, R, peak_db=-9.0, k=0.5, fade=0.2):
-    """Soften the top (one-pole low-pass ~4.5 kHz), fade out, set the peak."""
+def master(L, R, peak_db=-7.0, k=0.55, tail=0.35):
+    """Soften the top (one-pole low-pass, ~5 kHz), fade the tail to true silence, set the peak."""
     def lowpass(x):
         y, out = 0.0, []
         for v in x:
@@ -111,43 +68,26 @@ def master(L, R, peak_db=-9.0, k=0.5, fade=0.2):
             out.append(y)
         return out
     L, R = lowpass(L), lowpass(R)
-    n, f = len(L), int(fade * SR)
+    f = int(tail * SR)
     for ch in (L, R):
         for i in range(f):
             w = i / f
-            ch[n - 1 - i] *= w * w * (3 - 2 * w)      # smoothstep
+            ch[N - 1 - i] *= w * w * (3 - 2 * w)      # smoothstep: eases to exactly zero
     peak = max(max(abs(v) for v in L), max(abs(v) for v in R))
     g = (10 ** (peak_db / 20)) / peak
     return [v * g for v in L], [v * g for v in R]
 
-def felt():
-    n, L, R = new(2.2)
-    bloom(220.00, 0.00, 0.040, 0.25, 0.55, L, R)     # A3
-    bloom(329.63, 0.05, 0.030, 0.28, 0.50, L, R)     # E4
-    bar(440.00, 0.00, 0.62, 0.55, -0.30, L, R)        # A4
-    bar(659.25, 0.15, 0.62, 0.62, 0.00, L, R)         # E5
-    bar(987.77, 0.31, 0.58, 0.78, 0.30, L, R)         # B5
-    L, R = room(L, R, wet=0.34)
-    return master(L, R)
-
-def bowl():
-    n, L, R = new(2.6)
-    bloom(164.81, 0.00, 0.035, 0.30, 0.80, L, R)     # E3
-    glass(659.25, 0.00, 0.60, 0.95, -0.12, L, R)      # E5
-    glass(987.77, 0.20, 0.30, 0.80, 0.18, L, R)       # B5, a quiet fifth above
-    L, R = room(L, R, wet=0.38, rt=1.9)
-    return master(L, R, peak_db=-10.0, fade=0.3)
-
-def write(path, L, R):
-    with wave.open(path, 'wb') as w:
+def main():
+    L, R = [0.0] * N, [0.0] * N
+    thump(146.83, 0.000, 0.05, L, R)                    # D3
+    bar(587.33, 0.000, 0.55, 0.115, L, R)               # D5
+    bar(880.00, 0.090, 0.70, 0.150, L, R)               # A5
+    L, R = master(L, R)
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'assets', 'sounds', 'task-done.wav')
+    with wave.open(out, 'wb') as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(b''.join(struct.pack('<hh', int(l * 32767), int(r * 32767)) for l, r in zip(L, R)))
+    print('wrote', os.path.normpath(out), f'({os.path.getsize(out) // 1024} KB, {LENGTH}s)')
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    variant = next((a for a in args if a in ('felt', 'bowl')), 'felt')
-    here = os.path.dirname(os.path.abspath(__file__))
-    out = args[args.index('--out') + 1] if '--out' in args else os.path.join(here, '..', '..', 'src', 'assets', 'sounds', 'task-done.wav')
-    left, right = {'felt': felt, 'bowl': bowl}[variant]()
-    write(out, left, right)
-    print(f'{variant}: wrote {os.path.normpath(out)} ({os.path.getsize(out) // 1024} KB, {len(left) / SR:.1f}s)')
+    main()

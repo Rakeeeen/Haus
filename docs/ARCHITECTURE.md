@@ -327,7 +327,7 @@ speculatively.
 - **The sound.** The only one in the system is the chime a finished task makes: `lib/sound.ts` plays
   `assets/sounds/task-done.wav`, called from `useWork.updateTask` when a task's status becomes `done` (so the tick, a drag
   to Done, the editor and the Home card all make it). The file is rendered by `scripts/sound/build_task_done.py` (pure
-  Python; its header explains each choice and every number can be tuned; `felt` is the chosen sound, `bowl` the calmer alternative). `localStorage.haus_sound = 'off'` silences it.
+  Python; its header explains each choice and every number can be tuned). `localStorage.haus_sound = 'off'` silences it.
   (The focus timer has no sounds; they were tried and removed.)
 - **No scrollbars.** `global.css` hides every scrollbar (`*`); everything still scrolls. Don't add a custom one.
 - **Cards ease to their height.** Content that grows or shrinks (a filtered list, a column gaining a card) is wrapped in
