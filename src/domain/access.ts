@@ -55,14 +55,14 @@ export const GUEST_APPROVAL_DAYS = 30;
 /** Eight digits: guessing one inside its five minutes is hopeless. */
 export const CODE_LENGTH = 8;
 
-/** A code from random bytes (the caller supplies crypto-strong ones; at least 4× CODE_LENGTH are plenty). */
-export function codeFromBytes(bytes: ArrayLike<number>): string {
+/** A code of `length` digits from random bytes (the caller supplies crypto-strong ones; at least 4× `length` are plenty). */
+export function codeFromBytes(bytes: ArrayLike<number>, length: number = CODE_LENGTH): string {
   let code = '';
   // Bytes 250–255 would favour the low digits when reduced to 0–9, so they are skipped.
-  for (let i = 0; i < bytes.length && code.length < CODE_LENGTH; i++) {
+  for (let i = 0; i < bytes.length && code.length < length; i++) {
     if (bytes[i] < 250) code += String(bytes[i] % 10);
   }
-  if (code.length < CODE_LENGTH) throw new Error('Not enough random bytes for a code');
+  if (code.length < length) throw new Error('Not enough random bytes for a code');
   return code;
 }
 

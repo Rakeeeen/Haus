@@ -19,13 +19,13 @@ export function Tabs<T extends string>({ options, value, onChange, layoutId, rul
     <div
       role="tablist"
       className={`flex items-center gap-6 sm:gap-8 overflow-x-auto ${ruled ? 'border-b border-ink/12' : ''} ${className}`}
-      style={{ scrollbarWidth: 'none' }}
     >
       {options.map((o) => {
         const active = o.value === value;
         return (
           <button
             key={o.value}
+            type="button"
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}

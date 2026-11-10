@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { MIN_PRESS_MS } from '@/ui/springPose';
 
-export const useCustomCursor = (cursorRef: React.RefObject<HTMLDivElement>) => {
+export const useCustomCursor = (cursorRef: React.RefObject<HTMLDivElement>): void => {
   useEffect(() => {
     const el = cursorRef.current;
     if (!el) return;
@@ -76,5 +76,4 @@ export const useCustomCursor = (cursorRef: React.RefObject<HTMLDivElement>) => {
     };
   }, [cursorRef]);
 
-  return {};
 };

@@ -49,6 +49,10 @@ describe('firstNameOf', () => {
 });
 
 describe('codeFromBytes', () => {
+  it('can make a shorter code (the device code is six digits)', () => {
+    expect(codeFromBytes([1, 2, 3, 4, 5, 6, 7, 8], 6)).toBe('123456');
+    expect(() => codeFromBytes([1, 2, 3], 6)).toThrow();
+  });
   it('makes CODE_LENGTH digits', () => {
     expect(codeFromBytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).toBe('12345678');
     expect(codeFromBytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).toHaveLength(CODE_LENGTH);

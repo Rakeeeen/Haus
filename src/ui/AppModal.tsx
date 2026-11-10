@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { Button } from '@/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
+import { useBodyScrollLock } from '@/ui/useBodyScrollLock';
 
 interface AppModalProps {
   isOpen: boolean;
@@ -21,6 +22,11 @@ interface AppModalProps {
   };
 }
 
+/**
+ * The system's one dialog: a card over a dimmed, blurred page. It closes on Escape (its "ESC" button says so), on a click
+ * outside the card, or on its button; the page behind it doesn't scroll; focus moves into it when it opens and goes back to
+ * where it was when it closes. Popovers inside it (dropdowns, the calendar) take Escape first and close alone.
+ */
 export const AppModal: React.FC<AppModalProps> = ({
   isOpen,
   onClose,
@@ -30,6 +36,26 @@ export const AppModal: React.FC<AppModalProps> = ({
   raw = false,
   confirm,
 }) => {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useBodyScrollLock(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const before = document.activeElement as HTMLElement | null;
+    // Unless something inside has already taken focus (an autofocused field), the dialog itself gets it.
+    if (!dialogRef.current?.contains(document.activeElement)) dialogRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      before?.focus?.();
+    };
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -44,12 +70,17 @@ export const AppModal: React.FC<AppModalProps> = ({
           onClick={onClose}
         >
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
             initial={{ scale: 0.93, opacity: 0, y: 18 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
             transition={{ ...SPRING, opacity: { duration: 0.2 } }}
             onClick={e => e.stopPropagation()}
-            className={`relative w-full rounded-modal ${maxWidth}`}
+            className={`relative w-full rounded-modal outline-none ${maxWidth}`}
             style={{
               background: 'var(--paper-dark)',
               border: '1px solid color-mix(in srgb, var(--ink) 12%, transparent)',
@@ -63,6 +94,7 @@ export const AppModal: React.FC<AppModalProps> = ({
               >
                 {title && (
                   <span
+                    id={titleId}
                     className="font-sans-main font-black uppercase tracking-wide"
                     style={{ fontSize: 13, color: 'var(--ink)' }}
                   >
@@ -80,6 +112,7 @@ export const AppModal: React.FC<AppModalProps> = ({
               <div className="px-8 py-8">
                 {title && (
                   <p
+                    id={titleId}
                     className="font-sans-main font-black uppercase tracking-wide mb-3"
                     style={{ fontSize: 14, color: 'var(--ink)' }}
                   >

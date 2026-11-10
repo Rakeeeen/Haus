@@ -36,5 +36,7 @@ export default defineConfig({
     // pure modules (backend/src/**) are plain JS and test the same way.
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'backend/src/**/*.test.js'],
     environment: 'node',
+    // Tests that need a browser (components, hooks) say so with `// @vitest-environment jsdom` at the top of their file.
+    setupFiles: ['src/setupTests.ts'],
   },
 })

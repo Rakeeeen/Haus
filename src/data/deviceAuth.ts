@@ -1,8 +1,10 @@
 import { doc, setDoc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { codeFromBytes } from '@/domain/access';
 
 const COL = 'device_auth_codes';
 const TTL = 5 * 60 * 1000; // 5 minutes
+const DEVICE_CODE_LENGTH = 6;
 
 export interface DeviceAuthDoc {
   pending: boolean;
@@ -25,7 +27,8 @@ export async function requestDeviceCode(userId: string): Promise<void> {
 
 /** Mac calls this — generates the code and writes it so mobile can verify */
 export async function generateAndStoreCode(userId: string): Promise<string> {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  // From the browser's cryptographic random source (Math.random is predictable, so no good for a code that lets a device in).
+  const code = codeFromBytes(crypto.getRandomValues(new Uint8Array(32)), DEVICE_CODE_LENGTH);
   await updateDoc(doc(db, COL, userId), { code });
   return code;
 }
