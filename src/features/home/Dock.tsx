@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ClockParts } from '@/domain/clock';
-import { PixelDigits } from '@/ui/PixelFocusDisplay';
+import { PixelDigits } from '@/ui/PixelDigits';
 import { dockPose, SPRING } from '@/ui/springPose';
 import { MaskedValue, SidebarActiveVector } from '@/features/home/components/visuals';
 import type { CardId } from '@/features/home/useCardSelection';

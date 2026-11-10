@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePomodoro } from '@/data/usePomodoro';
 import { formatTime } from '@/lib/format';
-import { PixelClock } from '@/ui/PixelFocusDisplay';
+import { PixelClock } from '@/ui/PixelClock';
 
 interface FloatingTimerProps {
   onNavigate: () => void;

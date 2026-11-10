@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button, IconButton } from '@/ui/Button';
 import { IconPlay as Play } from '@/ui/icons';
-import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
+import { PixelClock } from '@/ui/PixelClock';
+import { PixelDigits } from '@/ui/PixelDigits';
 import { HourglassFace } from '@/ui/HourglassFace';
 import { hourglassSand } from '@/domain/focus/hourglass';
 import { RulerTimer } from '@/ui/RulerTimer';

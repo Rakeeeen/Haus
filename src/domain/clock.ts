@@ -57,3 +57,14 @@ export function clockLayout(rows: number): { columns: number; cells: ClockCell[]
     ],
   };
 }
+
+/** UTC offset of `timeZone` at `at`, in ms — via Intl so DST is handled by the platform. */
+export function zoneOffsetMs(timeZone: string, at: number): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+  }).formatToParts(new Date(at));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  return asUtc - Math.floor(at / 1000) * 1000;
+}

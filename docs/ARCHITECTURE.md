@@ -386,5 +386,9 @@ before React can re-render, so effects that restart on a state change never get 
 - **A dialog** is `ui/AppModal`: it closes on Escape, locks the page behind it, takes and returns focus, and is a labelled dialog.
 - **The Pomodoro timer** (`data/usePomodoro.tsx`) keeps its rules in `domain/focus/session.ts` (`idleTimer`, `breakTimer`,
   `minutesSoFar`, `closeOutFocusDay` …); the provider only wires them to state and Firestore.
+- **The Focus page** (`features/focus/Pomodoro.tsx`) only holds the tabs; the timer card is `FocusSessionCard` (three faces) with
+  `FocusControls` under it, and the chart tab is `FocusAnalysis`. The pixel faces live in `ui/`: `PixelDigits`, `PixelClock`
+  (the timer's clock), `PixelWallClock` (the Home clock, its emblems in `clockEmblems.ts`), sharing the geometry in `pixelClockFace.tsx`.
+- **Finance's screens** are tested through `features/finance/Finance.test.tsx`, with `useFinance` replaced by plain state.
 - **The bot's HTTP API** (`backend/src/server.js`) listens on this machine only, answers only Haus's own origins, and accepts only a
   valid list of Payit (`backend/src/lib/webApi.js`).

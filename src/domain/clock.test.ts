@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clockLayout, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS } from '@/domain/clock';
+import { clockLayout, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS, zoneOffsetMs } from '@/domain/clock';
 
 describe('getClockParts', () => {
   // 2026-10-07 12:00 UTC
@@ -56,5 +56,20 @@ describe('clockLayout', () => {
   it('treats out-of-range rows as the nearest valid number', () => {
     expect(at(0)).toEqual(at(1));
     expect(at(9)).toEqual(at(3));
+  });
+});
+
+describe('zoneOffsetMs', () => {
+  const hour = 3_600_000;
+  const winter = Date.UTC(2026, 0, 15, 12);
+  const summer = Date.UTC(2026, 6, 15, 12);
+  it('is zero for UTC', () => {
+    expect(zoneOffsetMs('UTC', winter)).toBe(0);
+  });
+  it('follows daylight saving time, by the platform\'s own rules', () => {
+    expect(zoneOffsetMs('Europe/London', winter)).toBe(0);
+    expect(zoneOffsetMs('Europe/London', summer)).toBe(hour);
+    expect(zoneOffsetMs('Africa/Cairo', winter)).toBe(2 * hour);
+    expect(zoneOffsetMs('Asia/Dubai', summer)).toBe(4 * hour);
   });
 });

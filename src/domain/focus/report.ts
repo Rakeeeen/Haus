@@ -27,3 +27,11 @@ export function buildFocusReports(
   const toHours = (points: typeof reports.week) => points.map((p) => ({ name: p.name, hours: hours(p.value) }));
   return { week: toHours(reports.week), month: toHours(reports.month), year: toHours(reports.year) };
 }
+
+/** The line under a bar of the focus chart: how the hours compare with the target for that view. */
+export function focusTip(hours: number, view: ReportView): string {
+  const target = focusTargetHours(view);
+  if (hours >= target) return 'Elite Focus!';
+  if (hours >= target * 0.7) return 'Almost there!';
+  return 'Keep pushing';
+}

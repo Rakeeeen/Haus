@@ -1,5 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { PixelDigits, PixelWallClock, CLOCK_EMBLEMS } from '@/ui/PixelFocusDisplay';
+import { CLOCK_EMBLEMS } from '@/ui/clockEmblems';
+import { PixelDigits } from '@/ui/PixelDigits';
+import { PixelWallClock } from '@/ui/PixelWallClock';
 import { TimeVector } from '@/features/home/components/visuals';
 import { clockLayout, clockRowsThatFit, HOME_TIME_ZONE, MAX_CLOCK_ROWS, type ClockParts } from '@/domain/clock';
 
