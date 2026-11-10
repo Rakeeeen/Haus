@@ -2,13 +2,13 @@
 //   node scripts/report-send.js
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
-import { CONTROL_CHANNEL_ID } from '../src/config.js';
+import { REPORT_CHANNEL_ID } from '../src/config.js';
 import { sendDailyReport } from '../src/features/report/send.js';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 await client.login(process.env.DISCORD_BOT_TOKEN);
 try {
-  await sendDailyReport(client, CONTROL_CHANNEL_ID);
+  await sendDailyReport(client, REPORT_CHANNEL_ID);
 } finally {
   await client.destroy();
 }

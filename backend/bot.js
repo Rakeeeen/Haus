@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import cron from 'node-cron';
 import { Agent } from 'undici';
-import { ACTIVITY_CHANNEL_ID, CONTROL_CHANNEL_ID } from './src/config.js';
+import { ACTIVITY_CHANNEL_ID, CONTROL_CHANNEL_ID, REPORT_CHANNEL_ID } from './src/config.js';
 import { watchActivity } from './src/features/activityNotifications.js';
 import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
@@ -65,7 +65,7 @@ client.once('clientReady', async () => {
     if (!reportDue({ now, maghrib: await getMaghrib(), state })) return;
     // Written before trying, so a send that takes longer than a minute isn't started twice.
     writeState(afterAttempt(state, now, false));
-    await sendDailyReport(client, CHANNEL_ID);
+    await sendDailyReport(client, REPORT_CHANNEL_ID);
     writeState(afterAttempt(readState(), now, true));
   }), TIME_ZONE);
   // What guests do in Haus, told to its own channel as it happens.
@@ -82,7 +82,7 @@ client.once('clientReady', async () => {
       // Written before trying, so a send that takes longer than a minute isn't started twice.
       writeGuestState(afterGuestAttempt(readGuestState(), now, uid, false));
       try {
-        await sendGuestReport(client, CHANNEL_ID, person);
+        await sendGuestReport(client, REPORT_CHANNEL_ID, person);
         writeGuestState(afterGuestAttempt(readGuestState(), now, uid, true));
       } catch (error) {
         console.error(`❌ ${person.name}'s report failed:`, error.message);
