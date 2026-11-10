@@ -128,7 +128,9 @@ all work and follow dark mode on their own. Add a new palette colour in both pla
 
 **Switchers.** `ui/Tabs.tsx` is page-level navigation (plain labels, a sliding line
 under the current one); `ui/FilterSelect.tsx` narrows a list or chart (a button
-that opens a short list). Don't hand-roll a boxed segmented control again.
+that opens a short list that scrolls inside itself; `FilterMulti` in the same file keeps several
+choices at once). `ui/Form.tsx`'s `SelectMenu` is the same dropdown for a form field (never a native
+`<select>`), and `ui/Avatar.tsx` is a person's round photo. Don't hand-roll a boxed segmented control again.
 
 **Tooltips.** A hover hint is `data-tip="…"` on any element — never the native `title` attribute. One
 `ui/TooltipLayer.tsx`, mounted once in `App`, draws it as a dark mono chip; it tracks the pointer's position
@@ -270,16 +272,6 @@ Discord to say something, it writes an event to Firestore and the bot posts it: 
 `focus_notification` (`usePomodoro`), and `backend/src/features/focusNotifications.js` turns it into a message
 through the webhook in `backend/.env`. The one key the site does still carry is the gold API's
 (`VITE_GOLD_API_KEY`), because the app is what fetches gold prices — see below.
-
-## The focus timer's sounds
-
-`domain/focus/chimes.ts` defines the two sounds as data (a pair of notes rising when a focus session's time is up, falling
-when a break is over; `noteHz` turns note names into pitches), and `lib/audio.ts` plays them with the Web Audio API — soft
-sines with a quiet octave and twelfth, a quick attack and a long fade, through a small room reverb and a limiter; no sound
-files. `usePomodoro` plays them beside the Discord/Slack events. A browser only allows sound after the page was touched, so
-`App` wakes the audio on the first tap or key (until then a chime is skipped, never queued), and the sound button on the Focus
-card turns them off and on (remembered in localStorage) and plays both when switched on. They sound only while the page is
-open: a phone suspends a page that is not on screen.
 
 ## Gold prices
 

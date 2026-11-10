@@ -11,6 +11,10 @@ export const PROJECT_STATUSES: ReadonlyArray<{ value: ProjectStatus; label: stri
 
 export const projectStatusLabel = (status: ProjectStatus) => PROJECT_STATUSES.find((s) => s.value === status)?.label ?? status;
 
+/** The projects whose status is one of `statuses`; none chosen keeps them all. */
+export const filterProjectsByStatus = (projects: readonly Project[], statuses: readonly ProjectStatus[]): Project[] =>
+  (statuses.length === 0 ? [...projects] : projects.filter((p) => statuses.includes(p.status)));
+
 /** The projects being worked on: in progress, or looked after (maintenance). */
 export const isWorkedOn = (project: Project): boolean => project.status === 'active' || project.status === 'maintenance';
 

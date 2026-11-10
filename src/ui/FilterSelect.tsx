@@ -49,7 +49,7 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full mt-1 z-30 min-w-full bg-paper-dark border border-ink/14 rounded-box overflow-hidden"
+          className="absolute right-0 top-full mt-1 z-30 min-w-full max-h-64 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box"
         >
           {options.map((o) => {
             const selected = o.value === value;
@@ -65,6 +65,71 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
               </li>
             );
           })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A filter that keeps several choices at once (any mix of statuses, say): the button names what is picked, and each
+ * line in the list switches on or off. Nothing picked means everything.
+ */
+export function FilterMulti<T extends string>({ label, options, values, onChange, allLabel = 'All', className = '' }: {
+  label: string;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  values: readonly T[];
+  onChange: (values: T[]) => void;
+  allLabel?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const chosen = options.filter((o) => values.includes(o.value));
+  const summary = chosen.length === 0 ? allLabel : chosen.length <= 2 ? chosen.map((o) => o.label).join(', ') : `${chosen.length} chosen`;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const toggle = (value: T) => onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
+
+  return (
+    <div ref={rootRef} className={`relative inline-block ${className}`}>
+      <Button tone="outline" size="sm" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="text-ink/40">{label}</span>
+        <span>{summary}</span>
+        <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </Button>
+
+      {open && (
+        <ul role="listbox" aria-multiselectable className="absolute right-0 top-full mt-1 z-30 min-w-full max-h-64 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box">
+          {options.map((o) => {
+            const selected = values.includes(o.value);
+            return (
+              <li key={o.value} role="option" aria-selected={selected}>
+                <button
+                  type="button"
+                  onClick={() => toggle(o.value)}
+                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
+                >
+                  {selected ? '■ ' : '□ '}{o.label}
+                </button>
+              </li>
+            );
+          })}
+          {values.length > 0 && (
+            <li>
+              <button type="button" onClick={() => onChange([])} className="w-full text-left px-3.5 py-2.5 border-t border-ink/10 font-mono-main text-[10px] uppercase tracking-[0.2em] text-ink/45 hover:bg-ink/5 transition-colors">
+                Clear
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>

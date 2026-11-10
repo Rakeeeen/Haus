@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NAME } from '@/constants/brand';
 import { useGuests } from '@/data/useMembers';
 import { useWork } from '@/data/useWork';
-import { isWorkedOn, tasksByProject } from '@/domain/work/projects';
-import type { Project, Task } from '@/domain/work/types';
+import { filterProjectsByStatus, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
+import type { Project, ProjectStatus, Task } from '@/domain/work/types';
 import { Button } from '@/ui/Button';
-import { FilterSelect } from '@/ui/FilterSelect';
+import { FilterMulti } from '@/ui/FilterSelect';
 import { IconPlus as Plus } from '@/ui/icons';
 import { Tabs } from '@/ui/Tabs';
 import { ProjectModal, type ProjectDraft, type ProjectEditing } from '@/features/work/components/ProjectModal';
@@ -13,21 +13,16 @@ import { ProjectCards, ProjectTable, ProjectTimeline } from '@/features/work/com
 import { WorkShell } from '@/features/work/components/WorkShell';
 
 type View = 'cards' | 'table' | 'timeline';
-type Show = 'working' | 'all' | 'planning' | 'paused' | 'done';
 
 const VIEWS = [{ value: 'cards', label: 'Cards' }, { value: 'table', label: 'Table' }, { value: 'timeline', label: 'Timeline' }] as const;
-const SHOWS = [
-  { value: 'working', label: 'Working on' }, { value: 'all', label: 'All' }, { value: 'planning', label: 'Planning' },
-  { value: 'paused', label: 'On hold' }, { value: 'done', label: 'Done' },
-] as const;
+/** What is shown to begin with: what is being worked on. */
+const WORKING: ProjectStatus[] = ['active', 'maintenance'];
 
 const VIEW_KEY = 'work_projects_view';
 const readView = (): View => {
   try { const v = window.localStorage.getItem(VIEW_KEY); if (v === 'cards' || v === 'table' || v === 'timeline') return v; } catch { /* use the default */ }
   return 'cards';
 };
-
-const matches = (project: Project, show: Show) => (show === 'all' ? true : show === 'working' ? isWorkedOn(project) : project.status === show);
 
 /** Shared by the Projects page and a project's page: how to make or change one. */
 export function useProjectEditing() {
@@ -58,7 +53,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
   const { tasks, privates, ready } = useWork();
   const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
-  const [show, setShow] = useState<Show>('working');
+  const [statuses, setStatuses] = useState<ProjectStatus[]>(WORKING);
 
   useEffect(() => { document.title = `${NAME} — Projects`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
@@ -66,7 +61,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
   const byProject = useMemo(() => tasksByProject(tasks), [tasks]);
   const tasksOf = (id: string): readonly Task[] => byProject.get(id) ?? [];
   const clientOf = (id: string) => privates[id]?.client ?? null;
-  const shown = projects.filter((p) => matches(p, show));
+  const shown = filterProjectsByStatus(projects, statuses);
   const common = { projects: shown, tasksOf, clientOf, onOpen: (id: string) => navigate(`work/projects/${id}`) };
 
   return (
@@ -78,7 +73,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
     >
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-projects-view" ruled />
       <div className="flex flex-wrap items-center gap-3">
-        <FilterSelect label="Show" options={SHOWS} value={show} onChange={setShow} />
+        <FilterMulti label="Show" options={PROJECT_STATUSES} values={statuses} onChange={setStatuses} />
       </div>
 
       {!ready ? (

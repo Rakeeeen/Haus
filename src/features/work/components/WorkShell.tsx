@@ -1,4 +1,5 @@
 import React from 'react';
+import { isRtlText } from '@/domain/work/text';
 import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight } from '@/ui/icons';
 
 /** The frame every work page shares: the way back, the title, what the page offers up top, then its content. */
@@ -30,7 +31,12 @@ export const WorkShell: React.FC<{
         ))}
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight" dir="auto">{title}</h1>
+        {/* Arabic is joined up, so it takes no letter-spacing or capitals; its marks sit lower and higher than Latin's, so the
+            line is taller (the silver is painted through the letters, and a tight line cuts them off). */}
+        <h1
+          dir="auto"
+          className={`text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black max-w-full break-words pt-[0.12em] pb-[0.2em] leading-[1.25] ${isRtlText(title) ? '' : 'uppercase tracking-tight'}`}
+        >{title}</h1>
         {actions && <div className="flex items-center gap-3">{actions}</div>}
       </div>
     </header>

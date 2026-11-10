@@ -18,7 +18,6 @@ import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { usePressHold } from '@/ui/usePressHold';
-import { unlockAudio } from '@/lib/audio';
 import '@/styles/global.css';
 
 // The other pages load when they are first opened, so the first screen doesn't carry the charts
@@ -46,13 +45,6 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 );
 const AppRoutes: React.FC = () => {
   usePressHold();
-  // A browser only lets a page make sound once it has been touched: the first tap or key wakes the audio.
-  useEffect(() => {
-    const wake = () => unlockAudio();
-    window.addEventListener('pointerdown', wake, { once: true });
-    window.addEventListener('keydown', wake, { once: true });
-    return () => { window.removeEventListener('pointerdown', wake); window.removeEventListener('keydown', wake); };
-  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role, firstName, approved, accessError, biometricCleared, setBiometricCleared } = useAuth();
@@ -113,9 +105,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
         {/* The work side is for everyone let in (a guest sees what is shared with them); finance is Hamed's alone. */}
         <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} /></AnimatedPage>} />
-        <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} /></AnimatedPage>} />
+        <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />
-        <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} /></AnimatedPage>} />
+        <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         {role === 'owner' && <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}

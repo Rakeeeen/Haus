@@ -970,7 +970,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
           rest of it — it doesn't need to collapse its own height for that since the stage's
           zen height comes from measuring `main` directly, not from the footer shrinking. */}
       <motion.footer
-        className="w-full max-w-[1400px] mx-auto flex-1 flex items-center justify-center overflow-hidden"
+        className="w-full max-w-[1400px] mx-auto flex-1 flex items-center justify-center overflow-hidden pt-6 sm:pt-10"
         initial={false}
         animate={{
           opacity: zenActive ? 0 : 1,

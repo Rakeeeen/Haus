@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareProjects, countTasks, dateSpan, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
+import { compareProjects, countTasks, dateSpan, filterProjectsByStatus, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
 import { normalizeProject, normalizeTask } from '@/domain/work/sharing';
 import type { Project, Task } from '@/domain/work/types';
 
@@ -40,6 +40,17 @@ describe('isWorkedOn', () => {
     expect(isWorkedOn(project({ status: 'maintenance' }))).toBe(true);
     expect(isWorkedOn(project({ status: 'paused' }))).toBe(false);
     expect(isWorkedOn(project({ status: 'done' }))).toBe(false);
+  });
+});
+
+describe('filterProjectsByStatus', () => {
+  const list = [project({ id: 'a', status: 'active' }), project({ id: 'b', status: 'planning' }), project({ id: 'c', status: 'done' })];
+  it('keeps the projects in any of the chosen statuses', () => {
+    expect(filterProjectsByStatus(list, ['active']).map((p) => p.id)).toEqual(['a']);
+    expect(filterProjectsByStatus(list, ['done', 'active']).map((p) => p.id)).toEqual(['a', 'c']);
+  });
+  it('keeps them all when none is chosen', () => {
+    expect(filterProjectsByStatus(list, [])).toHaveLength(3);
   });
 });
 

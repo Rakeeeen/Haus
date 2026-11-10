@@ -25,11 +25,11 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 );
 
 /** One project: what it is, how far along, and its tasks in columns. */
-export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: string }> = ({ navigate, author }) => {
+export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
   const { role, tasks, notes, privates, ready, canEditTask, updateTask, addNote } = useWork();
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
-  const editor = useTaskEditor(author);
+  const editor = useTaskEditor(author, authorPhoto);
 
   const project = projects.find((p) => p.id === id) ?? null;
   const mine = useMemo(() => tasks.filter((t) => t.projectId === id), [tasks, id]);
@@ -82,6 +82,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
         <TaskBoard
           tasks={mine}
           projectName={() => null}
+          personOf={editor.personOf}
           showDropped={mine.some((t) => t.status === 'dropped')}
           onOpen={(task) => editor.open({ kind: 'edit', task })}
           canEdit={canEditTask}

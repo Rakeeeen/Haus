@@ -3,8 +3,6 @@ import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
 import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
 import { getPomoTodayIdx } from '@/domain/day';
-import { CHIMES } from '@/domain/focus/chimes';
-import { playNotes } from '@/lib/audio';
 import { getDayMoments } from '@/domain/devotion/prayer';
 import {
   breakMinutesFor, recordSession, type FocusDayStats, type FocusLogEntry, type FocusNotification, type FocusWeekDay,
@@ -153,7 +151,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (newTime <= 0) {
             if (mode === 'focus') {
               setIsOvertime(true);
-              playNotes(CHIMES.focusEnd);
               notifyFocus('focus_timer_up');
               // We only send a "Time's up" browser notification at 0, 
               // but we'll send the final Discord report when they actually click "Start Break"
@@ -172,7 +169,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               setMode('focus');
               setTimeLeft(FOCUS);
               setCheckpoint(null);
-              playNotes(CHIMES.breakEnd);
               notifyFocus('break_complete');
             }
           }

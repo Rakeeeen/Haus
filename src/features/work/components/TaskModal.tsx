@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
-import { Field, SelectInput, TextArea, TextInput } from '@/ui/Form';
+import { Field, SelectMenu, TextArea, TextInput } from '@/ui/Form';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
 import { useComments } from '@/data/useWork';
@@ -10,17 +10,15 @@ import { shortDate } from '@/features/work/components/chips';
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
 
-type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'projectId' | 'assignee' | 'assigneeUid' | 'description'> & { tags: string };
+type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'projectId' | 'assignee' | 'assigneeUid' | 'description'>;
 
 const toDraft = (editing: TaskEditing): Draft => {
   const t: Partial<Task> = editing.kind === 'edit' ? editing.task : editing.defaults;
   return {
     title: t.title ?? '', status: t.status ?? 'todo', priority: t.priority ?? null, date: t.date ?? null,
-    projectId: t.projectId ?? null, assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '', tags: (t.tags ?? []).join(', '),
+    projectId: t.projectId ?? null, assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '',
   };
 };
-
-const splitTags = (tags: string) => tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
 
 /** A row of buttons to pick one value from; they share space like every button row. */
 function Choose<T extends string>({ options, value, onChange, disabled = false }: {
@@ -35,7 +33,7 @@ function Choose<T extends string>({ options, value, onChange, disabled = false }
   );
 }
 
-export interface Assignee { uid: string | null; name: string }
+export interface Assignee { uid: string | null; name: string; photoUrl?: string | null }
 
 export const TaskModal: React.FC<{
   editing: TaskEditing | null;
@@ -50,8 +48,8 @@ export const TaskModal: React.FC<{
   /** Who a task can be for: Hamed first, then guests (empty or one: the field is not shown). */
   assignees: readonly Assignee[];
   onClose: () => void;
-  onCreate: (draft: Omit<Draft, 'tags'> & { tags: string[] }) => Promise<void>;
-  onUpdate: (id: string, draft: Omit<Draft, 'tags'> & { tags: string[] }) => Promise<void>;
+  onCreate: (draft: Draft) => Promise<void>;
+  onUpdate: (id: string, draft: Draft) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }> = ({ editing, projects, author, guestUid, canEdit, canDelete, assignees, onClose, onCreate, onUpdate, onDelete }) => {
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -82,7 +80,7 @@ export const TaskModal: React.FC<{
     if (!draft || !editing) return;
     if (!draft.title.trim()) { setError('Give the task a title'); return; }
     run(async () => {
-      const body = { ...draft, title: draft.title.trim(), tags: splitTags(draft.tags) };
+      const body = { ...draft, title: draft.title.trim() };
       if (editing.kind === 'edit') await onUpdate(editing.task.id, body); else await onCreate(body);
       onClose();
     });
@@ -118,26 +116,28 @@ export const TaskModal: React.FC<{
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Date"><TextInput type="date" disabled={locked} value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
             <Field label="Project">
-              <SelectInput value={draft.projectId ?? ''} disabled={locked || (guestUid !== undefined && editing.kind === 'edit')} onChange={(e) => set('projectId', e.target.value || null)}>
-                <option value="">No project</option>
-                {[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </SelectInput>
+              <SelectMenu
+                ariaLabel="Project"
+                value={draft.projectId ?? ''}
+                disabled={locked || (guestUid !== undefined && editing.kind === 'edit')}
+                onChange={(v) => set('projectId', v || null)}
+                options={[{ value: '', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
+              />
             </Field>
             {assignees.length > 1 && guestUid === undefined && (
               <Field label="For">
-                <SelectInput
+                <SelectMenu
+                  ariaLabel="For"
                   value={draft.assigneeUid ?? ''}
                   disabled={locked}
-                  onChange={(e) => {
-                    const picked = assignees.find((a) => (a.uid ?? '') === e.target.value);
+                  onChange={(v) => {
+                    const picked = assignees.find((a) => (a.uid ?? '') === v);
                     setDraft((d) => (d ? { ...d, assigneeUid: picked?.uid ?? null, assignee: picked?.name ?? null } : d));
                   }}
-                >
-                  {choices.map((a) => <option key={a.uid ?? 'owner'} value={a.uid ?? ''}>{a.name}</option>)}
-                </SelectInput>
+                  options={choices.map((a) => ({ value: a.uid ?? '', label: a.name, photoUrl: a.photoUrl, withAvatar: true }))}
+                />
               </Field>
             )}
-            <Field label="Tags"><TextInput dir="auto" disabled={locked} value={draft.tags} onChange={(e) => set('tags', e.target.value)} placeholder="comma, separated" /></Field>
           </div>
 
           <Field label="Description"><TextArea dir="auto" disabled={locked} value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Details, links, notes…" /></Field>

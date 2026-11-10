@@ -15,12 +15,15 @@ const Tile: React.FC<{ title: string; note: string; onClick?: () => void }> = ({
     type="button"
     onClick={onClick}
     disabled={!onClick}
-    className={`card text-left flex flex-col gap-2 transition-colors ${onClick ? 'cursor-pointer hover:border-ink/40' : 'opacity-50 cursor-default'}`}
+    className={`card !py-4 text-left flex items-baseline justify-between gap-3 transition-colors ${onClick ? 'cursor-pointer hover:border-ink/40' : 'opacity-50 cursor-default'}`}
   >
-    <span className="font-sans-main text-xl font-black uppercase tracking-tight">{title}</span>
-    <span className="font-mono-main text-[10px] uppercase tracking-widest text-ink/45">{note}</span>
+    <span className="font-sans-main text-lg font-black uppercase tracking-tight">{title}</span>
+    <span className="font-mono-main text-[10px] uppercase tracking-widest text-ink/45 truncate">{note}</span>
   </button>
 );
+
+/** How many lines each list shows here; the rest are one click away on their own page. */
+const SHOWN = 5;
 
 /** The way into the work side: Projects, Tasks, Notes; what is being worked on, and what is due today. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
@@ -50,13 +53,13 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate
           <section className="card flex flex-col gap-4">
             <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Working on</h2>
             {working.length === 0 && <p className="font-mono-main text-[11px] text-ink/40">Nothing in progress.</p>}
-            {working.map((project) => {
+            {working.slice(0, SHOWN).map((project) => {
               const mine = byProject.get(project.id) ?? [];
               const client = privates[project.id]?.client;
               return (
                 <div key={project.id} onClick={() => navigate(`work/projects/${project.id}`)} className="cursor-pointer group">
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <span dir="auto" className="font-sans-main text-[13px] font-bold truncate group-hover:underline">{project.name}</span>
+                    <span dir="auto" className="font-sans-main text-[13px] font-bold leading-relaxed truncate text-left group-hover:underline">{project.name}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       {client && <Chip tone="ink">{client}</Chip>}
                       <span className="font-mono-main text-[10px] text-ink/40 tabular-nums">{countTasks(mine).open} open</span>
@@ -66,21 +69,31 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate
                 </div>
               );
             })}
+            {working.length > SHOWN && (
+              <button type="button" onClick={() => navigate('work/projects')} className="self-start font-mono-main text-[10px] uppercase tracking-widest text-ink/45 hover:text-ink transition-colors">
+                {working.length - SHOWN} more →
+              </button>
+            )}
           </section>
 
           <section className="card flex flex-col gap-3">
             <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Today</h2>
             {today.length === 0 && <p className="font-mono-main text-[11px] text-ink/40">No tasks dated today.</p>}
-            {today.map((task) => (
+            {today.slice(0, SHOWN).map((task) => (
               <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
                 {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0" />}
                 <div className="min-w-0 flex-1 cursor-pointer" onClick={() => navigate('work/tasks')}>
-                  <p dir="auto" className={`font-sans-main text-[13px] font-semibold truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
-                  <p dir="auto" className="font-mono-main text-[9px] uppercase tracking-wider text-ink/40 truncate">{projectName(task.projectId) ?? 'No project'} · {shortDate(task.date)}</p>
+                  <p dir="auto" className={`font-sans-main text-[13px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
+                  <p dir="auto" className="font-mono-main text-[9px] tracking-wider text-ink/40 truncate text-left">{projectName(task.projectId) ?? 'No project'} · {shortDate(task.date)}</p>
                 </div>
                 <TaskStatusChip status={task.status} />
               </div>
             ))}
+            {today.length > SHOWN && (
+              <button type="button" onClick={() => navigate('work/tasks')} className="self-start font-mono-main text-[10px] uppercase tracking-widest text-ink/45 hover:text-ink transition-colors">
+                {today.length - SHOWN} more →
+              </button>
+            )}
           </section>
         </div>
       )}

@@ -35,7 +35,7 @@ export const ProjectCards: React.FC<ViewProps & { onNew?: (client: string | null
             return (
               <div key={project.id} onClick={() => onOpen(project.id)}
                 className="rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer hover:border-ink/35 transition-colors">
-                <p dir="auto" className="font-sans-main text-[14px] font-bold leading-snug mb-2.5">{project.name}</p>
+                <p dir="auto" className="font-sans-main text-[14px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
                 <div className="flex flex-wrap items-center gap-2 mb-3"><ProjectStatusChip status={project.status} /><PriorityChip priority={project.priority} /></div>
                 <ProgressBar value={progressOf(tasks)} showValue />
               </div>
@@ -61,17 +61,17 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
             <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
           </div>
           <div className="card !p-0 overflow-hidden">
-            <div className="hidden md:grid grid-cols-[1fr_120px_90px_90px_80px_minmax(0,180px)_56px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/35">
+            <div className="hidden md:grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/35">
               <span>Project</span><span>Client</span><span>Lead</span><span>Date</span><span>Priority</span><span>Progress</span><span className="text-right">Open</span>
             </div>
             {group.projects.map((project) => {
               const tasks = tasksOf(project.id);
               return (
                 <div key={project.id} onClick={() => onOpen(project.id)}
-                  className="grid grid-cols-[1fr] md:grid-cols-[1fr_120px_90px_90px_80px_minmax(0,180px)_56px] items-center gap-x-4 gap-y-2 px-5 py-3.5 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors">
-                  <span dir="auto" className="font-sans-main text-[13px] font-bold truncate">{project.name}</span>
-                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] uppercase tracking-wider text-ink/50 truncate">{clientOf(project.id) ?? '—'}</span>
-                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] text-ink/50 truncate">{project.lead ?? '—'}</span>
+                  className="grid grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] items-center gap-x-4 gap-y-2 px-5 py-3.5 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors">
+                  <span dir="auto" className="font-sans-main text-[13px] font-bold leading-relaxed truncate text-left">{project.name}</span>
+                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] leading-relaxed text-ink/50 truncate text-left">{clientOf(project.id) ?? '—'}</span>
+                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] leading-relaxed text-ink/50 truncate text-left">{project.lead ?? '—'}</span>
                   <span className="hidden md:block font-mono-main text-[10px] uppercase tracking-wider text-ink/50">{shortDate(project.date) || '—'}</span>
                   <span className="hidden md:block"><PriorityChip priority={project.priority} /></span>
                   <ProgressBar value={progressOf(tasks)} showValue />
@@ -89,8 +89,13 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
 const PX_PER_DAY = 3;
 const ROW_HEIGHT = 40;
 const HEADER_HEIGHT = 30;
+const NAMES_WIDTH = 176;
 
-/** The projects on a time line: a bar from when each started to its last task (and to today while it is being worked on). */
+/**
+ * The projects on a time line: a bar from when each started to its last task (and to today while it is being worked on).
+ * The names are a fixed column on the left, each in line with its bar, so a name never wanders in the chart whatever
+ * language it is in.
+ */
 export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen }) => {
   const today = dayKey(new Date());
   const rows = useMemo(() => projects
@@ -105,26 +110,40 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
   const width = (daysBetween(from, to) + 1) * PX_PER_DAY;
   const x = (day: string) => daysBetween(from, day) * PX_PER_DAY;
   const months = monthStarts(from, to);
+  const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT + 12;
 
   return (
     <div className="card !p-0 overflow-x-auto">
-      <div className="relative" style={{ width, height: HEADER_HEIGHT + rows.length * ROW_HEIGHT + 12 }}>
-        {months.map((m) => (
-          <div key={m.key} className="absolute top-0 bottom-0 border-l border-ink/8" style={{ left: Math.max(0, m.offset * PX_PER_DAY) }}>
-            <span className="absolute top-2 left-2 font-mono-main text-[9px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>
-          </div>
-        ))}
-        <div className="absolute top-0 bottom-0 w-px bg-rust/70 z-10" style={{ left: x(today) }}>
-          <span className="absolute top-2 left-1.5 font-mono-main text-[9px] uppercase tracking-widest text-rust">Today</span>
+      <div className="flex" style={{ width: NAMES_WIDTH + width, height }}>
+        <div className="sticky left-0 z-20 shrink-0 bg-paper-dark border-r border-ink/10" style={{ width: NAMES_WIDTH }}>
+          {rows.map(({ project }, i) => (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => onOpen(project.id)}
+              dir="auto"
+              style={{ position: 'absolute', top: HEADER_HEIGHT + i * ROW_HEIGHT, height: ROW_HEIGHT, width: NAMES_WIDTH }}
+              className="px-4 text-left font-sans-main text-[12px] font-semibold leading-relaxed truncate hover:underline"
+            >{project.name}</button>
+          ))}
         </div>
-        {rows.map(({ project, span, progress }, i) => (
-          <div key={project.id} onClick={() => onOpen(project.id)} className="absolute cursor-pointer group" style={{ top: HEADER_HEIGHT + i * ROW_HEIGHT, left: x(span.from), height: ROW_HEIGHT - 8 }}>
-            <div className={`relative h-6 rounded-full overflow-hidden mt-1 ${isWorkedOn(project) ? 'bg-sepia/25' : 'bg-ink/12'}`} style={{ width: Math.max(PX_PER_DAY * 4, (daysBetween(span.from, span.to) + 1) * PX_PER_DAY) }}>
-              <div className="absolute inset-y-0 left-0 bg-forest/70" style={{ width: `${progress * 100}%` }} />
+        <div className="relative shrink-0" style={{ width }}>
+          {months.map((m) => (
+            <div key={m.key} className="absolute top-0 bottom-0 border-l border-ink/8" style={{ left: Math.max(0, m.offset * PX_PER_DAY) }}>
+              <span className="absolute top-2 left-2 font-mono-main text-[9px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>
             </div>
-            <span dir="auto" className="absolute left-full top-1 ml-2 whitespace-nowrap font-sans-main text-[11px] font-semibold group-hover:underline">{project.name}</span>
+          ))}
+          <div className="absolute top-0 bottom-0 w-px bg-rust/70 z-10" style={{ left: x(today) }}>
+            <span className="absolute top-2 left-1.5 font-mono-main text-[9px] uppercase tracking-widest text-rust">Today</span>
           </div>
-        ))}
+          {rows.map(({ project, span, progress }, i) => (
+            <div key={project.id} onClick={() => onOpen(project.id)} data-tip={project.name} className="absolute cursor-pointer" style={{ top: HEADER_HEIGHT + i * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2, left: x(span.from) }}>
+              <div className={`relative h-6 rounded-full overflow-hidden ${isWorkedOn(project) ? 'bg-sepia/25' : 'bg-ink/12'}`} style={{ width: Math.max(PX_PER_DAY * 4, (daysBetween(span.from, span.to) + 1) * PX_PER_DAY) }}>
+                <div className="absolute inset-y-0 left-0 bg-sepia/60" style={{ width: `${progress * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
