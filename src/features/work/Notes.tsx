@@ -16,7 +16,7 @@ type View = 'recent' | 'projects';
 export const NoteRow: React.FC<{ note: Note; projectName: string | null; onOpen: () => void }> = ({ note, projectName, onOpen }) => (
   <div onClick={onOpen} className="px-5 py-4 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors">
     <div className="flex items-baseline justify-between gap-4">
-      <span dir="auto" className="font-sans-main text-[14px] font-bold truncate">{noteTitle(note)}</span>
+      <span dir="auto" className="font-sans-main text-[14px] font-bold leading-relaxed text-left truncate">{noteTitle(note)}</span>
       <span className="font-mono-main text-[9px] uppercase tracking-wider text-ink/35 shrink-0">{shortDate(note.updatedAt.slice(0, 10))}</span>
     </div>
     <p dir="auto" className="font-mono-main text-[11px] text-ink/45 mt-1 line-clamp-2">{notePreview(note.markdown) || 'Empty'}</p>

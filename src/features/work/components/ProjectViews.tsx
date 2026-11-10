@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { countTasks, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan } from '@/domain/work/projects';
 import { addDays, daysBetween, dayKey } from '@/domain/work/tasks';
 import type { Project, Task } from '@/domain/work/types';
@@ -15,36 +16,86 @@ interface ViewProps {
   onOpen: (projectId: string) => void;
 }
 
-/** The projects as cards, a column for each client (what the Notion "Plan" board did). */
-export const ProjectCards: React.FC<ViewProps & { onNew?: (client: string | null) => void }> = ({ projects, tasksOf, clientOf, onOpen, onNew }) => {
-  const groups = groupProjects(projects, 'client', clientOf);
+const ProjectCard: React.FC<{ project: Project; tasks: readonly Task[]; draggable: boolean; onOpen: () => void; overlay?: boolean }> = ({ project, tasks, draggable, onOpen, overlay = false }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: project.id, disabled: !draggable || overlay });
+  return (
+    <div
+      ref={overlay ? undefined : setNodeRef}
+      {...(overlay ? {} : attributes)}
+      {...(overlay ? {} : listeners)}
+      onClick={onOpen}
+      style={{ opacity: isDragging ? 0 : 1, touchAction: 'manipulation' }}
+      className={`rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:border-ink/35'}`}
+    >
+      <p dir="auto" className="font-sans-main text-[14px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
+      <div className="flex flex-wrap items-center gap-2 mb-3"><ProjectStatusChip status={project.status} /><PriorityChip priority={project.priority} /></div>
+      <ProgressBar value={progressOf(tasks)} showValue />
+    </div>
+  );
+};
+
+const ClientColumn: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return <div ref={setNodeRef} className={`w-[270px] shrink-0 rounded-card p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors ${isOver ? 'bg-ink/8' : 'bg-ink/4'}`}>{children}</div>;
+};
+
+/**
+ * The projects as cards, a column for each client (what the Notion "Plan" board did). With `onMoveClient`, a card is
+ * dragged to another column to change whose project it is — it moves at once, before the change is saved.
+ */
+export const ProjectCards: React.FC<ViewProps & { onNew?: (client: string | null) => void; onMoveClient?: (projectId: string, client: string | null) => void }> = ({ projects, tasksOf, clientOf, onOpen, onNew, onMoveClient }) => {
+  const [moved, setMoved] = useState<Record<string, string>>({});
+  const [dragging, setDragging] = useState<Project | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  );
+  // A moved card lets go of its override once the saved client matches it.
+  useEffect(() => {
+    setMoved((m) => {
+      const keep = Object.entries(m).filter(([id, client]) => (clientOf(id) ?? '') !== client);
+      return keep.length === Object.keys(m).length ? m : Object.fromEntries(keep);
+    });
+  }, [clientOf]);
+  const shownClientOf = (id: string) => (id in moved ? moved[id] || null : clientOf(id));
+  const groups = groupProjects(projects, 'client', shownClientOf);
+  // While dragging, every client (and "no client") is a place to drop, even one with no projects left in it.
+  const allClients = [...new Set([...groups.map((g) => g.key), ...(onMoveClient ? [''] : [])])];
+  const columns = allClients.map((key) => groups.find((g) => g.key === key) ?? { key, label: key || 'No client', projects: [] as Project[] });
+
+  const onDragEnd = (e: DragEndEvent) => {
+    setDragging(null);
+    const id = String(e.active.id);
+    const to = e.over ? String(e.over.id).replace(/^client:/, '') : null;
+    if (to === null || !onMoveClient || (shownClientOf(id) ?? '') === to) return;
+    setMoved((m) => ({ ...m, [id]: to }));
+    onMoveClient(id, to || null);
+  };
+
   if (groups.length === 0) return <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">No projects here.</p>;
   return (
-    <div className="flex gap-4 overflow-x-auto pb-3 items-start">
-      {groups.map((group) => (
-        <div key={group.key} className="w-[270px] shrink-0 rounded-card bg-ink/4 p-3 flex flex-col gap-2.5">
-          {/* A guest sees no clients, so their one group needs no heading. */}
-          {!(groups.length === 1 && group.key === '' && !onNew) && (
-            <div className="flex items-center justify-between px-1 pb-1">
-              <Chip tone={group.key ? 'ink' : 'neutral'}>{group.label}</Chip>
-              <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
-            </div>
-          )}
-          {group.projects.map((project) => {
-            const tasks = tasksOf(project.id);
-            return (
-              <div key={project.id} onClick={() => onOpen(project.id)}
-                className="rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer hover:border-ink/35 transition-colors">
-                <p dir="auto" className="font-sans-main text-[14px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
-                <div className="flex flex-wrap items-center gap-2 mb-3"><ProjectStatusChip status={project.status} /><PriorityChip priority={project.priority} /></div>
-                <ProgressBar value={progressOf(tasks)} showValue />
+    <DndContext sensors={sensors} onDragStart={(e) => setDragging(projects.find((p) => p.id === e.active.id) ?? null)} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+      <div className="flex gap-4 overflow-x-auto pb-3 items-start">
+        {columns.map((group) => (
+          <ClientColumn key={group.key} id={`client:${group.key}`}>
+            {/* A guest sees no clients, so their one group needs no heading. */}
+            {!(columns.length === 1 && group.key === '' && !onNew) && (
+              <div className="flex items-center justify-between px-1 pb-1">
+                <Chip tone={group.key ? 'ink' : 'neutral'}>{group.label}</Chip>
+                <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
               </div>
-            );
-          })}
-          {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(group.key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
-        </div>
-      ))}
-    </div>
+            )}
+            {group.projects.map((project) => (
+              <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
+            ))}
+            {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(group.key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
+          </ClientColumn>
+        ))}
+      </div>
+      <DragOverlay dropAnimation={null}>
+        {dragging && <ProjectCard project={dragging} tasks={tasksOf(dragging.id)} draggable={false} overlay onOpen={() => {}} />}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

@@ -4,7 +4,7 @@ import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { noteTitle } from '@/domain/work/notes';
 import { Button } from '@/ui/Button';
-import { SelectInput } from '@/ui/Form';
+import { SelectMenu } from '@/ui/Form';
 import { NoteEditor } from '@/features/work/components/NoteEditor';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
@@ -73,17 +73,15 @@ export const NotePage: React.FC<{ navigate: (to: string) => void }> = ({ navigat
           onChange={(e) => { setTitle(e.target.value); queue({ title: e.target.value }); }}
           placeholder="Untitled"
           aria-label="Title"
-          className="w-full bg-transparent outline-none font-sans-main text-3xl sm:text-4xl font-black tracking-tight placeholder:text-ink/20"
+          className="w-full bg-transparent outline-none font-sans-main text-3xl sm:text-4xl font-black leading-[1.5] py-1 placeholder:text-ink/20"
         />
         <div className="max-w-[320px]">
-          <SelectInput
+          <SelectMenu
+            ariaLabel="Project"
             value={note.projectId ?? ''}
-            aria-label="Project"
-            onChange={(e) => updateNote(note.id, { projectId: e.target.value || null })}
-          >
-            <option value="">No project</option>
-            {[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </SelectInput>
+            onChange={(v) => updateNote(note.id, { projectId: v || null })}
+            options={[{ value: '', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
+          />
         </div>
         <NoteEditor key={note.id} markdown={note.markdown} onChange={(markdown) => queue({ markdown })} />
         <div className="flex justify-end pt-4 border-t border-ink/8">

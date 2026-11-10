@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
+import { DatePicker } from '@/ui/DatePicker';
 import { Field, SelectMenu, TextArea, TextInput } from '@/ui/Form';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
@@ -114,7 +115,7 @@ export const TaskModal: React.FC<{
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Date"><TextInput type="date" disabled={locked} value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
+            <Field label="Date"><DatePicker flow ariaLabel="Date" disabled={locked} value={draft.date} onChange={(d) => set('date', d)} /></Field>
             <Field label="Project">
               <SelectMenu
                 ariaLabel="Project"

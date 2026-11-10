@@ -68,7 +68,7 @@ export const TaskCalendar: React.FC<{
                         onClick={(e) => { e.stopPropagation(); onOpen(task); }}
                         dir="auto"
                         className={`w-full text-left truncate rounded-[6px] px-1.5 py-1 font-sans-main text-[10px] font-semibold transition-colors ${
-                          task.status === 'done' ? 'bg-sepia/15 text-sepia line-through' : task.status === 'dropped' ? 'bg-ink/6 text-ink/35 line-through' : task.status === 'doing' ? 'bg-ink text-paper' : 'bg-ink/8 hover:bg-ink/14'
+                          task.status === 'done' ? 'bg-forest/12 text-forest line-through' : task.status === 'dropped' ? 'bg-ink/6 text-ink/35 line-through' : task.status === 'doing' ? 'bg-sepia text-white' : 'bg-ink/8 hover:bg-ink/14'
                         }`}
                       >
                         {task.title || 'Untitled'}

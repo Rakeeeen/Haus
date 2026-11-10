@@ -15,9 +15,6 @@ import { WorkShell } from '@/features/work/components/WorkShell';
 type View = 'cards' | 'table' | 'timeline';
 
 const VIEWS = [{ value: 'cards', label: 'Cards' }, { value: 'table', label: 'Table' }, { value: 'timeline', label: 'Timeline' }] as const;
-/** What is shown to begin with: what is being worked on. */
-const WORKING: ProjectStatus[] = ['active', 'maintenance'];
-
 const VIEW_KEY = 'work_projects_view';
 const readView = (): View => {
   try { const v = window.localStorage.getItem(VIEW_KEY); if (v === 'cards' || v === 'table' || v === 'timeline') return v; } catch { /* use the default */ }
@@ -50,10 +47,10 @@ export function useProjectEditing() {
 }
 
 export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
-  const { tasks, privates, ready } = useWork();
+  const { tasks, privates, ready, setClient } = useWork();
   const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
-  const [statuses, setStatuses] = useState<ProjectStatus[]>(WORKING);
+  const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
 
   useEffect(() => { document.title = `${NAME} — Projects`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
@@ -79,7 +76,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       {!ready ? (
         <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
       ) : view === 'cards' ? (
-        <ProjectCards {...common} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} />
+        <ProjectCards {...common} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
       ) : view === 'table' ? (
         <ProjectTable {...common} />
       ) : (

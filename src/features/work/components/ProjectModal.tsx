@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
-import { Field, TextInput } from '@/ui/Form';
+import { DatePicker } from '@/ui/DatePicker';
+import { Field, SelectMenu, TextInput } from '@/ui/Form';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
 import { PRIORITIES } from '@/domain/work/tasks';
 import type { Invitation } from '@/domain/access';
@@ -20,6 +21,8 @@ export interface ProjectDraft {
   memberUids: string[];
   guestsSeeAll: boolean;
 }
+
+const NEW = '__new__';
 
 function Choose<T extends string>({ options, value, onChange }: {
   options: ReadonlyArray<{ value: T; label: string }>; value: T; onChange: (value: T) => void;
@@ -47,6 +50,8 @@ export const ProjectModal: React.FC<{
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
   const [error, setError] = useState('');
+  /** Typing the name of a client who is not in the list yet. */
+  const [newClient, setNewClient] = useState(false);
 
   useEffect(() => {
     if (!editing) { setDraft(null); return; }
@@ -58,6 +63,7 @@ export const ProjectModal: React.FC<{
     });
     setSure(false);
     setError('');
+    setNewClient(false);
   }, [editing]);
 
   const set = <K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
@@ -89,11 +95,16 @@ export const ProjectModal: React.FC<{
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Client">
-              <TextInput dir="auto" list="work-clients" value={draft.client ?? ''} onChange={(e) => set('client', e.target.value || null)} placeholder="Who is it for?" />
-              <datalist id="work-clients">{clients.map((c) => <option key={c} value={c} />)}</datalist>
+              <SelectMenu
+                ariaLabel="Client"
+                value={newClient ? NEW : draft.client ?? ''}
+                onChange={(v) => { if (v === NEW) { setNewClient(true); set('client', null); } else { setNewClient(false); set('client', v || null); } }}
+                options={[{ value: '', label: 'No client' }, ...clients.map((c) => ({ value: c, label: c })), ...(draft.client && !clients.includes(draft.client) && !newClient ? [{ value: draft.client, label: draft.client }] : []), { value: NEW, label: '+ New client…' }]}
+              />
+              {newClient && <TextInput dir="auto" autoFocus className="mt-2" value={draft.client ?? ''} onChange={(e) => set('client', e.target.value || null)} placeholder="The new client's name" />}
             </Field>
             <Field label="Lead"><TextInput dir="auto" value={draft.lead ?? ''} onChange={(e) => set('lead', e.target.value || null)} /></Field>
-            <Field label="Date"><TextInput type="date" value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
+            <Field label="Date"><DatePicker flow ariaLabel="Date" value={draft.date} onChange={(d) => set('date', d)} /></Field>
           </div>
 
           <Field label="Guests on this project">

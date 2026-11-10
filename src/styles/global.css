@@ -40,8 +40,8 @@
 }
 
 @theme {
-  --font-sans: "General Sans", "Inter", sans-serif;
-  --font-mono: "Geist Mono", monospace;
+  --font-sans: "General Sans", "Thmanyah", "Inter", sans-serif;
+  --font-mono: "Geist Mono", "Thmanyah", monospace;
   --font-arabic: "Thmanyah", sans-serif;
 
   /* Corners: big cards, the modal, and small boxes (inputs, menus, tooltips). Every button is

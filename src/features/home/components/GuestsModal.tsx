@@ -58,7 +58,7 @@ export const GuestsModal: React.FC<{
             <div className="min-w-0 flex-1">
               <p className="font-mono-main text-[12px] truncate text-ink">{guest.name || guest.email}</p>
               {guest.name && <p className="font-mono-main text-[9px] text-ink/40 truncate">{guest.email}</p>}
-              {!guest.uid && <p className="font-mono-main text-[9px] text-ink/30">Waiting for their first sign-in</p>}
+              {!guest.uid && <p className="font-mono-main text-[9px] text-ink/30">Shows up here once they open Haus again</p>}
             </div>
             {/* Side by side, so a pressed one pushes its neighbour like every other button row. */}
             <div className="spring-group flex items-center gap-2 shrink-0">

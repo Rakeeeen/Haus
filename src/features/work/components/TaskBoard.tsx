@@ -18,7 +18,7 @@ export const DoneTick: React.FC<{ done: boolean; onToggle: () => void }> = ({ do
     data-tip={done ? 'Reopen' : 'Done'}
     onClick={(e) => { e.stopPropagation(); onToggle(); }}
     onPointerDown={(e) => e.stopPropagation()}
-    className={`shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${done ? 'bg-sepia border-sepia text-white' : 'border-ink/30 hover:border-ink text-transparent hover:text-ink/40'}`}
+    className={`shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${done ? 'bg-forest border-forest text-paper' : 'border-ink/30 hover:border-ink text-transparent hover:text-ink/40'}`}
   >
     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5.3 4.2 7.5 8 2.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
   </button>

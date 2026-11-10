@@ -4,6 +4,7 @@ import { useWork } from '@/data/useWork';
 import { addDays, dayKey, filterTasks, moveToStatus, type DayFilter } from '@/domain/work/tasks';
 import type { Task, TaskStatus } from '@/domain/work/types';
 import { Button } from '@/ui/Button';
+import { DatePicker } from '@/ui/DatePicker';
 import { FilterSelect } from '@/ui/FilterSelect';
 import { TextInput } from '@/ui/Form';
 import { IconPlus as Plus } from '@/ui/icons';
@@ -37,7 +38,7 @@ const readView = (): View => {
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { tasks, projects, ready, canEditTask, updateTask } = useWork();
   const [view, setView] = useState<View>(readView);
-  const [dayChoice, setDayChoice] = useState<DayChoice>('today');
+  const [dayChoice, setDayChoice] = useState<DayChoice>('all');
   const [picked, setPicked] = useState(() => dayKey(new Date()));
   const [statusChoice, setStatusChoice] = useState<StatusChoice>('all');
   const [projectChoice, setProjectChoice] = useState<string>('all');
@@ -76,7 +77,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
 
       <div className="flex flex-wrap items-center gap-3">
         {view !== 'calendar' && <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />}
-        {view !== 'calendar' && dayChoice === 'pick' && <TextInput type="date" value={picked} onChange={(e) => e.target.value && setPicked(e.target.value)} className="!w-auto !py-2 !text-[12px]" aria-label="Day" />}
+        {view !== 'calendar' && dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
         <FilterSelect label="Status" options={STATUSES} value={statusChoice} onChange={setStatusChoice} />
         <FilterSelect
           label="Project"

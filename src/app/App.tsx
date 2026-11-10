@@ -104,7 +104,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
         <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
         {/* The work side is for everyone let in (a guest sees what is shared with them); finance is Hamed's alone. */}
-        <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} /></AnimatedPage>} />
+        <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />
         <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
