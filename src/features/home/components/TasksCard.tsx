@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/ui/Button';
+import { Chip } from '@/ui/Chip';
 import { IconPlus as Plus } from '@/ui/icons';
 import type { Task } from '@/domain/work/types';
 import { TasksVector } from '@/features/home/components/visuals';
@@ -22,21 +23,24 @@ export const TasksCardBody: React.FC<{
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mt-6">
       <div className="flex flex-col gap-3 min-w-0 flex-1">
         {today.length === 0 ? (
-          <p className="font-mono-main text-sm text-ink/45">Nothing left for today.</p>
-        ) : today.slice(0, 5).map((task) => (
-          <div key={task.id} className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              aria-label="Mark as done"
-              data-tip="Done"
-              onClick={(e) => { e.stopPropagation(); onFinish(task); }}
-              className="shrink-0 w-5 h-5 rounded-full border border-ink/30 hover:border-ink hover:bg-ink/10 transition-colors"
-            />
-            <span dir="auto" className="font-sans-main text-[15px] font-semibold truncate">{task.title || 'Untitled'}</span>
-            <span dir="auto" className="hidden sm:block font-mono-main text-[9px] uppercase tracking-wider text-ink/40 truncate shrink-0 max-w-[140px]">{projectName(task.projectId)}</span>
-          </div>
-        ))}
-        {today.length > 5 && <span className="font-mono-main text-[10px] text-ink/40">+{today.length - 5} more today</span>}
+          <p className="font-mono-main text-[15px] text-ink/45">Nothing left for today.</p>
+        ) : today.slice(0, 5).map((task) => {
+          const project = projectName(task.projectId);
+          return (
+            <div key={task.id} className="flex items-center gap-3 min-w-0 rounded-box bg-ink/5 px-3.5 py-2.5">
+              <button
+                type="button"
+                aria-label="Mark as done"
+                data-tip="Done"
+                onClick={(e) => { e.stopPropagation(); onFinish(task); }}
+                className="shrink-0 w-5 h-5 rounded-full border border-ink/30 hover:border-ink hover:bg-ink/10 transition-colors"
+              />
+              <span dir="auto" className="font-sans-main text-[16px] font-semibold truncate text-left min-w-0 flex-1">{task.title || 'Untitled'}</span>
+              {project && <Chip tone="neutral" className="hidden sm:inline-flex shrink-0 max-w-[160px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{project}</span></Chip>}
+            </div>
+          );
+        })}
+        {today.length > 5 && <span className="font-mono-main text-[12px] text-ink/45">+{today.length - 5} more today</span>}
       </div>
       <Button onClick={onOpen}><Plus size={18} />Open tasks</Button>
     </div>

@@ -10,7 +10,7 @@ import { DatePicker } from '@/ui/DatePicker';
 import { FilterMulti, FilterSelect } from '@/ui/FilterSelect';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { DoneTick } from '@/features/work/components/TaskBoard';
-import { PriorityChip, shortDate, TaskStatusChip } from '@/features/work/components/chips';
+import { shortDate, TaskStatusChip } from '@/features/work/components/chips';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
@@ -81,16 +81,13 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
             <div className="flex flex-col max-h-[22rem] overflow-y-auto pr-1">
               {shownTasks.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No tasks match.</p>}
               {shownTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-3 rounded-box border border-ink/10 bg-paper-dark px-4 py-3 mb-2.5 last:mb-0 hover:border-ink/30 transition-colors">
-                  <div className="pt-[3px]">{canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0 block" />}</div>
+                <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
+                  {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0" />}
                   <div className="min-w-0 flex-1 cursor-pointer" onClick={() => editor.open({ kind: 'edit', task })}>
-                    <p dir="auto" className={`font-sans-main text-[15px] font-semibold text-left break-words ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                      {projectName(task.projectId) && <Chip tone="neutral" className="max-w-[180px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectName(task.projectId)}</span></Chip>}
-                      {task.date && <span className="font-mono-main text-[12px] tracking-wider text-ink/50">{shortDate(task.date)}</span>}
-                      <PriorityChip priority={task.priority} />
-                    </div>
+                    <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
+                    {task.date && <p className="font-mono-main text-[12px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}
                   </div>
+                  {projectName(task.projectId) && <Chip tone="neutral" className="max-w-[120px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectName(task.projectId)}</span></Chip>}
                   <TaskStatusChip status={task.status} />
                 </div>
               ))}
