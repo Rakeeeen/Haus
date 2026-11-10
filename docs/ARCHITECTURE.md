@@ -321,3 +321,14 @@ speculatively.
   again ("Picked up where you left off" / "Start over").
 - Dropdowns (`SelectMenu`, `SelectMulti` in `ui/Form.tsx`) are found by typing in the field itself; a long
   `FilterSelect`/`FilterMulti` gets a search box.
+
+## One sound, no scrollbars, cards that ease
+
+- **The sound.** The only one in the system is the chime a finished task makes: `lib/sound.ts` plays
+  `assets/sounds/task-done.wav`, called from `useWork.updateTask` when a task's status becomes `done` (so the tick, a drag
+  to Done, the editor and the Home card all make it). The file is rendered by `scripts/sound/build_task_done.py` (pure
+  Python; its header explains each choice and every number can be tuned). `localStorage.haus_sound = 'off'` silences it.
+  (The focus timer has no sounds; they were tried and removed.)
+- **No scrollbars.** `global.css` hides every scrollbar (`*`); everything still scrolls. Don't add a custom one.
+- **Cards ease to their height.** Content that grows or shrinks (a filtered list, a column gaining a card) is wrapped in
+  `ui/AutoHeight`, which animates the height on the system's spring instead of jumping. It clips, so popovers go outside it.

@@ -11,7 +11,7 @@ export const WorkShell: React.FC<{
   /** Less room between the title and what follows it (the Tasks home keeps its three links close to the title). */
   tight?: boolean;
   children: React.ReactNode;
-}> = ({ crumbs, title, navigate, actions, tight = false, children }) => (
+}> = ({ crumbs, title, navigate, actions, tight = true, children }) => (
   <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300">
     <header className={`w-full max-w-[1200px] mx-auto ${tight ? 'mb-6' : 'mb-10 md:mb-12'}`}>
       <div className="flex flex-wrap items-center gap-2 mb-8">

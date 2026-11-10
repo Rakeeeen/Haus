@@ -3,6 +3,7 @@ import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useD
 import { countTasks, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan } from '@/domain/work/projects';
 import { addDays, daysBetween, dayKey } from '@/domain/work/tasks';
 import type { Project, ProjectStatus, Task } from '@/domain/work/types';
+import { AutoHeight } from '@/ui/AutoHeight';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { IconPlus as Plus } from '@/ui/icons';
@@ -100,10 +101,14 @@ export const ProjectCards: React.FC<ViewProps & {
                     <Chip tone={key ? 'ink' : 'neutral'}><span dir="auto" className="truncate max-w-[170px]">{key || 'No client'}</span></Chip>
                     <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{mine.length}</span>
                   </div>
-                  {mine.map((project) => (
-                    <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
-                  ))}
-                  {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
+                  <AutoHeight>
+                    <div className="flex flex-col gap-2.5">
+                      {mine.map((project) => (
+                        <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
+                      ))}
+                      {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
+                    </div>
+                  </AutoHeight>
                 </ClientColumn>
               );
             })}
@@ -119,11 +124,13 @@ export const ProjectCards: React.FC<ViewProps & {
                 <ProjectStatusChip status={status} />
                 <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{list.length}</span>
               </div>
-              <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
-                {list.map((project) => (
-                  <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} client={withClients ? shownClientOf(project.id) : null} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
-                ))}
-              </div>
+              <AutoHeight>
+                <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
+                  {list.map((project) => (
+                    <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} client={withClients ? shownClientOf(project.id) : null} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
+                  ))}
+                </div>
+              </AutoHeight>
             </section>
           );
         })}
@@ -147,6 +154,7 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
             <ProjectStatusChip status={group.projects[0].status} />
             <span className="font-mono-main text-[12px] text-ink/35 tabular-nums">{group.projects.length}</span>
           </div>
+          <AutoHeight>
           <div className="card !p-0 overflow-hidden">
             <div className="hidden md:grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[11px] uppercase tracking-[0.2em] text-ink/35">
               <span>Project</span><span>Client</span><span>Lead</span><span>Date</span><span>Priority</span><span>Progress</span><span className="text-right">Open</span>
@@ -167,6 +175,7 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
               );
             })}
           </div>
+          </AutoHeight>
         </div>
       ))}
     </div>

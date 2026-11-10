@@ -7,6 +7,7 @@ import { projectLabel } from '@/domain/work/projects';
 import { groupByStatus, isOverdue, dayKey, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Task, TaskStatus } from '@/domain/work/types';
 import { Avatar } from '@/ui/Avatar';
+import { AutoHeight } from '@/ui/AutoHeight';
 import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
 import { PriorityChip, shortDate } from '@/features/work/components/chips';
@@ -88,14 +89,18 @@ const Column: React.FC<{
         <span className="font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold text-ink/60">{label}</span>
         <span className="font-mono-main text-[12px] text-ink/35 tabular-nums">{tasks.length}</span>
       </div>
-      {tasks.map((task) => (
-        <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
-      ))}
-      {onAdd && (
-        <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
-          <Plus size={12} /> New task
-        </Button>
-      )}
+      <AutoHeight>
+        <div className="flex flex-col gap-2.5">
+          {tasks.map((task) => (
+          <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
+        ))}
+        {onAdd && (
+          <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
+            <Plus size={12} /> New task
+          </Button>
+        )}
+        </div>
+      </AutoHeight>
     </div>
   );
 };

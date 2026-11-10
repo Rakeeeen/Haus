@@ -89,6 +89,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
         />
         <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="!w-48 !py-2 !text-[14px]" aria-label="Search tasks" />
       </div>
+      <hr className="border-0 border-t border-ink/10 w-full my-2" />
 
       {!ready ? (
         <WorkLoading />

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Home } from '@/features/home/Home';
 import { Login } from '@/features/auth/Login';
@@ -133,25 +133,6 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Toggles `.is-scrolling` on <html> while any scrollable element (window or a nested
-  // overflow container) is actively being scrolled, then removes it after a short idle
-  // pause — the scrollbar thumb CSS shows/hides based on this class.
-  useEffect(() => {
-    let idleTimer: ReturnType<typeof setTimeout> | null = null;
-    const onScroll = () => {
-      document.documentElement.classList.add('is-scrolling');
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        document.documentElement.classList.remove('is-scrolling');
-      }, 700);
-    };
-    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll, true);
-      if (idleTimer) clearTimeout(idleTimer);
-    };
-  }, []);
-
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <TooltipLayer />

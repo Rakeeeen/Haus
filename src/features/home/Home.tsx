@@ -721,6 +721,14 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               subText: 'GLASSES TODAY',
             },
             {
+              id: 'tasks',
+              title: 'Tasks',
+              Vector: TasksVector,
+              route: 'work',
+              metric: String(todayTasks.length),
+              subText: 'DUE TODAY',
+            },
+            {
               id: 'pomodoro',
               title: 'Your Focus',
               Vector: FocusVector,
@@ -729,14 +737,6 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
                 ? (pomodoroOvertime ? `+${Math.floor(overtime / 60)}m` : `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`)
                 : `${focusMinutes > 0 ? focusHours : '0'}h`,
               subText: pomodoroOvertime ? 'OVERTIME' : pomodoroPaused ? 'PAUSED' : pomodoroRunning ? mode.toUpperCase() : 'FOCUSED TODAY',
-            },
-            {
-              id: 'tasks',
-              title: 'Tasks',
-              Vector: TasksVector,
-              route: 'work',
-              metric: String(todayTasks.length),
-              subText: 'DUE TODAY',
             },
             {
               id: 'finance',
@@ -853,7 +853,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               className="hidden lg:block absolute -left-10 z-10 pointer-events-none"
               style={{ top: 0 }}
               animate={{
-                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'tasks', 'finance', 'time'] : ['water', 'pomodoro', 'tasks', 'time']).indexOf(systemCardId) * (124 + 16),
+                y: (124 - 22) / 2 + (isOwner ? ['water', 'tasks', 'pomodoro', 'finance', 'time'] : ['water', 'tasks', 'pomodoro', 'time']).indexOf(systemCardId) * (124 + 16),
                 opacity: 1,
               }}
               initial={false}

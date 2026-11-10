@@ -1,4 +1,5 @@
 import React from 'react';
+import { AutoHeight } from '@/ui/AutoHeight';
 import { projectLabel } from '@/domain/work/projects';
 import { dayKey, isOverdue, sortTasks } from '@/domain/work/tasks';
 import type { Task } from '@/domain/work/types';
@@ -17,6 +18,7 @@ export const TaskTable: React.FC<{
   const rows = sortTasks(tasks);
   if (rows.length === 0) return <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">Nothing here.</p>;
   return (
+    <AutoHeight>
     <div className="card !p-0 overflow-hidden">
       <div className="hidden md:grid grid-cols-[28px_minmax(0,1.6fr)_minmax(0,1fr)_96px_96px_80px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[11px] uppercase tracking-[0.2em] text-ink/35">
         <span /> <span>Task</span> <span>Project</span> <span>Status</span> <span>Date</span> <span>Priority</span>
@@ -36,5 +38,6 @@ export const TaskTable: React.FC<{
         </div>
       ))}
     </div>
+    </AutoHeight>
   );
 };

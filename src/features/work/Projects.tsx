@@ -11,6 +11,7 @@ import { IconPlus as Plus } from '@/ui/icons';
 import { Tabs } from '@/ui/Tabs';
 import { ProjectModal, type ProjectDraft, type ProjectEditing } from '@/features/work/components/ProjectModal';
 import { ProjectCards, ProjectTable, ProjectTimeline } from '@/features/work/components/ProjectViews';
+import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
 type View = 'cards' | 'table' | 'timeline';
@@ -73,9 +74,10 @@ export const Projects: React.FC<{ navigate: (to: string) => void; author: string
       <div className="spring-group flex flex-wrap items-center gap-3">
         <FilterMulti label="Show" options={PROJECT_STATUSES} values={statuses} onChange={setStatuses} />
       </div>
+      <hr className="border-0 border-t border-ink/10 w-full my-2" />
 
       {!ready ? (
-        <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">Loading…</p>
+        <WorkLoading />
       ) : view === 'cards' ? (
         <ProjectCards {...common} clients={clients} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
       ) : view === 'table' ? (

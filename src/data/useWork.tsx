@@ -3,6 +3,7 @@ import {
   collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
 import { blankTask, nextTaskNo } from '@/domain/work/tasks';
 import { isInProject, normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
@@ -126,6 +127,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
 
   const updateTask = useCallback(async (id: string, patch: Partial<Omit<Task, 'id'>>) => {
     const stamped = { ...patch, updatedAt: patch.updatedAt ?? new Date().toISOString() };
+    // The one place every way of finishing a task passes through (the tick, a drag to Done, the editor, the Home card).
+    if (stamped.status === 'done' && tasksRef.current.find((t) => t.id === id)?.status !== 'done') playTaskDone();
     if (uid) {
       // A guest changes only what firestore.rules lets them.
       const current = tasksRef.current.find((t) => t.id === id);
