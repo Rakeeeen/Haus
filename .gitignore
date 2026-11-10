@@ -48,3 +48,5 @@ backend/.rules-previous
 .claude/settings.local.json
 
 backend/mail-preview/
+firebase-debug.log
+firestore-debug.log

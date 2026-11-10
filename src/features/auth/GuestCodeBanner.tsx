@@ -33,7 +33,7 @@ export const GuestCodeBanner: React.FC = () => {
               <p className="font-mono-main text-[10px] text-ink/40">
                 Expires in {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
               </p>
-              <Button size="sm" tone="ghost" onClick={() => dismiss(c.uid)}>Dismiss</Button>
+              <Button size="sm" tone="ghost" onClick={() => dismiss(c.uid)}>Hide</Button>
             </div>
           </div>
         );

@@ -70,6 +70,9 @@ export interface GuestCode {
  */
 export function useGuestCodes(enabled: boolean) {
   const [codes, setCodes] = useState<GuestCode[]>([]);
+  // Hiding a card is only on this screen. The code itself must stay in Firestore until it runs out: the rules
+  // compare what the guest types to it, so deleting it would make the right code fail.
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (!enabled) return;
@@ -101,5 +104,10 @@ export function useGuestCodes(enabled: boolean) {
     return () => { stopRequests(); stopCodes(); setCodes([]); };
   }, [enabled]);
 
-  return { codes, dismiss: (uid: string) => deleteDoc(doc(db, CODES, uid)) };
+  const hide = (uid: string) => {
+    const shown = codes.find((c) => c.uid === uid);
+    if (shown) setHidden((previous) => new Set(previous).add(`${uid}:${shown.code}`));
+  };
+
+  return { codes: codes.filter((c) => !hidden.has(`${c.uid}:${c.code}`)), dismiss: hide };
 }

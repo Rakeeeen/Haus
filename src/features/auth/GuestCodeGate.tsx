@@ -51,7 +51,9 @@ export const GuestCodeGate: React.FC<{ user: AuthUser }> = ({ user }) => {
     try {
       await submitGuestCode(user.uid, digits);
       // Accepted: AuthProvider sees the approval and swaps this screen for the system.
-    } catch {
+    } catch (error) {
+      // The rules refuse without saying why; the code in the error at least tells a wrong code from a network fault.
+      console.warn('The code was refused:', (error as { code?: string }).code ?? error);
       setState('wrong');
       setCode('');
     }

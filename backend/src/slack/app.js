@@ -12,7 +12,7 @@ import { dashboardConfigured } from '../lib/firestore.js';
 
 /**
  * The Slack control panel — the same hub / Water / Focus / Finance cards as the Discord bot, opened
- * with `/firmus` (or `/firmus water|focus|finance`). Runs over Socket Mode, so it needs no public URL.
+ * with `/haus` (or `/haus water|focus|finance`; `/firmus` still works). Runs over Socket Mode, so it needs no public URL.
  * Cards are ephemeral (only you see them) and are edited in place, so nothing piles up in a channel.
  *
  * Access: only SLACK_OWNER_USER_ID may use it, and only in the control channel (SLACK_CONTROL_CHANNEL_ID). Until the owner is set, anyone who tries is told their own member id to put in backend/.env.
@@ -160,7 +160,8 @@ export function startSlack({ botToken, appToken, ownerId, controlChannelId }) {
     return next();
   });
 
-  app.command('/firmus', async ({ ack, command, respond }) => {
+  // `/haus` is the system's name; `/firmus` stays registered until the Slack app's command is renamed.
+  const control = async ({ ack, command, respond }) => {
     await ack();
     if (!dashboardConfigured()) {
       await respond(ephemeral('`backend/serviceAccountKey.json` is missing — dashboard control isn\'t set up yet.'));
@@ -172,7 +173,9 @@ export function startSlack({ botToken, appToken, ownerId, controlChannelId }) {
     const view = await build();
     await respond({ response_type: 'ephemeral', ...view });
     keepFor(key, respond, view);
-  });
+  };
+  app.command('/haus', control);
+  app.command('/firmus', control);
 
   app.action(/^(bommy|water|focus|finance):/, async (args) => {
     const { ack, action, respond, body } = args;
@@ -210,5 +213,5 @@ export function startSlack({ botToken, appToken, ownerId, controlChannelId }) {
 
   app.error(async (error) => console.error('⚠️ Slack app error:', error.message));
 
-  return app.start().then(() => console.log('💬 Slack control panel is online (/firmus)'));
+  return app.start().then(() => console.log('💬 Slack control panel is online (/haus, /firmus)'));
 }

@@ -208,9 +208,9 @@ timer's messages; `report`), `src/lib/` (`alerts`,
 Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
 Their pure parts are tested from the root `npm run test:run`.
 
-`backend/src/slack/` is the same control panel (hub, Water, Focus, Finance) for Slack: `/firmus` or
-`/firmus water|focus|finance` (the command's name in the Slack app's settings, so it keeps its old spelling until
-that is renamed there too), over Socket Mode (no public URL). `views.js` draws the Block Kit cards from the same
+`backend/src/slack/` is the same control panel (hub, Water, Focus, Finance) for Slack: `/haus` or
+`/haus water|focus|finance`. The bot answers both `/haus` and the old `/firmus`; to finish the rename, add a `/haus` slash command
+in the Slack app's settings (same as `/firmus`), then `/firmus` can be removed there and in `app.js`, over Socket Mode (no public URL). `views.js` draws the Block Kit cards from the same
 readers the Discord cards use (`readState`, `readFocusState`, `readFinanceSummary`…); `app.js` routes the buttons and
 the amount form. Cards are ephemeral and edited in place. It starts only when `SLACK_BOT_TOKEN` (xoxb-),
 `SLACK_APP_TOKEN` (xapp-) are in `backend/.env`; only `SLACK_OWNER_USER_ID` may use it, and only in the channel
@@ -264,8 +264,9 @@ Switching a guest off in the Guests list cuts them off at once. `AuthProvider` e
 **`firestore.rules` is the real lock; the screens only follow it.** Everything is denied unless a rule allows it: the owner
 reads and writes `dashboard/*`, the work collections, his fingerprint record and device code; an approved guest only their own
 `users/{uid}/data/*`; only the owner reads or writes `members`. Publish with `node backend/scripts/deploy-rules.js` (the bot's service account; the ruleset it
-replaces is remembered, `--rollback` puts it back). The rules have no automated tests yet — the service account may not run
-Google's rules evaluator, and the local emulator needs Java; add them with the next collections.
+replaces is remembered, `--rollback` puts it back). The rules are tested in `rules-tests/` against the Firestore emulator (needs Java: `brew install openjdk`, then
+`npm run test:rules`; it is not part of `test:run`). Add a case there with each new collection or rule. The guest's code is compared by
+the rules to `guest_codes/{uid}`, so that document must stay until it expires: Hamed's banner only *hides* a card, never deletes the code.
 
 ## Project admins
 
