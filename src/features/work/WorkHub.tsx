@@ -93,10 +93,10 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                   <TaskStatusChip status={task.status} />
                 </div>
               ))}
+              <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 mt-2">
+                <Plus size={14} /> New task
+              </Button>
             </div>
-            <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 self-start">
-              <Plus size={14} /> New task
-            </Button>
           </section>
           <section className="card flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">

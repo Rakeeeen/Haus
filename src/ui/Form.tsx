@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Avatar } from '@/ui/Avatar';
 import { IconChevronDown as ChevronDown } from '@/ui/icons';
 
@@ -31,18 +32,23 @@ const matches = (option: MenuOption, typed: string) => !typed.trim() || option.l
 function useOpenMenu() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !listRef.current?.contains(t)) setOpen(false);
+    };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', esc, true);
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc, true); };
   }, [open]);
-  return { open, setOpen, rootRef };
+  return { open, setOpen, rootRef, listRef };
 }
 
-const BOX = `${base} px-4 py-3 pr-10 text-[16px] text-left flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed`;
+// One fixed height, so the field is the same size closed (a name), open (the box you type in) and with a photo in it.
+const BOX = `${base} h-[52px] px-4 pr-10 text-[16px] text-left flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed`;
 
 /**
  * The field of a dropdown: closed, it names what is chosen; open, the same place takes what you type to narrow the list
@@ -84,14 +90,49 @@ const MenuField: React.FC<{
   </div>
 );
 
-const LIST = 'absolute left-0 right-0 top-full mt-1 z-30 max-h-60 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box';
+const LIST = 'z-[10000] max-h-60 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box shadow-[0_12px_32px_rgba(0,0,0,0.18)]';
+
+/**
+ * The open list, floating over the page from the field's position (below it, or above if there is no room). It is not part
+ * of the form's own layout, so opening it never makes a form scroll or a card grow.
+ */
+const FloatingList: React.FC<{ anchor: React.RefObject<HTMLDivElement>; listRef: React.RefObject<HTMLUListElement>; multi?: boolean; children: React.ReactNode }> = ({ anchor, listRef, multi = false, children }) => {
+  const [at, setAt] = useState<{ left: number; top: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const r = anchor.current?.getBoundingClientRect();
+      if (!r) return;
+      const height = listRef.current?.offsetHeight ?? 240;
+      const below = r.bottom + 4 + height <= window.innerHeight || r.top - 4 - height < 0;
+      const next = { left: r.left, top: below ? r.bottom + 4 : r.top - 4 - height, width: r.width };
+      // Only when it has actually moved: setting state on every render would never settle.
+      setAt((prev) => (prev && prev.left === next.left && prev.top === next.top && prev.width === next.width ? prev : next));
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  });
+  return createPortal(
+    <ul
+      ref={listRef}
+      role="listbox"
+      aria-multiselectable={multi || undefined}
+      className={`${LIST} fixed`}
+      style={{ left: at?.left ?? 0, top: at?.top ?? 0, width: at?.width ?? 0, visibility: at ? 'visible' : 'hidden' }}
+    >
+      {children}
+    </ul>,
+    document.body,
+  );
+};
 const ROW = 'w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 font-mono-main text-[14px] transition-colors hover:bg-ink/5';
 
 /** A form dropdown in the system's own style (never the browser's): a short list that scrolls inside itself, and is found by typing. */
 export const SelectMenu: React.FC<{
   options: readonly MenuOption[]; value: string; onChange: (value: string) => void; disabled?: boolean; ariaLabel: string;
 }> = ({ options, value, onChange, disabled = false, ariaLabel }) => {
-  const { open, setOpen, rootRef } = useOpenMenu();
+  const { open, setOpen, rootRef, listRef } = useOpenMenu();
   const [typed, setTyped] = useState('');
   const current = options.find((o) => o.value === value);
   const shown = options.filter((o) => matches(o, typed));
@@ -105,7 +146,7 @@ export const SelectMenu: React.FC<{
         <span dir="auto" className="truncate">{current?.label ?? '—'}</span>
       </MenuField>
       {open && (
-        <ul role="listbox" className={LIST}>
+        <FloatingList anchor={rootRef} listRef={listRef}>
           {shown.length === 0 && <li className="px-3.5 py-2.5 font-mono-main text-[13px] text-ink/40">Nothing matches.</li>}
           {shown.map((o) => (
             <li key={o.value} role="option" aria-selected={o.value === value}>
@@ -115,7 +156,7 @@ export const SelectMenu: React.FC<{
               </button>
             </li>
           ))}
-        </ul>
+        </FloatingList>
       )}
     </div>
   );
@@ -125,7 +166,7 @@ export const SelectMenu: React.FC<{
 export const SelectMulti: React.FC<{
   options: readonly MenuOption[]; values: readonly string[]; onChange: (values: string[]) => void; disabled?: boolean; ariaLabel: string; empty?: string;
 }> = ({ options, values, onChange, disabled = false, ariaLabel, empty = 'None' }) => {
-  const { open, setOpen, rootRef } = useOpenMenu();
+  const { open, setOpen, rootRef, listRef } = useOpenMenu();
   const [typed, setTyped] = useState('');
   const chosen = options.filter((o) => values.includes(o.value));
   const shown = options.filter((o) => matches(o, typed));
@@ -143,7 +184,7 @@ export const SelectMulti: React.FC<{
         )}
       </MenuField>
       {open && (
-        <ul role="listbox" aria-multiselectable className={LIST}>
+        <FloatingList anchor={rootRef} listRef={listRef} multi>
           {shown.length === 0 && <li className="px-3.5 py-2.5 font-mono-main text-[13px] text-ink/40">Nothing matches.</li>}
           {shown.map((o) => {
             const on = values.includes(o.value);
@@ -162,7 +203,7 @@ export const SelectMulti: React.FC<{
               <button type="button" onClick={() => onChange([])} className="w-full text-left px-3.5 py-2.5 border-t border-ink/10 font-mono-main text-[12px] uppercase tracking-[0.2em] text-ink/45 hover:bg-ink/5 transition-colors">Clear</button>
             </li>
           )}
-        </ul>
+        </FloatingList>
       )}
     </div>
   );
