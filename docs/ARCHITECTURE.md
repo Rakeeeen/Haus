@@ -355,3 +355,11 @@ speculatively.
   Home is large, and a render a second was felt. A popover that closes on an outside click or Escape uses `ui/useDismiss`.
 - **Shared, not copied.** Finishing or moving a task goes through `useWork().setTaskStatus` / `toggleTaskDone` (permission
   check and stamps in one place); a row of choice buttons is `ui/Form`'s `ChooseRow`.
+
+## Home is a wiring file
+
+`features/home/Home.tsx` (about 270 lines) only connects the pieces; each has its own file beside it. **Logic**: `useGreeting`
+(the header phrase and its fade), `useDailySnapshot` (daily history + the one-line journal), `useCardSelection` (which card the big
+card shows, and the 30 s manual hold), `useZenMode`, `useDockTouch` (hover/press shared by the dock and the big card), `useAvatar`,
+`useNow`. The pure parts — the week's pattern, the journal line — are `domain/dailyJournal.ts`, tested. **Parts**: `HomeHeader`,
+`Dock` (+ `dockCards.ts`, the data for its cards), `BigCard`, `FingerprintModal`; the card bodies stay in `components/`.
