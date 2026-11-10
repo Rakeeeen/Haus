@@ -74,7 +74,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
               </div>
             </div>
             <AutoHeight>
-            <div className="flex flex-col max-h-[70vh] overflow-y-auto no-scrollbar">
+            <div className="flex flex-col max-h-[70vh] overflow-y-auto">
               {shownTasks.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No tasks match.</p>}
               {shownTasks.map((task) => (
                 <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">

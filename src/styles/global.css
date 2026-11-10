@@ -205,9 +205,6 @@
     transition: background-color 5000s ease-in-out 0s;
   }
 
-  /* === HIDE SCROLLBAR UTILITY === */
-  .scrollbar-none::-webkit-scrollbar { display: none; }
-
   /* === REMOVE NATIVE CHECKBOX / RADIO === */
   input[type="checkbox"],
   input[type="radio"] {
@@ -339,14 +336,6 @@
     color: var(--ink);
     background-color: color-mix(in srgb, var(--ink) 7%, transparent);
   }
-}
-
-html {
-  /* Always keep the (transparent, 4px) scrollbar track. `scrollbar-gutter: stable` is ignored
-     once ::-webkit-scrollbar is styled, so without this the page shifts 4px sideways every
-     time its height crosses the screen's and the scrollbar appears or goes away. */
-  scrollbar-gutter: stable;
-  overflow-y: scroll;
 }
 
 /* FocusVector's clock hand — one slow turn, like a real second hand */
@@ -482,9 +471,6 @@ body.dark-theme [data-active] {
    a tight line-height, or a clipping box (truncate, a chip), would cut them off. Inputs keep their own height. */
 [dir="auto"]:not(input):not(textarea) { line-height: 1.7; }
 
-/* Scrolls as usual, but with no scrollbar showing. */
-.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* No scrollbar anywhere in the system: everything still scrolls (wheel, trackpad, touch, keys), it just isn't drawn. */
 * { scrollbar-width: none; -ms-overflow-style: none; }

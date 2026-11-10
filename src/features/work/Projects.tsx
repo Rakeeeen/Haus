@@ -10,7 +10,9 @@ import { FilterMulti } from '@/ui/FilterSelect';
 import { IconPlus as Plus } from '@/ui/icons';
 import { Tabs } from '@/ui/Tabs';
 import { ProjectModal, type ProjectDraft, type ProjectEditing } from '@/features/work/components/ProjectModal';
-import { ProjectCards, ProjectTable, ProjectTimeline } from '@/features/work/components/ProjectViews';
+import { ProjectCards } from '@/features/work/components/ProjectCards';
+import { ProjectTable } from '@/features/work/components/ProjectTable';
+import { ProjectTimeline } from '@/features/work/components/ProjectTimeline';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
 

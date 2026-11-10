@@ -54,7 +54,7 @@ export const Dock: React.FC<{
     // The outer wrapper is what animates and clips. Width AND a matching negative margin animate together (framer-motion
     // won't reliably animate the row's own `gap`), so the big card reaches the header's right edge, not just where the dock began.
     <motion.div
-      className="shrink-0 scrollbar-none"
+      className="shrink-0"
       initial={false}
       animate={isLgUp ? { width: zenActive ? 0 : 230, marginRight: zenActive ? -32 : 0 } : undefined}
       transition={SPRING}
