@@ -11,7 +11,7 @@ import { WorkShell } from '@/features/work/components/WorkShell';
 const SAVE_AFTER_MS = 800;
 
 /** One note: a title, the project it is about, and the page. Every change is saved a moment after it stops. */
-export const NotePage: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
+export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => void }> = ({ navigate }) => {
   const { id } = useParams<{ id: string }>();
   const { notes, projects, ready, updateNote, removeNote } = useWork();
   const note = notes.find((n) => n.id === id) ?? null;
@@ -55,7 +55,7 @@ export const NotePage: React.FC<{ navigate: (to: string) => void }> = ({ navigat
   const crumbs = [{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Notes', to: 'work/notes' }];
 
   if (ready && !note) {
-    return <WorkShell navigate={navigate} crumbs={crumbs} title="Not found"><p className="font-mono-main text-[11px] text-ink/50">There is no such note — it may have been deleted.</p></WorkShell>;
+    return <WorkShell navigate={navigate} crumbs={crumbs} title="Not found"><p className="font-mono-main text-[13px] text-ink/50">There is no such note — it may have been deleted.</p></WorkShell>;
   }
   if (!note) return <WorkShell navigate={navigate} crumbs={crumbs} title="…"><span /></WorkShell>;
 
@@ -64,7 +64,7 @@ export const NotePage: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       navigate={navigate}
       crumbs={[...crumbs, { label: noteTitle({ title }) }]}
       title="Note"
-      actions={<span className="font-mono-main text-[10px] uppercase tracking-widest text-ink/35">{status === 'saving' ? 'Saving…' : 'Saved'}</span>}
+      actions={<span className="font-mono-main text-[12px] uppercase tracking-widest text-ink/35">{status === 'saving' ? 'Saving…' : 'Saved'}</span>}
     >
       <div className="card flex flex-col gap-6 max-w-[820px] w-full mx-auto !p-6 sm:!p-10">
         <input
@@ -85,7 +85,7 @@ export const NotePage: React.FC<{ navigate: (to: string) => void }> = ({ navigat
         </div>
         <NoteEditor key={note.id} markdown={note.markdown} onChange={(markdown) => queue({ markdown })} />
         <div className="flex justify-end pt-4 border-t border-ink/8">
-          <Button tone="danger" size="sm" onClick={() => (sure ? removeNote(note.id).then(() => navigate('work/notes')) : setSure(true))}>
+          <Button tone="danger" size="sm" onClick={() => (sure ? removeNote(note.id).then(() => navigate('work/notes', true)) : setSure(true))}>
             {sure ? 'Sure? Delete' : 'Delete note'}
           </Button>
         </div>

@@ -14,18 +14,19 @@ import { ProjectModal } from '@/features/work/components/ProjectModal';
 import { NoteRow } from '@/features/work/Notes';
 import { TaskBoard } from '@/features/work/components/TaskBoard';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
+import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
 import { useProjectEditing } from '@/features/work/Projects';
 
 const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div>
-    <p className="font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/35 mb-1.5">{label}</p>
-    <div className="font-mono-main text-[12px] min-h-[20px] flex items-center">{children}</div>
+    <p className="font-mono-main text-[11px] uppercase tracking-[0.2em] text-ink/35 mb-1.5">{label}</p>
+    <div className="font-mono-main text-[14px] min-h-[20px] flex items-center">{children}</div>
   </div>
 );
 
 /** One project: what it is, how far along, and its tasks in columns. */
-export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
+export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
   const { role, tasks, notes, privates, ready, canEditTask, updateTask, addNote } = useWork();
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
@@ -36,11 +37,13 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
   const client = id ? privates[id]?.client ?? null : null;
 
   useEffect(() => { document.title = `${NAME} — ${project?.name ?? 'Project'}`; }, [project?.name]);
+  // A project that is gone (deleted, then Back pressed) sends you to the list, replacing this entry so Back doesn't return here.
+  useEffect(() => { if (ready && !project) navigate('work/projects', true); }, [ready, project, navigate]);
 
   if (ready && !project) {
     return (
       <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects', to: 'work/projects' }]} title="Not found">
-        <p className="font-mono-main text-[11px] text-ink/50">There is no such project — it may have been deleted.</p>
+        <p className="font-mono-main text-[13px] text-ink/50">There is no such project — it may have been deleted.</p>
       </WorkShell>
     );
   }
@@ -72,12 +75,12 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
         </div>
         <div>
           <ProgressBar value={progressOf(mine)} showValue />
-          <p className="font-mono-main text-[10px] text-ink/40 mt-2">{counts.done} of {counts.total} tasks done · {counts.open} open</p>
+          <p className="font-mono-main text-[12px] text-ink/40 mt-2">{counts.done} of {counts.total} tasks done · {counts.open} open</p>
         </div>
       </div>
 
       {!ready ? (
-        <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
+        <WorkLoading />
       ) : (
         <TaskBoard
           tasks={mine}
@@ -99,7 +102,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
             <Button tone="outline" size="sm" onClick={async () => navigate(`work/notes/${await addNote(project.id)}`)}><Plus size={12} />New note</Button>
           </div>
           {notes.filter((n) => n.projectId === project.id).length === 0 ? (
-            <p className="font-mono-main text-[11px] text-ink/40">No notes on this project yet.</p>
+            <p className="font-mono-main text-[13px] text-ink/40">No notes on this project yet.</p>
           ) : (
             <div className="card !p-0 overflow-hidden">
               {sortNotes(notes.filter((n) => n.projectId === project.id)).map((note) => (
@@ -117,7 +120,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
         guests={guests}
         onClose={() => setProjectEditing(null)}
         onSave={save}
-        onDelete={async (p) => { await remove(p); navigate('work/projects'); }}
+        onDelete={async (p) => { await remove(p); navigate('work/projects', true); }}
       />
     </WorkShell>
   );

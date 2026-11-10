@@ -505,3 +505,8 @@ body.dark-theme [data-active] {
 .note-editor hr { border: none; border-top: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); margin: 1.6em 0; }
 .note-editor a { color: var(--sepia-mark); text-decoration: underline; text-underline-offset: 3px; }
 .note-editor strong { font-weight: 800; }
+
+/* Arabic letters stack marks above and below the line, so text that may be Arabic (dir="auto") keeps a roomy line:
+   a tight line-height, or a clipping box (truncate, a chip), would cut them off. Inputs keep their own height. */
+[dir="auto"]:not(input):not(textarea) { line-height: 1.7; }
+.chip-text { line-height: 1.7; }

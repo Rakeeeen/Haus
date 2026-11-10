@@ -58,7 +58,7 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
                 <button
                   type="button"
                   onClick={() => { onChange(o.value); setOpen(false); }}
-                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
+                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
                 >
                   {selected ? '● ' : '○ '}{o.label}
                 </button>
@@ -116,7 +116,7 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
                 <button
                   type="button"
                   onClick={() => toggle(o.value)}
-                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
+                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer whitespace-nowrap font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold transition-colors hover:bg-ink/5 ${selected ? 'text-ink' : 'text-ink/60'}`}
                 >
                   {selected ? '■ ' : '□ '}{o.label}
                 </button>
@@ -125,7 +125,7 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
           })}
           {values.length > 0 && (
             <li>
-              <button type="button" onClick={() => onChange([])} className="w-full text-left px-3.5 py-2.5 border-t border-ink/10 font-mono-main text-[10px] uppercase tracking-[0.2em] text-ink/45 hover:bg-ink/5 transition-colors">
+              <button type="button" onClick={() => onChange([])} className="w-full text-left px-3.5 py-2.5 border-t border-ink/10 font-mono-main text-[12px] uppercase tracking-[0.2em] text-ink/45 hover:bg-ink/5 transition-colors">
                 Clear
               </button>
             </li>

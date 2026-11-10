@@ -75,7 +75,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       </div>
 
       {!ready ? (
-        <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
+        <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">Loading…</p>
       ) : view === 'cards' ? (
         <ProjectCards {...common} clients={clients} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} onMoveClient={role === 'owner' ? setClient : undefined} />
       ) : view === 'table' ? (

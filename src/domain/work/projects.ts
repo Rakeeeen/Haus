@@ -1,13 +1,15 @@
 import { addDays, daysBetween, parseDayKey, dayKey } from '@/domain/work/tasks';
 import type { Priority, Project, ProjectStatus, Task } from '@/domain/work/types';
 
-export const PROJECT_STATUSES: ReadonlyArray<{ value: ProjectStatus; label: string }> = [
-  { value: 'active', label: 'In progress' },
-  { value: 'planning', label: 'Planning' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'paused', label: 'On hold' },
-  { value: 'done', label: 'Done' },
+export const PROJECT_STATUSES: ReadonlyArray<{ value: ProjectStatus; label: string; hint: string }> = [
+  { value: 'active', label: 'In progress', hint: 'Being worked on now' },
+  { value: 'planning', label: 'Planning', hint: 'Not started yet — still being planned' },
+  { value: 'maintenance', label: 'Maintenance', hint: 'Delivered, and still looked after: fixes and updates' },
+  { value: 'paused', label: 'On hold', hint: 'Stopped for now, waiting on something' },
+  { value: 'done', label: 'Done', hint: 'Finished and closed' },
 ];
+
+export const projectStatusHint = (status: ProjectStatus) => PROJECT_STATUSES.find((s) => s.value === status)?.hint ?? '';
 
 export const projectStatusLabel = (status: ProjectStatus) => PROJECT_STATUSES.find((s) => s.value === status)?.label ?? status;
 

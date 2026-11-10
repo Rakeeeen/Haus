@@ -136,8 +136,8 @@ export const NoteEditor: React.FC<{ markdown: string; onChange: (markdown: strin
                 onMouseDown={(e) => { e.preventDefault(); menu.command(item); }}
                 className={`w-full text-left px-3 py-2 rounded-[8px] transition-colors ${i === menu.selected ? 'bg-ink/10' : 'hover:bg-ink/6'}`}
               >
-                <span className="block font-sans-main text-[13px] font-semibold">{item.title}</span>
-                <span className="block font-mono-main text-[9px] uppercase tracking-wider text-ink/40">{item.hint}</span>
+                <span className="block font-sans-main text-[15px] font-semibold">{item.title}</span>
+                <span className="block font-mono-main text-[11px] uppercase tracking-wider text-ink/40">{item.hint}</span>
               </button>
             </li>
           ))}

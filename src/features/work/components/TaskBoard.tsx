@@ -38,19 +38,19 @@ const TaskCard: React.FC<{
     >
       <div className="flex items-start gap-2.5">
         {editable ? <DoneTick done={task.status === 'done'} onToggle={onToggleDone} /> : <span className="shrink-0 w-5 h-5" />}
-        <p dir="auto" className={`font-sans-main text-[13px] font-semibold leading-relaxed text-left break-words min-w-0 ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>
+        <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left break-words min-w-0 ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>
           {task.title || 'Untitled'}
         </p>
       </div>
       {(projectName || task.date || task.priority || person) && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2.5 pl-[30px]">
-          {projectName && <span dir="auto" className="font-mono-main text-[9px] tracking-wider text-ink/45 truncate max-w-full text-left">{projectName}</span>}
-          {task.date && <span className={`font-mono-main text-[9px] uppercase tracking-wider ${overdue ? 'text-rust' : 'text-ink/45'}`}>{shortDate(task.date)}</span>}
+          {projectName && <span dir="auto" className="font-mono-main text-[11px] tracking-wider text-ink/45 truncate max-w-full text-left">{projectName}</span>}
+          {task.date && <span className={`font-mono-main text-[11px] uppercase tracking-wider ${overdue ? 'text-rust' : 'text-ink/45'}`}>{shortDate(task.date)}</span>}
           <PriorityChip priority={task.priority} />
           {person && (
             <span className="ml-auto flex items-center gap-1.5 min-w-0">
               <Avatar name={person.name} photoUrl={person.photoUrl} size={16} />
-              <span dir="auto" className="font-mono-main text-[9px] tracking-wider text-ink/50 truncate max-w-[90px]">{person.name}</span>
+              <span dir="auto" className="font-mono-main text-[11px] tracking-wider text-ink/50 truncate max-w-[90px]">{person.name}</span>
             </span>
           )}
         </div>
@@ -84,8 +84,8 @@ const Column: React.FC<{
       className={`flex flex-col gap-2.5 rounded-card p-3 min-h-[160px] transition-colors ${isOver ? 'bg-ink/8' : 'bg-ink/4'}`}
     >
       <div className="flex items-center justify-between px-1 pb-1">
-        <span className="font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold text-ink/60">{label}</span>
-        <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{tasks.length}</span>
+        <span className="font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold text-ink/60">{label}</span>
+        <span className="font-mono-main text-[12px] text-ink/35 tabular-nums">{tasks.length}</span>
       </div>
       {tasks.map((task) => (
         <DraggableCard key={task.id} task={task} projectName={projectName(task.projectId)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />

@@ -14,6 +14,7 @@ import { TaskBoard } from '@/features/work/components/TaskBoard';
 import { TaskCalendar } from '@/features/work/components/TaskCalendar';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { TaskTable } from '@/features/work/components/TaskTable';
+import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
 type View = 'board' | 'table' | 'calendar';
@@ -86,11 +87,11 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
           value={projectChoice}
           onChange={setProjectChoice}
         />
-        <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="!w-48 !py-2 !text-[12px]" aria-label="Search tasks" />
+        <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="!w-48 !py-2 !text-[14px]" aria-label="Search tasks" />
       </div>
 
       {!ready ? (
-        <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
+        <WorkLoading />
       ) : view === 'board' ? (
         <TaskBoard
           tasks={shown}

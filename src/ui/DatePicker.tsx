@@ -71,10 +71,10 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
     <div ref={panelRef} style={{ position: 'fixed', left: at?.left ?? 0, top: at?.top ?? 0, visibility: at ? 'visible' : 'hidden' }} className="z-[10000] w-[272px] bg-paper-dark border border-ink/14 rounded-box p-3 flex flex-col gap-2 shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
       <div className="flex items-center justify-between">
         <Button tone="ghost" size="sm" aria-label="Previous month" onClick={() => step(-1)} className="!px-2"><ChevronRight size={12} className="rotate-180" /></Button>
-        <span className="font-mono-main text-[10px] uppercase tracking-[0.2em] font-bold">{shown.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>
+        <span className="font-mono-main text-[12px] uppercase tracking-[0.2em] font-bold">{shown.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>
         <Button tone="ghost" size="sm" aria-label="Next month" onClick={() => step(1)} className="!px-2"><ChevronRight size={12} /></Button>
       </div>
-      <div className="grid grid-cols-7 text-center font-mono-main text-[9px] uppercase text-ink/35">{WEEK.map((d) => <span key={d} className="py-1">{d}</span>)}</div>
+      <div className="grid grid-cols-7 text-center font-mono-main text-[11px] uppercase text-ink/35">{WEEK.map((d) => <span key={d} className="py-1">{d}</span>)}</div>
       <div className="grid grid-cols-7 gap-y-0.5">
         {monthGrid(shown.getFullYear(), shown.getMonth()).flat().map(({ key, inMonth }) => {
           const chosen = key === value;
@@ -83,7 +83,7 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
               key={key}
               type="button"
               onClick={() => pick(key)}
-              className={`h-8 rounded-full font-mono-main text-[11px] tabular-nums transition-colors ${chosen ? 'bg-ink text-paper font-bold' : key === today ? 'text-sepia font-bold hover:bg-ink/8' : inMonth ? 'hover:bg-ink/8' : 'text-ink/25 hover:bg-ink/8'}`}
+              className={`h-8 rounded-full font-mono-main text-[13px] tabular-nums transition-colors ${chosen ? 'bg-ink text-paper font-bold' : key === today ? 'text-sepia font-bold hover:bg-ink/8' : inMonth ? 'hover:bg-ink/8' : 'text-ink/25 hover:bg-ink/8'}`}
             >{Number(key.slice(8))}</button>
           );
         })}

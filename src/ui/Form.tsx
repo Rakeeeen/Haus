@@ -9,17 +9,17 @@ export const Field: React.FC<{ label: string; children: React.ReactNode; classNa
   // A div, not a label: a label hands its :hover and clicks to the first control inside, which lit "To do" when
   // "Done" was hovered in a row of buttons.
   <div role="group" aria-label={label} className={`block ${className}`}>
-    <span className="font-sans-main uppercase tracking-widest block mb-2 text-[10px] font-semibold text-ink/40">{label}</span>
+    <span className="font-sans-main uppercase tracking-widest block mb-2 text-[12px] font-semibold text-ink/40">{label}</span>
     {children}
   </div>
 );
 
 export const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = ({ className = '', ...props }) => (
-  <input {...props} className={`${base} px-4 py-3 text-[14px] ${className}`} />
+  <input {...props} className={`${base} px-4 py-3 text-[16px] ${className}`} />
 );
 
 export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ className = '', ...props }) => (
-  <textarea {...props} className={`${base} px-4 py-3 text-[14px] leading-relaxed resize-y min-h-[120px] ${className}`} />
+  <textarea {...props} className={`${base} px-4 py-3 text-[16px] leading-relaxed resize-y min-h-[120px] ${className}`} />
 );
 
 export interface MenuOption { value: string; label: string; photoUrl?: string | null; withAvatar?: boolean }
@@ -50,7 +50,7 @@ export const SelectMenu: React.FC<{
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`${base} px-4 py-3 pr-10 text-[14px] text-left flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed`}
+        className={`${base} px-4 py-3 pr-10 text-[16px] text-left flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {current?.withAvatar && <Avatar name={current.label} photoUrl={current.photoUrl} size={20} />}
         <span dir="auto" className="truncate">{current?.label ?? '—'}</span>
@@ -63,7 +63,7 @@ export const SelectMenu: React.FC<{
               <button
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 font-mono-main text-[12px] transition-colors hover:bg-ink/5 ${o.value === value ? 'text-ink font-bold' : 'text-ink/60'}`}
+                className={`w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 font-mono-main text-[14px] transition-colors hover:bg-ink/5 ${o.value === value ? 'text-ink font-bold' : 'text-ink/60'}`}
               >
                 {o.withAvatar && <Avatar name={o.label} photoUrl={o.photoUrl} size={20} />}
                 <span dir="auto" className="truncate">{o.label}</span>

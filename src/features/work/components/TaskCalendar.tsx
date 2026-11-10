@@ -45,7 +45,7 @@ export const TaskCalendar: React.FC<{
 
       <div className="card !p-0 overflow-hidden">
         <div className="grid grid-cols-7 border-b border-ink/10">
-          {WEEKDAYS.map((d) => <div key={d} className="px-2 py-2.5 text-center font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/35">{d}</div>)}
+          {WEEKDAYS.map((d) => <div key={d} className="px-2 py-2.5 text-center font-mono-main text-[11px] uppercase tracking-[0.2em] text-ink/35">{d}</div>)}
         </div>
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 border-b border-ink/6 last:border-b-0">
@@ -58,7 +58,7 @@ export const TaskCalendar: React.FC<{
                   onClick={() => onAddOnDay(key)}
                   className={`min-h-[104px] p-1.5 border-r border-ink/6 last:border-r-0 cursor-pointer hover:bg-ink/4 transition-colors ${inMonth ? '' : 'opacity-40'}`}
                 >
-                  <div className={`font-mono-main text-[10px] mb-1.5 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-sepia text-white font-bold' : 'text-ink/50'}`}>
+                  <div className={`font-mono-main text-[12px] mb-1.5 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-sepia text-white font-bold' : 'text-ink/50'}`}>
                     {Number(key.slice(8))}
                   </div>
                   <div className="flex flex-col gap-1">
@@ -67,14 +67,14 @@ export const TaskCalendar: React.FC<{
                         key={task.id}
                         onClick={(e) => { e.stopPropagation(); onOpen(task); }}
                         dir="auto"
-                        className={`w-full text-left truncate rounded-[6px] px-1.5 py-1 font-sans-main text-[10px] font-semibold transition-colors ${
+                        className={`w-full text-left truncate rounded-[6px] px-1.5 py-1 font-sans-main text-[12px] font-semibold transition-colors ${
                           task.status === 'done' ? 'bg-forest/12 text-forest line-through' : task.status === 'dropped' ? 'bg-ink/6 text-ink/35 line-through' : task.status === 'doing' ? 'bg-sepia text-white' : 'bg-ink/8 hover:bg-ink/14'
                         }`}
                       >
                         {task.title || 'Untitled'}
                       </button>
                     ))}
-                    {list.length > SHOWN_PER_DAY && <span className="font-mono-main text-[9px] text-ink/40 px-1">+{list.length - SHOWN_PER_DAY} more</span>}
+                    {list.length > SHOWN_PER_DAY && <span className="font-mono-main text-[11px] text-ink/40 px-1">+{list.length - SHOWN_PER_DAY} more</span>}
                   </div>
                 </div>
               );

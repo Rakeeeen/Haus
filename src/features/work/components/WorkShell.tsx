@@ -22,10 +22,10 @@ export const WorkShell: React.FC<{
                 className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
               >
                 {i === 0 && <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />}
-                <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">{crumb.label}</span>
+                <span className="font-mono-main text-[12px] uppercase tracking-[0.25em] font-bold">{crumb.label}</span>
               </button>
             ) : (
-              <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/50">{crumb.label}</span>
+              <span className="font-mono-main text-[12px] uppercase tracking-[0.25em] font-bold text-ink/50">{crumb.label}</span>
             )}
           </React.Fragment>
         ))}

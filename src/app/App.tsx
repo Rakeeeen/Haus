@@ -49,9 +49,9 @@ const AppRoutes: React.FC = () => {
   const location = useLocation();
   const { user, role, firstName, approved, accessError, biometricCleared, setBiometricCleared } = useAuth();
 
-  const nav = (to: string) => {
+  const nav = (to: string, replace = false) => {
     const path = to === 'home' ? '/' : `/${to}`;
-    navigate(path);
+    navigate(path, { replace });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

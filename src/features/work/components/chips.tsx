@@ -1,6 +1,6 @@
 import React from 'react';
 import { Chip, type ChipTone } from '@/ui/Chip';
-import { projectStatusLabel } from '@/domain/work/projects';
+import { projectStatusHint, projectStatusLabel } from '@/domain/work/projects';
 import { statusLabel } from '@/domain/work/tasks';
 import type { Priority, ProjectStatus, TaskStatus } from '@/domain/work/types';
 
@@ -10,7 +10,9 @@ const PRIORITY_TONE: Record<Priority, ChipTone> = { high: 'rust', medium: 'amber
 const PRIORITY_LABEL: Record<Priority, string> = { high: 'High', medium: 'Medium', low: 'Low' };
 
 export const TaskStatusChip: React.FC<{ status: TaskStatus }> = ({ status }) => <Chip tone={TASK_TONE[status]}>{statusLabel(status)}</Chip>;
-export const ProjectStatusChip: React.FC<{ status: ProjectStatus }> = ({ status }) => <Chip tone={PROJECT_TONE[status]}>{projectStatusLabel(status)}</Chip>;
+export const ProjectStatusChip: React.FC<{ status: ProjectStatus }> = ({ status }) => (
+  <span data-tip={projectStatusHint(status)} className="inline-flex"><Chip tone={PROJECT_TONE[status]}>{projectStatusLabel(status)}</Chip></span>
+);
 /** The colour a priority wears wherever it is shown or chosen. */
 export const PRIORITY_COLOR: Record<Priority, string> = {
   high: '!bg-rust !text-white', medium: '!bg-amber !text-white', low: '!bg-sepia !text-white',

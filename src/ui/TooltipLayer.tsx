@@ -71,7 +71,11 @@ export const TooltipLayer = () => {
       ref={boxRef}
       role="tooltip"
       className="pointer-events-none fixed z-[10000] max-w-[260px] rounded-box bg-ink text-paper font-mono-main text-[10px] font-bold uppercase tracking-[0.15em] leading-snug px-3 py-2"
-      style={{ left: pos?.left ?? 0, top: pos?.top ?? 0, opacity: pos ? 1 : 0, transition: 'opacity 120ms ease' }}
+      style={{
+        left: pos?.left ?? 0, top: pos?.top ?? 0, opacity: pos ? 1 : 0,
+        transform: pos ? 'none' : 'translateY(6px) scale(0.9)', transformOrigin: 'center bottom',
+        transition: 'opacity 140ms ease, transform var(--spring-duration) var(--spring)',
+      }}
     >
       {tip.text}
     </div>

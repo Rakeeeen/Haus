@@ -27,7 +27,7 @@ const ProjectCard: React.FC<{ project: Project; tasks: readonly Task[]; client?:
       style={{ opacity: isDragging ? 0 : 1, touchAction: 'manipulation' }}
       className={`rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:border-ink/35'}`}
     >
-      <p dir="auto" className="font-sans-main text-[14px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
+      <p dir="auto" className="font-sans-main text-[16px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <ProjectStatusChip status={project.status} /><PriorityChip priority={project.priority} />
         {client && <Chip tone="ink"><span dir="auto" className="truncate max-w-[140px]">{client}</span></Chip>}
@@ -85,7 +85,7 @@ export const ProjectCards: React.FC<ViewProps & {
     onMoveClient(id, to || null);
   };
 
-  if (projects.length === 0 && !withClients) return <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">No projects here.</p>;
+  if (projects.length === 0 && !withClients) return <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">No projects here.</p>;
   return (
     <DndContext sensors={sensors} onDragStart={(e) => setDragging(projects.find((p) => p.id === e.active.id) ?? null)} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className="flex flex-col gap-8">
@@ -97,7 +97,7 @@ export const ProjectCards: React.FC<ViewProps & {
                 <ClientColumn key={key} id={`client:${key}`}>
                   <div className="flex items-center justify-between px-1 pb-1">
                     <Chip tone={key ? 'ink' : 'neutral'}><span dir="auto" className="truncate max-w-[170px]">{key || 'No client'}</span></Chip>
-                    <span className="font-mono-main text-[11px] text-ink/40 tabular-nums">{mine.length}</span>
+                    <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{mine.length}</span>
                   </div>
                   {mine.map((project) => (
                     <ProjectCard key={project.id} project={project} tasks={tasksOf(project.id)} draggable={!!onMoveClient} onOpen={() => onOpen(project.id)} />
@@ -116,7 +116,7 @@ export const ProjectCards: React.FC<ViewProps & {
             <section key={status}>
               <div className="flex items-center gap-3 mb-3">
                 <ProjectStatusChip status={status} />
-                <span className="font-mono-main text-[11px] text-ink/40 tabular-nums">{list.length}</span>
+                <span className="font-mono-main text-[13px] text-ink/40 tabular-nums">{list.length}</span>
               </div>
               <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
                 {list.map((project) => (
@@ -137,17 +137,17 @@ export const ProjectCards: React.FC<ViewProps & {
 /** The projects as rows, grouped by status, each with its progress. */
 export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf, onOpen }) => {
   const groups = groupProjects(projects, 'status', clientOf);
-  if (groups.length === 0) return <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">No projects here.</p>;
+  if (groups.length === 0) return <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">No projects here.</p>;
   return (
     <div className="flex flex-col gap-6">
       {groups.map((group) => (
         <div key={group.key}>
           <div className="flex items-center gap-3 mb-2.5">
             <ProjectStatusChip status={group.projects[0].status} />
-            <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
+            <span className="font-mono-main text-[12px] text-ink/35 tabular-nums">{group.projects.length}</span>
           </div>
           <div className="card !p-0 overflow-hidden">
-            <div className="hidden md:grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/35">
+            <div className="hidden md:grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] gap-4 px-5 py-3 border-b border-ink/10 font-mono-main text-[11px] uppercase tracking-[0.2em] text-ink/35">
               <span>Project</span><span>Client</span><span>Lead</span><span>Date</span><span>Priority</span><span>Progress</span><span className="text-right">Open</span>
             </div>
             {group.projects.map((project) => {
@@ -155,13 +155,13 @@ export const ProjectTable: React.FC<ViewProps> = ({ projects, tasksOf, clientOf,
               return (
                 <div key={project.id} onClick={() => onOpen(project.id)}
                   className="grid grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_88px_80px_minmax(0,150px)_44px] items-center gap-x-4 gap-y-2 px-5 py-3.5 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors">
-                  <span dir="auto" className="font-sans-main text-[13px] font-bold leading-relaxed truncate text-left">{project.name}</span>
-                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] leading-relaxed text-ink/50 truncate text-left">{clientOf(project.id) ?? '—'}</span>
-                  <span dir="auto" className="hidden md:block font-mono-main text-[10px] leading-relaxed text-ink/50 truncate text-left">{project.lead ?? '—'}</span>
-                  <span className="hidden md:block font-mono-main text-[10px] uppercase tracking-wider text-ink/50">{shortDate(project.date) || '—'}</span>
+                  <span dir="auto" className="font-sans-main text-[15px] font-bold leading-relaxed truncate text-left">{project.name}</span>
+                  <span dir="auto" className="hidden md:block font-mono-main text-[12px] leading-relaxed text-ink/50 truncate text-left">{clientOf(project.id) ?? '—'}</span>
+                  <span dir="auto" className="hidden md:block font-mono-main text-[12px] leading-relaxed text-ink/50 truncate text-left">{project.lead ?? '—'}</span>
+                  <span className="hidden md:block font-mono-main text-[12px] uppercase tracking-wider text-ink/50">{shortDate(project.date) || '—'}</span>
                   <span className="hidden md:block"><PriorityChip priority={project.priority} /></span>
                   <ProgressBar value={progressOf(tasks)} showValue />
-                  <span className="hidden md:block text-right font-mono-main text-[10px] text-ink/50 tabular-nums">{countTasks(tasks).open}</span>
+                  <span className="hidden md:block text-right font-mono-main text-[12px] text-ink/50 tabular-nums">{countTasks(tasks).open}</span>
                 </div>
               );
             })}
@@ -189,7 +189,7 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
     .sort((a, b) => (a.span.from < b.span.from ? -1 : a.span.from > b.span.from ? 1 : 0)),
   [projects, tasksOf, today]);
 
-  if (rows.length === 0) return <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">No projects here.</p>;
+  if (rows.length === 0) return <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">No projects here.</p>;
 
   const from = addDays(rows[0].span.from, -14);
   const to = addDays(rows.reduce((max, r) => (r.span.to > max ? r.span.to : max), today), 60);
@@ -209,18 +209,18 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
               onClick={() => onOpen(project.id)}
               dir="auto"
               style={{ position: 'absolute', top: HEADER_HEIGHT + i * ROW_HEIGHT, height: ROW_HEIGHT, width: NAMES_WIDTH }}
-              className="px-4 text-left font-sans-main text-[12px] font-semibold leading-relaxed truncate hover:underline"
+              className="px-4 text-left font-sans-main text-[14px] font-semibold leading-relaxed truncate hover:underline"
             >{project.name}</button>
           ))}
         </div>
         <div className="relative shrink-0" style={{ width }}>
           {months.map((m) => (
             <div key={m.key} className="absolute top-0 bottom-0 border-l border-ink/8" style={{ left: Math.max(0, m.offset * PX_PER_DAY) }}>
-              <span className="absolute top-2 left-2 font-mono-main text-[9px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>
+              <span className="absolute top-2 left-2 font-mono-main text-[11px] uppercase tracking-widest text-ink/35 whitespace-nowrap">{m.label}</span>
             </div>
           ))}
           <div className="absolute top-0 bottom-0 w-px bg-rust/70 z-10" style={{ left: x(today) }}>
-            <span className="absolute top-2 left-1.5 font-mono-main text-[9px] uppercase tracking-widest text-rust">Today</span>
+            <span className="absolute top-2 left-1.5 font-mono-main text-[11px] uppercase tracking-widest text-rust">Today</span>
           </div>
           {rows.map(({ project, span, progress }, i) => (
             <div key={project.id} onClick={() => onOpen(project.id)} data-tip={project.name} className="absolute cursor-pointer" style={{ top: HEADER_HEIGHT + i * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2, left: x(span.from) }}>

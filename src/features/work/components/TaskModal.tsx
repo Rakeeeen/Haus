@@ -147,16 +147,16 @@ export const TaskModal: React.FC<{
 
           {editing.kind === 'edit' && (
             <div>
-              <p className="font-sans-main uppercase tracking-widest mb-3 text-[10px] font-semibold text-ink/40">Comments</p>
+              <p className="font-sans-main uppercase tracking-widest mb-3 text-[12px] font-semibold text-ink/40">Comments</p>
               <div className="flex flex-col gap-3 mb-3">
-                {comments.length === 0 && <p className="font-mono-main text-[10px] text-ink/30">No comments yet.</p>}
+                {comments.length === 0 && <p className="font-mono-main text-[12px] text-ink/30">No comments yet.</p>}
                 {comments.map((c) => (
                   <div key={c.id} className="rounded-box bg-ink/5 px-4 py-3">
                     <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className="font-mono-main text-[9px] uppercase tracking-widest text-ink/45">{c.author} · {shortDate(c.at.slice(0, 10))}</span>
-                      <button onClick={() => remove(c.id)} className="font-mono-main text-[9px] uppercase tracking-widest text-ink/30 hover:text-rust transition-colors">Delete</button>
+                      <span className="font-mono-main text-[11px] uppercase tracking-widest text-ink/45">{c.author} · {shortDate(c.at.slice(0, 10))}</span>
+                      <button onClick={() => remove(c.id)} className="font-mono-main text-[11px] uppercase tracking-widest text-ink/30 hover:text-rust transition-colors">Delete</button>
                     </div>
-                    <p dir="auto" className="font-mono-main text-[12px] leading-relaxed whitespace-pre-wrap">{c.text}</p>
+                    <p dir="auto" className="font-mono-main text-[14px] leading-relaxed whitespace-pre-wrap">{c.text}</p>
                   </div>
                 ))}
               </div>
@@ -168,7 +168,7 @@ export const TaskModal: React.FC<{
             </div>
           )}
 
-          {error && <p className="font-mono-main text-[10px] text-rust">{error}</p>}
+          {error && <p className="font-mono-main text-[12px] text-rust">{error}</p>}
 
           <div className="spring-group flex gap-3 justify-end pt-2">
             {editing.kind === 'edit' && canDelete && (

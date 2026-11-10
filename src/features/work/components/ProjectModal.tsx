@@ -111,7 +111,7 @@ export const ProjectModal: React.FC<{
 
           <Field label="Guests on this project">
             {guests.length === 0 ? (
-              <p className="font-mono-main text-[10px] text-ink/40">Invite someone from the Guests list on Home first.</p>
+              <p className="font-mono-main text-[12px] text-ink/40">Invite someone from the Guests list on Home first.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 <div className="spring-group flex flex-wrap gap-2">
@@ -138,7 +138,7 @@ export const ProjectModal: React.FC<{
               </div>
             )}
           </Field>
-          {error && <p className="font-mono-main text-[10px] text-rust">{error}</p>}
+          {error && <p className="font-mono-main text-[12px] text-rust">{error}</p>}
           <div className="spring-group flex gap-3 justify-end pt-2">
             {editing.kind === 'edit' && (
               <Button tone="danger" disabled={busy}

@@ -13,7 +13,7 @@ const TONE: Record<ChipTone, string> = {
 };
 
 export const Chip: React.FC<{ tone?: ChipTone; children: React.ReactNode; className?: string }> = ({ tone = 'neutral', children, className = '' }) => (
-  <span className={`inline-flex items-center rounded-full px-3 py-1.5 font-mono-main text-[11px] font-bold uppercase tracking-[0.12em] leading-none whitespace-nowrap ${TONE[tone]} ${className}`}>
+  <span className={`inline-flex items-center rounded-full px-3 py-0.5 font-mono-main text-[12px] font-bold uppercase tracking-[0.1em] leading-[1.7] whitespace-nowrap ${TONE[tone]} ${className}`}>
     {children}
   </span>
 );
