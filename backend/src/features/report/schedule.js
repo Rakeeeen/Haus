@@ -28,6 +28,14 @@ export function afterAttempt(state, now, sent) {
   return { day, sent, attempts };
 }
 
+/** Whether Maghrib has come today — checked before anything is read from Firestore, so the minute-by-minute check costs nothing all day. */
+export function afterMaghrib(now, maghrib) {
+  const [hours, minutes] = (maghrib || '18:00').split(':').map(Number);
+  const at = new Date(now);
+  at.setHours(hours, minutes, 0, 0);
+  return now >= at;
+}
+
 /**
  * Which guests' reports go out now: Maghrib has come, and the guest has not been sent one today (nor failed too many times).
  * `state` is `{ day, sent: [uid…], attempts: { uid: n } }` for the day it was last written.

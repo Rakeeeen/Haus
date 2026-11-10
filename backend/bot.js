@@ -12,7 +12,7 @@ import { watchMailNotifications } from './src/features/mailNotifications.js';
 import { sendDailyReport, sendGuestReport } from './src/features/report/send.js';
 import { reportRecipients } from './src/features/report/guest.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
-import { afterAttempt, afterGuestAttempt, guestsDue, readGuestState, readState, reportDue, writeGuestState, writeState } from './src/features/report/schedule.js';
+import { afterAttempt, afterGuestAttempt, afterMaghrib, guestsDue, readGuestState, readState, reportDue, writeGuestState, writeState } from './src/features/report/schedule.js';
 import { getMaghrib } from './src/lib/prayerTimes.js';
 import { startServer } from './src/server.js';
 import { startSlack } from './src/slack/app.js';
@@ -46,6 +46,8 @@ const guarded = (name, job) => async () => {
   }
 };
 
+let guestList = null;
+
 client.once('clientReady', async () => {
   console.log(`🤖 Discord bot is online as ${client.user.tag}`);
 
@@ -75,7 +77,11 @@ client.once('clientReady', async () => {
   cron.schedule('* * * * *', guarded('Guest reports', async () => {
     const now = new Date();
     const maghrib = await getMaghrib();
-    const people = await reportRecipients();
+    // Nothing is read from Firestore until Maghrib has come, and then the list of guests is kept for ten minutes: this runs every
+    // minute, and Firestore's free daily reads are not for spending on a check that has nothing to do.
+    if (!afterMaghrib(now, maghrib)) return;
+    if (!guestList || now - guestList.at > 10 * 60_000) guestList = { at: now, people: await reportRecipients() };
+    const people = guestList.people;
     const due = guestsDue({ now, maghrib, state: readGuestState(), uids: people.map((p) => p.uid) });
     for (const uid of due) {
       const person = people.find((p) => p.uid === uid);
