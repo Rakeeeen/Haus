@@ -269,7 +269,7 @@ Google's rules evaluator, and the local emulator needs Java; add them with the n
 
 ## Project admins
 
-A project can have **admins**: members Hamed picks (`Project.adminUids`, a subset of `memberUids`, chosen in the project's form). An admin
+A project can have **admins**: members Hamed picks (`Project.adminUids`, a subset of `memberUids`, the guests he picks as the project's Lead in its form — several can lead, and a guest who leads is put on the project and made an admin). An admin
 runs the project with him: they see every task of it (`viewersOf` lists them), add and change its tasks, give them to the other members
 or to Hamed, delete them, and change the project's name, status, priority and dates — never who is on it, who the admins are, or its
 client. `firestore.rules` enforces it (`adminMayAddTask`, `adminMayEditTask`, and `viewersFor`, which must agree with `viewersOf`), and

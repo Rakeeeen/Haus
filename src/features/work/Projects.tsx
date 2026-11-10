@@ -33,7 +33,7 @@ export function useProjectEditing() {
   const clients = useMemo(() => [...new Set(Object.values(privates).map((p) => p.client).filter((c): c is string => !!c))].sort(), [privates]);
 
   const save = async (target: ProjectEditing, draft: ProjectDraft) => {
-    const { client, memberUids, guestsSeeAll, adminUids, memberProfiles, ...fields } = draft;
+    const { client, memberUids, guestsSeeAll, adminUids, memberProfiles, leads: _leads, leadExtra: _extra, ...fields } = draft;
     // A project's admin (a guest) changes only what the rules let them: its name, status, priority and dates.
     if (role !== 'owner') {
       if (target.kind === 'edit') await updateProject(target.project.id, { name: fields.name, status: fields.status, priority: fields.priority, date: fields.date, endDate: fields.endDate });

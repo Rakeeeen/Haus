@@ -17,25 +17,36 @@ export interface ProjectDraft {
   name: string;
   status: ProjectStatus;
   priority: Priority | null;
+  /** The project's leads as names, joined (what cards and tables show); written from `leads` and `leadExtra` on save. */
   lead: string | null;
+  /** Who leads it: Hamed (`OWNER_KEY`) and guests by uid. Every guest here also runs the project (is an admin) and is on it. */
+  leads: string[];
+  /** Names in an older project's `lead` that match nobody Hamed has invited: kept as they were. */
+  leadExtra: string[];
   date: string | null;
   endDate: string | null;
   client: string | null;
   /** The guests on the project, and whether they see everyone's tasks in it. */
   memberUids: string[];
   guestsSeeAll: boolean;
-  /** The members who run the project with Hamed (each is also in `memberUids`). */
+  /** The members who run the project with Hamed: the guests among the leads (each is also in `memberUids`). */
   adminUids: string[];
   /** The names and photos of the members (and Hamed), written onto the project so a guest can name who a task is for. */
   memberProfiles: Project['memberProfiles'];
 }
 
 /** What the form starts with: the project being changed, or a new one (led by Hamed unless told otherwise). */
-function draftOf(editing: ProjectEditing, ownerName: string): ProjectDraft {
+function draftOf(editing: ProjectEditing, owner: { name: string }, guests: readonly Invitation[]): ProjectDraft {
   const p = editing.kind === 'edit' ? editing.project : null;
+  // The leads: the project's admins, Hamed if his name is in `lead`; a new project is led by Hamed. Other names in an older `lead` are kept as text.
+  const named = (p?.lead ?? '').split(',').map((n) => n.trim()).filter(Boolean);
+  const knownNames = new Map<string, string>([[owner.name, OWNER_KEY], ...guests.filter((g) => g.uid).map((g) => [g.name || g.email, g.uid as string] as const)]);
+  const fromNames = named.map((n) => knownNames.get(n)).filter((k): k is string => !!k);
+  const leads = p ? [...new Set([...fromNames, ...(p.adminUids ?? [])])] : [OWNER_KEY];
+  const leadExtra = named.filter((n) => !knownNames.has(n));
   return {
     name: p?.name ?? '', status: p?.status ?? 'active', priority: p?.priority ?? null,
-    lead: p?.lead ?? ownerName, date: p?.date ?? null, endDate: p?.endDate ?? null, client: editing.client,
+    lead: p?.lead ?? owner.name, leads, leadExtra, date: p?.date ?? null, endDate: p?.endDate ?? null, client: editing.client,
     memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false, adminUids: p?.adminUids ?? [], memberProfiles: p?.memberProfiles ?? {},
   };
 }
@@ -68,7 +79,7 @@ export const ProjectModal: React.FC<{
 
   useEffect(() => {
     if (!editing) { setDraft(null); return; }
-    const fresh = draftOf(editing, owner.name);
+    const fresh = draftOf(editing, owner, guests);
     // A new project closed by accident comes back as it was left, for a few minutes.
     const saved = editing.kind === 'new' ? loadDraft<ProjectDraft>(DRAFT_KEY) : null;
     const keep = !!saved && !!saved.name.trim();
@@ -85,8 +96,20 @@ export const ProjectModal: React.FC<{
   }, [draft, editing]);
 
   // Everyone who can lead a project: Hamed and the guests he has invited (a guest is on the list once they have signed in).
-  const people = [{ name: owner.name, photoUrl: owner.photoUrl }, ...guests.map((g) => ({ name: g.name || g.email, photoUrl: g.photoUrl ?? null }))];
   const signedIn = guests.filter((g) => !!g.uid && g.active !== false);
+  const personOf = (key: string) => (key === OWNER_KEY ? owner.name : signedIn.find((g) => g.uid === key)?.name || signedIn.find((g) => g.uid === key)?.email || '');
+  // Who can lead: Hamed and the guests who have signed in. A guest who leads is on the project and runs it.
+  const leadOptions = [
+    { value: OWNER_KEY, label: owner.name, photoUrl: owner.photoUrl, withAvatar: true },
+    ...signedIn.map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true })),
+  ];
+  const setLeads = (leads: string[]) => setDraft((d) => {
+    if (!d) return d;
+    const guestLeads = leads.filter((k) => k !== OWNER_KEY);
+    return { ...d, leads, adminUids: guestLeads, memberUids: [...new Set([...d.memberUids, ...guestLeads])] };
+  });
+  // A guest who leads can't be taken off the project from the members list without ceasing to lead first.
+  const setMembers = (members: string[]) => setDraft((d) => (d ? { ...d, memberUids: [...new Set([...members, ...d.leads.filter((k) => k !== OWNER_KEY)])] } : d));
 
   const set = <K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
@@ -106,8 +129,9 @@ export const ProjectModal: React.FC<{
       [OWNER_KEY, { name: owner.name, photoUrl: owner.photoUrl }],
       ...signedIn.filter((g) => draft.memberUids.includes(g.uid as string)).map((g) => [g.uid as string, { name: g.name || g.email, photoUrl: g.photoUrl ?? null }] as const),
     ]);
-    const adminUids = draft.adminUids.filter((uid) => draft.memberUids.includes(uid));
-    run(async () => { await onSave(editing, { ...draft, adminUids, memberProfiles: named, name: draft.name.trim() }); clearDraft(DRAFT_KEY); onClose(); });
+    const adminUids = draft.leads.filter((k) => k !== OWNER_KEY && draft.memberUids.includes(k));
+    const lead = [...draft.leads.map(personOf).filter(Boolean), ...draft.leadExtra].join(', ') || null;
+    run(async () => { await onSave(editing, { ...draft, lead, adminUids, memberProfiles: named, name: draft.name.trim() }); clearDraft(DRAFT_KEY); onClose(); });
   };
 
   return (
@@ -117,7 +141,7 @@ export const ProjectModal: React.FC<{
           {restored && (
             <div className="flex items-center justify-between gap-3 rounded-box bg-ink/5 px-4 py-2.5 font-mono-main text-[13px] text-ink/60">
               <span>Picked up where you left off.</span>
-              <Button tone="ghost" size="sm" onClick={() => { clearDraft(DRAFT_KEY); setRestored(false); setDraft(draftOf(editing, owner.name)); }}>Start over</Button>
+              <Button tone="ghost" size="sm" onClick={() => { clearDraft(DRAFT_KEY); setRestored(false); setDraft(draftOf(editing, owner, guests)); }}>Start over</Button>
             </div>
           )}
           <Field label="Name">
@@ -139,16 +163,12 @@ export const ProjectModal: React.FC<{
               {newClient && <TextInput dir="auto" autoFocus className="mt-2" value={draft.client ?? ''} onChange={(e) => set('client', e.target.value || null)} placeholder="The new client's name" />}
             </Field>}
             {!limited && <Field label="Lead">
-              <SelectMenu
-                ariaLabel="Lead"
-                value={draft.lead ?? ''}
-                onChange={(v) => set('lead', v || null)}
-                options={[
-                  { value: '', label: 'No lead' },
-                  ...people.map((p) => ({ value: p.name, label: p.name, photoUrl: p.photoUrl, withAvatar: true })),
-                  ...(draft.lead && !people.some((p) => p.name === draft.lead) ? [{ value: draft.lead, label: draft.lead, withAvatar: true }] : []),
-                ]}
-              />
+              <SelectMulti ariaLabel="Lead" empty="No lead" values={draft.leads} onChange={setLeads} options={leadOptions} />
+              {draft.leads.some((k) => k !== OWNER_KEY) && (
+                <p className="font-mono-main text-[11px] leading-relaxed text-ink/40 mt-2">
+                  A guest who leads runs the project with you: sees all its tasks, adds and changes them, gives them to other members, and edits its name, status and dates.
+                </p>
+              )}
             </Field>}
             <Field label="Start"><DatePicker flow ariaLabel="Start" value={draft.date} onChange={(d) => set('date', d)} /></Field>
             <Field label="End"><DatePicker flow ariaLabel="End" value={draft.endDate} onChange={(d) => set('endDate', d)} /></Field>
@@ -163,23 +183,9 @@ export const ProjectModal: React.FC<{
                   ariaLabel="Guests on this project"
                   empty="Nobody"
                   values={draft.memberUids}
-                  onChange={(v) => set('memberUids', v)}
+                  onChange={setMembers}
                   options={signedIn.map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true }))}
                 />
-                {draft.memberUids.length > 0 && (
-                  <>
-                    <SelectMulti
-                      ariaLabel="Admins of this project"
-                      empty="No admins"
-                      values={draft.adminUids.filter((uid) => draft.memberUids.includes(uid))}
-                      onChange={(v) => set('adminUids', v)}
-                      options={signedIn.filter((g) => draft.memberUids.includes(g.uid as string)).map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true }))}
-                    />
-                    <p className="font-mono-main text-[11px] leading-relaxed text-ink/40">
-                      An admin runs the project with you: sees all its tasks, adds and changes them, gives them to other members, and edits its name, status and dates.
-                    </p>
-                  </>
-                )}
                 <div className="spring-group flex gap-2">
                   <Button size="sm" tone={draft.guestsSeeAll ? 'outline' : 'ink'} onClick={() => set('guestsSeeAll', false)}>Only their own tasks</Button>
                   <Button size="sm" tone={draft.guestsSeeAll ? 'ink' : 'outline'} onClick={() => set('guestsSeeAll', true)}>Everyone's tasks</Button>
