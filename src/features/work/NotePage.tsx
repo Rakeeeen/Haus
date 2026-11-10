@@ -13,7 +13,8 @@ const SAVE_AFTER_MS = 800;
 /** One note: a title, the project it is about, and the page. Every change is saved a moment after it stops. */
 export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => void }> = ({ navigate }) => {
   const { id } = useParams<{ id: string }>();
-  const { notes, projects, ready, updateNote, removeNote } = useWork();
+  const { notes, projects, ready, notesReady, loadNotes, updateNote, removeNote } = useWork();
+  useEffect(() => { loadNotes?.(); }, [loadNotes]);
   const note = notes.find((n) => n.id === id) ?? null;
 
   // What is on screen leads: the page is typed into, then written out, and the copy that comes back is not read again.
@@ -54,7 +55,7 @@ export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => v
 
   const crumbs = [{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Notes', to: 'work/notes' }];
 
-  if (ready && !note) {
+  if (ready && notesReady && !note) {
     return <WorkShell navigate={navigate} crumbs={crumbs} title="Not found"><p className="font-mono-main text-[13px] text-ink/50">There is no such note — it may have been deleted.</p></WorkShell>;
   }
   if (!note) return <WorkShell navigate={navigate} crumbs={crumbs} title="…"><span /></WorkShell>;

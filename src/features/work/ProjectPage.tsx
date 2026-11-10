@@ -28,7 +28,8 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
-  const { role, tasks, notes, privates, ready, canEditTask, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
+  const { role, tasks, notes, privates, ready, loadNotes, canEditTask, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
+  useEffect(() => { if (role === 'owner') loadNotes?.(); }, [role, loadNotes]);
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author, authorPhoto);
 

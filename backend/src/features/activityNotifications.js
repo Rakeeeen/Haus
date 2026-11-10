@@ -1,4 +1,4 @@
-import { getDocument, setDocument, watchCollection } from '../lib/firestore.js';
+import { getDocument, setDocument, watchCollectionAfter } from '../lib/firestore.js';
 import { card } from '../lib/ui.js';
 
 // Tells Discord what a guest does in Haus. The web app writes a line to `activity_log` for each action (signing in, adding,
@@ -45,30 +45,25 @@ export function watchActivity(client, channelId) {
   let again = false;
   let latest = [];
   let timer = null;
+  let stop = () => {};
+  let since = null; // how far it has told, kept here so a quiet watcher does not read the state again and again
 
   const run = async () => {
     if (busy) { again = true; return; }
     busy = true;
     try {
-      const state = await getDocument('mail_state', 'activity');
-      if (!state?.since) {
-        // The first time: only what happens from now on is told, not the log's whole past.
-        await setDocument('mail_state', 'activity', { since: new Date().toISOString() });
-        return;
-      }
-      const due = linesToTell(latest, state.since);
+      const due = linesToTell(latest, since);
       if (due.length === 0) return;
       const channel = await client.channels.fetch(channelId);
       const skipped = Math.max(0, due.length - MAX_AT_ONCE);
       const toSend = due.slice(skipped);
       if (skipped) await channel.send(`…and ${skipped} earlier ${skipped === 1 ? 'action' : 'actions'} while the bot was off.`);
-      let told = state.since;
       for (const entry of toSend) {
         await channel.send({ embeds: [lineCard(entry)] });
-        told = entry.at.toISOString();
-        await setDocument('mail_state', 'activity', { since: told });
+        since = entry.at.toISOString();
+        await setDocument('mail_state', 'activity', { since });
       }
-      if (skipped) await setDocument('mail_state', 'activity', { since: due[due.length - 1].at.toISOString() });
+      if (skipped) { since = due[due.length - 1].at.toISOString(); await setDocument('mail_state', 'activity', { since }); }
     } catch (error) {
       console.error('❌ Could not tell Discord about a guest:', error.message);
       // Not marked as told, so it is tried again.
@@ -79,9 +74,21 @@ export function watchActivity(client, channelId) {
     }
   };
 
-  const stop = watchCollection('activity_log', (snap) => {
-    latest = snap.docs.map(toEntry);
-    run();
-  });
+  // The listener asks only for lines after `since`, so a restart reads the few that were missed — not the whole log.
+  (async () => {
+    try {
+      const state = await getDocument('mail_state', 'activity');
+      // The first time: only what happens from now on is told, not the log's whole past.
+      since = state?.since ?? new Date().toISOString();
+      if (!state?.since) await setDocument('mail_state', 'activity', { since });
+      stop = watchCollectionAfter('activity_log', 'at', new Date(since), (snap) => {
+        latest = snap.docs.map(toEntry);
+        run();
+      });
+    } catch (error) {
+      console.error('❌ Could not start watching guest activity:', error.message);
+      timer = setTimeout(() => watchActivity(client, channelId), RETRY_MS);
+    }
+  })();
   return () => { stop(); if (timer) clearTimeout(timer); };
 }

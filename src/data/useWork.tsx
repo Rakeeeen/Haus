@@ -48,8 +48,12 @@ interface WorkContextType {
   tasks: Task[];
   /** Who each project is for — Hamed's only. */
   privates: Record<string, ProjectPrivate>;
-  /** Notes — Hamed's only (a guest gets none). */
+  /** Notes — Hamed's only (a guest gets none). They are read from Firestore only once a screen asks (`loadNotes`): a page that does not show notes never pays for them. */
   notes: Note[];
+  /** The notes have arrived (always false until `loadNotes` is called). */
+  notesReady: boolean;
+  /** Starts reading the notes (idempotent; they stay live for the rest of the visit). */
+  loadNotes: () => void;
   /** The first answer from Firestore has arrived (before it, lists are empty rather than missing). */
   ready: boolean;
   /** May this person change this task? Hamed any; a guest the ones that are theirs, and any of a project they run. */
@@ -84,6 +88,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const [tasks, setTasks] = useState<Task[]>([]);
   const [privates, setPrivates] = useState<Record<string, ProjectPrivate>>({});
   const [notes, setNotes] = useState<Note[]>([]);
+  const [notesWanted, setNotesWanted] = useState(false);
+  const [notesReady, setNotesReady] = useState(false);
+  const loadNotes = useCallback(() => setNotesWanted(true), []);
   const [answered, setAnswered] = useState({ projects: false, tasks: false });
   // The mutations below read the latest data without being rebuilt every time it changes.
   const tasksRef = useRef(tasks);
@@ -112,15 +119,21 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     ];
     // Who each project is for, and the notes, are Hamed's alone.
     if (!uid) {
-      stops.push(onSnapshot(collection(db, NOTES), (snap) => {
-        setNotes(snap.docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
-      }, fail(NOTES)));
       stops.push(onSnapshot(collection(db, PRIVATES), (snap) => {
         setPrivates(Object.fromEntries(snap.docs.map((d) => [d.id, { ...(d.data() as Omit<ProjectPrivate, 'id'>), id: d.id }])));
       }, fail(PRIVATES)));
     }
     return () => stops.forEach((stop) => stop());
   }, [uid]);
+
+  // Notes are the heaviest thing to read (whole pages of text), so they are listened to only after a screen that shows them asks.
+  useEffect(() => {
+    if (uid || !notesWanted) return;
+    return onSnapshot(collection(db, NOTES), (snap) => {
+      setNotes(snap.docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
+      setNotesReady(true);
+    }, (error) => { console.warn(`Could not listen to ${NOTES}:`, error.message); setNotesReady(true); });
+  }, [uid, notesWanted]);
 
   /** The sharing of each of the projects a task is in (the ones that exist), for working out who may see it. */
   const projectsOf = (ids: readonly string[]) => ids.map((id) => projectsRef.current.find((p) => p.id === id)).filter((p): p is Project => !!p);
@@ -289,9 +302,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   }, []);
 
   const value = useMemo<WorkContextType>(() => ({
-    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
+    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, notesReady, loadNotes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
     addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
-  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
+  }), [scope.kind, uid, projects, tasks, privates, notes, notesReady, loadNotes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

@@ -27,7 +27,8 @@ export const NoteRow: React.FC<{ note: Note; projectName: string | null; onOpen:
 );
 
 export const Notes: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
-  const { notes, projects, ready, addNote } = useWork();
+  const { notes, projects, ready, notesReady, loadNotes, addNote } = useWork();
+  useEffect(() => { loadNotes?.(); }, [loadNotes]);
   const [view, setView] = useState<View>('recent');
   const [query, setQuery] = useState('');
 
@@ -50,7 +51,7 @@ export const Notes: React.FC<{ navigate: (to: string) => void }> = ({ navigate }
       <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes" className="!w-64 !py-2 !text-[14px]" aria-label="Search notes" />
       <hr className="border-0 border-t border-ink/10 w-full my-2" />
 
-      {!ready ? (
+      {!(ready && notesReady) ? (
         <WorkLoading />
       ) : found.length === 0 ? (
         <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">{notes.length === 0 ? 'No notes yet.' : 'Nothing found.'}</p>

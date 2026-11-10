@@ -61,7 +61,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   useEffect(() => { document.title = NAME; }, []);
 
   // ── Data ───────────────────────────────────────────────────────────────────────────────────────
-  const { guests, statuses: guestStatuses, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
+  const [guestsOpen, setGuestsOpen] = useState(false);
+  const { guests, statuses: guestStatuses, error: guestsError, invite, setActive, remove } = useGuests(isOwner, guestsOpen);
   const work = useWorkOptional();
   // Whose tasks the card lists is chosen on the Tasks pages (one remembered choice); the card just follows it.
   const [whose] = useWhoseTasks();
@@ -116,7 +117,6 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const avatar = useAvatar();
   const [isDark, setIsDark] = useState(isDarkTheme);
   const toggleTheme = () => { setTheme(!isDark); setIsDark(!isDark); };
-  const [guestsOpen, setGuestsOpen] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [logoutModal, setLogoutModal] = useState(false);
   // Logging out stops a running focus session, so it asks first.

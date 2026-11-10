@@ -254,11 +254,15 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
    * theirs, once per task. Run every few minutes, so a bot that was off at 9 sends when it wakes. What was late before this first
    * ran is not announced.
    */
+  let overdueState = null;
+  const overdueSent = new Set(); // overdue mails already sent (or found sent), so they are not looked up again every few minutes
   const checkOverdue = (now = new Date()) => safely('Overdue check', async () => {
     if (cairoHour(now) < OVERDUE_FROM_HOUR) return;
     const today = cairoDay(now);
-    let state = await getDocument('mail_state', 'overdue');
-    if (!state) { state = { since: today }; await setDocument('mail_state', 'overdue', state); }
+    // Read once, then kept: this runs every few minutes, and each read is one of Firestore's free daily reads.
+    overdueState ??= await getDocument('mail_state', 'overdue');
+    if (!overdueState) { overdueState = { since: today }; await setDocument('mail_state', 'overdue', overdueState); }
+    const state = overdueState;
     const byPerson = new Map();
     for (const task of current.values()) {
       const late = overdueBy(task, today, state.since);
@@ -267,7 +271,12 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
     }
     for (const [who, list] of byPerson) {
       const fresh = [];
-      for (const item of list) if (!(await getDocument('mail_sent', overdueKey(item.task, who)))) fresh.push(item);
+      for (const item of list) {
+        const key = overdueKey(item.task, who);
+        if (overdueSent.has(key)) continue;
+        if (await getDocument('mail_sent', key)) { overdueSent.add(key); continue; }
+        fresh.push(item);
+      }
       if (!fresh.length) continue;
       const contact = who === OWNER_KEY ? { email: ownerEmail, name: ownerName } : await contactOf(who);
       if (!contact) continue;
@@ -277,7 +286,7 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
         items.push({ task, late, projectName: project && (who === OWNER_KEY || project.memberUids?.includes(who)) ? project.name : null });
       }
       await mailer.send({ to: contact.email, ...tasksOverdueEmail({ name: contact.name, items, appUrl }) });
-      for (const { task } of items) await setDocument('mail_sent', overdueKey(task, who), { at: new Date().toISOString() });
+      for (const { task } of items) { await setDocument('mail_sent', overdueKey(task, who), { at: new Date().toISOString() }); overdueSent.add(overdueKey(task, who)); }
       console.log(`📧 Told ${contact.email} that ${items.length} task(s) are overdue`);
     }
   });

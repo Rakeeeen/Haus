@@ -97,3 +97,11 @@ export async function listWhereContains(collection, field, value) {
   const snap = await getDb().collection(collection).where(field, 'array-contains', value).get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+/** Like `watchCollection`, but only the documents whose `field` (a timestamp) is after `since` (a Date) — so a restart does not re-read what is old. */
+export function watchCollectionAfter(collection, field, since, onSnapshot) {
+  return getDb().collection(collection).where(field, '>', since).orderBy(field).onSnapshot(
+    onSnapshot,
+    (error) => console.error(`⚠️ Lost the Firestore listener for ${collection}:`, error.message),
+  );
+}

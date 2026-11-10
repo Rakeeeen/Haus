@@ -13,7 +13,7 @@ export async function fetchInvitation(email: string | null | undefined): Promise
 }
 
 /** The owner's list of invited guests, kept live, with what changes it. Only the owner can read or write these. */
-export function useGuests(enabled = true) {
+export function useGuests(enabled = true, withStatus = false) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [profiles, setProfiles] = useState<Array<{ uid: string; email: string; name?: string; photoUrl?: string }>>([]);
   const [approvals, setApprovals] = useState<Record<string, number>>({});
@@ -35,8 +35,8 @@ export function useGuests(enabled = true) {
       (snap) => setProfiles(snap.docs.map((d) => ({ ...(d.data() as { email: string; name?: string; photoUrl?: string }), uid: d.id }))),
       () => { /* nothing to join yet */ },
     );
-    // When each guest last typed a valid code (a document per uid): that is what "in" means.
-    const stopApprovals = onSnapshot(
+    // When each guest last typed a valid code (a document per uid): that is what "in" means. Only read when the list is on screen.
+    const stopApprovals = !withStatus ? () => {} : onSnapshot(
       collection(db, 'guest_approvals'),
       (snap) => setApprovals(Object.fromEntries(snap.docs.flatMap((d) => {
         const at = d.data().approvedAt as { toMillis?: () => number } | null;
@@ -45,7 +45,7 @@ export function useGuests(enabled = true) {
       () => { /* nothing to join yet */ },
     );
     return () => { stopInvitations(); stopProfiles(); stopApprovals(); };
-  }, [enabled]);
+  }, [enabled, withStatus]);
 
   // An invited guest with what is known about them from their own sign-in.
   const guests = useMemo<Invitation[]>(() => invitations.map((invitation) => {
