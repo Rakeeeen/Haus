@@ -4,6 +4,7 @@ import { countTasks, groupProjects, isWorkedOn, monthStarts, progressOf, project
 import { addDays, daysBetween, dayKey } from '@/domain/work/tasks';
 import type { Project, ProjectStatus, Task } from '@/domain/work/types';
 import { AutoHeight } from '@/ui/AutoHeight';
+import { useWheelToSide } from '@/ui/useWheelToSide';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { IconPlus as Plus } from '@/ui/icons';
@@ -58,6 +59,7 @@ export const ProjectCards: React.FC<ViewProps & {
   onNew?: (client: string | null) => void;
   onMoveClient?: (projectId: string, client: string | null) => void;
 }> = ({ projects, tasksOf, clientOf, onOpen, clients = [], onNew, onMoveClient }) => {
+  const clientsRowRef = useWheelToSide();
   const [moved, setMoved] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState<Project | null>(null);
   const sensors = useSensors(
@@ -92,7 +94,7 @@ export const ProjectCards: React.FC<ViewProps & {
     <DndContext sensors={sensors} onDragStart={(e) => setDragging(projects.find((p) => p.id === e.active.id) ?? null)} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className="flex flex-col gap-8">
         {withClients && (
-          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-3 items-start">
+          <div ref={clientsRowRef} className="flex gap-4 overflow-x-auto no-scrollbar pb-3 items-start">
             {columnKeys.map((key) => {
               const mine = planning.filter((p) => (shownClientOf(p.id) ?? '') === key);
               return (
@@ -195,6 +197,7 @@ const NAMES_WIDTH = 176;
  * language it is in.
  */
 export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen }) => {
+  const chartRef = useWheelToSide();
   const today = dayKey(new Date());
   const rows = useMemo(() => projects
     .map((project) => ({ project, span: projectSpan(project, tasksOf(project.id), today), progress: progressOf(tasksOf(project.id)) }))
@@ -213,7 +216,7 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
   const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
 
   return (
-    <div className="card !p-0 overflow-x-auto no-scrollbar">
+    <div ref={chartRef} className="card !p-0 overflow-x-auto no-scrollbar">
       <div className="flex" style={{ width: NAMES_WIDTH + width, height }}>
         <div className="sticky left-0 z-20 shrink-0 bg-paper-dark border-r border-ink/10" style={{ width: NAMES_WIDTH }}>
           {rows.map(({ project }, i) => (

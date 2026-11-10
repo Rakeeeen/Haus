@@ -363,3 +363,6 @@ speculatively.
 card shows, and the 30 s manual hold), `useZenMode`, `useDockTouch` (hover/press shared by the dock and the big card), `useAvatar`,
 `useNow`. The pure parts — the week's pattern, the journal line — are `domain/dailyJournal.ts`, tested. **Parts**: `HomeHeader`,
 `Dock` (+ `dockCards.ts`, the data for its cards), `BigCard`, `FingerprintModal`; the card bodies stay in `components/`.
+- **Sideways rows with a mouse.** Scrollbars are hidden everywhere, so a row that scrolls sideways (the client cards, the
+  timeline) uses `ui/useWheelToSide`: a plain wheel over it scrolls it sideways (`horizontalWheel.ts` decides, and lets the page
+  scroll again once the row is at its end); a trackpad and Shift + wheel work as they always did.

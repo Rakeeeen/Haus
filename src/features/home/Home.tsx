@@ -62,7 +62,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   // ── Data ───────────────────────────────────────────────────────────────────────────────────────
   const { guests, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
   const work = useWorkOptional();
-  const [whose, setWhose] = useWhoseTasks();
+  // Whose tasks the card lists is chosen on the Tasks pages (one remembered choice); the card just follows it.
+  const [whose] = useWhoseTasks();
   const dueToday = useMemo(
     () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: whose === 'mine' ? work.me : undefined })) : []),
     [work, whose],
@@ -229,7 +230,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             />
           )}
           {displayedCardId === 'tasks' && (
-            <TasksCardBody today={dueToday} whose={whose} onWhose={setWhose} projectName={projectName} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
+            <TasksCardBody today={dueToday} projectName={projectName} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
           )}
           {displayedCardId === 'finance' && <FinanceCardBody totalPhysical={totalPhysical} />}
           {displayedCardId === 'time' && <TimeCardBody clock={clock} />}

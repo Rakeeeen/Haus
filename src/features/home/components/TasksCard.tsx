@@ -1,7 +1,5 @@
 import React from 'react';
 import { Chip } from '@/ui/Chip';
-import { FilterSelect } from '@/ui/FilterSelect';
-import { WHOSE_OPTIONS, type Whose } from '@/data/useWhoseTasks';
 import { projectLabel } from '@/domain/work/projects';
 import type { Task } from '@/domain/work/types';
 import { TasksVector } from '@/features/home/components/visuals';
@@ -11,21 +9,12 @@ export const TasksCardBody: React.FC<{
   today: readonly Task[];
   projectName: (id: string | null) => string | null;
   onFinish: (task: Task) => void;
-  /** Whose tasks are listed (the same choice as on the Tasks pages). */
-  whose: Whose;
-  onWhose: (value: Whose) => void;
-}> = ({ today, projectName, onFinish, whose, onWhose }) => (
+}> = ({ today, projectName, onFinish }) => (
   <div className="flex-1 flex flex-col justify-between">
     <div className="flex justify-between items-start">
       <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">TASKS</h2>
-      <div className="flex items-center gap-4">
-        {/* Clicking the card opens the Tasks home, so a click on the filter must not. */}
-        <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-          <FilterSelect label="Whose" options={WHOSE_OPTIONS} value={whose} onChange={onWhose} />
-        </div>
-        <div className="text-ink opacity-60">
-          <TasksVector size={36} />
-        </div>
+      <div className="text-ink opacity-60">
+        <TasksVector size={36} />
       </div>
     </div>
 
