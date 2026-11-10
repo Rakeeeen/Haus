@@ -65,7 +65,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void; author: string
   return (
     <WorkShell
       navigate={navigate}
-      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects' }]}
+      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Projects' }]}
       title="Projects"
       actions={role === 'owner' ? <Button onClick={() => setEditing({ kind: 'new', client: null })}><Plus size={16} />New project</Button> : undefined}
     >

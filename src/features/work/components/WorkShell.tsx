@@ -8,10 +8,12 @@ export const WorkShell: React.FC<{
   title: string;
   navigate: (to: string) => void;
   actions?: React.ReactNode;
+  /** Less room between the title and what follows it (the Tasks home keeps its three links close to the title). */
+  tight?: boolean;
   children: React.ReactNode;
-}> = ({ crumbs, title, navigate, actions, children }) => (
-  <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300">
-    <header className="w-full max-w-[1200px] mx-auto mb-10">
+}> = ({ crumbs, title, navigate, actions, tight = false, children }) => (
+  <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300">
+    <header className={`w-full max-w-[1200px] mx-auto ${tight ? 'mb-6' : 'mb-10 md:mb-12'}`}>
       <div className="flex flex-wrap items-center gap-2 mb-8">
         {crumbs.map((crumb, i) => (
           <React.Fragment key={crumb.label}>
@@ -22,10 +24,10 @@ export const WorkShell: React.FC<{
                 className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
               >
                 {i === 0 && <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />}
-                <span className="font-mono-main text-[12px] uppercase tracking-[0.25em] font-bold">{crumb.label}</span>
+                <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">{crumb.label}</span>
               </button>
             ) : (
-              <span className="font-mono-main text-[12px] uppercase tracking-[0.25em] font-bold text-ink/50">{crumb.label}</span>
+              <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/50">{crumb.label}</span>
             )}
           </React.Fragment>
         ))}
@@ -35,7 +37,7 @@ export const WorkShell: React.FC<{
             line is taller (the silver is painted through the letters, and a tight line cuts them off). */}
         <h1
           dir="auto"
-          className={`text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black max-w-full break-words pt-[0.12em] pb-[0.2em] leading-[1.25] ${isRtlText(title) ? '' : 'uppercase tracking-tight'}`}
+          className={`text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black max-w-full break-words ${isRtlText(title) ? 'pt-[0.12em] pb-[0.2em] leading-[1.25]' : 'uppercase tracking-tight'}`}
         >{title}</h1>
         {actions && <div className="flex items-center gap-3">{actions}</div>}
       </div>

@@ -35,7 +35,7 @@ const TaskCard: React.FC<{
   return (
     <div
       onClick={onOpen}
-      className={`rounded-box bg-paper-dark p-3 text-left select-none ${overlay ? 'rotate-1' : 'hover:bg-ink/5'} transition-colors`}
+      className={`rounded-box border border-ink/12 bg-paper-dark p-3 text-left select-none ${overlay ? 'rotate-1' : 'hover:border-ink/35'} transition-colors`}
     >
       <div className="flex items-start gap-2.5">
         {editable ? <DoneTick done={task.status === 'done'} onToggle={onToggleDone} /> : <span className="shrink-0 w-5 h-5" />}

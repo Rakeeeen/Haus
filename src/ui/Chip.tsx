@@ -6,7 +6,8 @@ export type ChipTone = 'neutral' | 'ink' | 'sepia' | 'forest' | 'rust';
 const TONE: Record<ChipTone, string> = {
   neutral: 'text-ink/55 bg-ink/6',
   ink: 'text-ink/75 border border-ink/25',
-  sepia: 'text-sepia bg-sepia/10',
+  // --sepia-mark is the purple that stays readable on dark (the plain --sepia is dark on dark).
+  sepia: 'text-[var(--sepia-mark)] bg-[color-mix(in_srgb,var(--sepia-mark)_14%,transparent)]',
   forest: 'text-forest bg-forest/10',
   rust: 'text-rust bg-rust/10',
 };

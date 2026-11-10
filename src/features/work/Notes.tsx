@@ -41,7 +41,7 @@ export const Notes: React.FC<{ navigate: (to: string) => void }> = ({ navigate }
   return (
     <WorkShell
       navigate={navigate}
-      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Notes' }]}
+      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Notes' }]}
       title="Notes"
       actions={<Button onClick={create}><Plus size={16} />New note</Button>}
     >

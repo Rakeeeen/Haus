@@ -13,7 +13,7 @@ export const ProgressBar: React.FC<{ value: number; className?: string; showValu
         aria-valuenow={Math.round(share * 100)}
       >
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-ink/55"
+          className="absolute inset-y-0 left-0 rounded-full bg-[var(--sepia-mark)]"
           style={{ width: `${share * 100}%`, transition: 'width var(--spring-duration) var(--spring)' }}
         />
       </div>

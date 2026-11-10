@@ -42,13 +42,13 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
 
   if (ready && !project) {
     return (
-      <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects', to: 'work/projects' }]} title="Not found">
+      <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Projects', to: 'work/projects' }]} title="Not found">
         <p className="font-mono-main text-[13px] text-ink/50">There is no such project — it may have been deleted.</p>
       </WorkShell>
     );
   }
   if (!project) {
-    return <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects', to: 'work/projects' }]} title="…"><span /></WorkShell>;
+    return <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Projects', to: 'work/projects' }]} title="…"><span /></WorkShell>;
   }
 
   const counts = countTasks(mine);
@@ -58,7 +58,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
   return (
     <WorkShell
       navigate={navigate}
-      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects', to: 'work/projects' }, { label: project.name }]}
+      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Projects', to: 'work/projects' }, { label: project.name }]}
       title={project.name}
       actions={<>
         {role === 'owner' && <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>}

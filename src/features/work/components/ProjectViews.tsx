@@ -25,7 +25,7 @@ const ProjectCard: React.FC<{ project: Project; tasks: readonly Task[]; client?:
       {...(overlay ? {} : listeners)}
       onClick={onOpen}
       style={{ opacity: isDragging ? 0 : 1, touchAction: 'manipulation' }}
-      className={`rounded-box bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:bg-ink/5'}`}
+      className={`rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:border-ink/35'}`}
     >
       <p dir="auto" className="font-sans-main text-[16px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -91,7 +91,7 @@ export const ProjectCards: React.FC<ViewProps & {
     <DndContext sensors={sensors} onDragStart={(e) => setDragging(projects.find((p) => p.id === e.active.id) ?? null)} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className="flex flex-col gap-8">
         {withClients && (
-          <div className="flex gap-4 overflow-x-auto pb-3 items-start">
+          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-3 items-start">
             {columnKeys.map((key) => {
               const mine = planning.filter((p) => (shownClientOf(p.id) ?? '') === key);
               return (
@@ -200,7 +200,7 @@ export const ProjectTimeline: React.FC<ViewProps> = ({ projects, tasksOf, onOpen
   const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT + 12;
 
   return (
-    <div className="card !p-0 overflow-x-auto">
+    <div className="card !p-0 overflow-x-auto no-scrollbar">
       <div className="flex" style={{ width: NAMES_WIDTH + width, height }}>
         <div className="sticky left-0 z-20 shrink-0 bg-paper-dark border-r border-ink/10" style={{ width: NAMES_WIDTH }}>
           {rows.map(({ project }, i) => (

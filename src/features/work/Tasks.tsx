@@ -47,7 +47,7 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   const [query, setQuery] = useState('');
   const editor = useTaskEditor(author, authorPhoto);
 
-  useEffect(() => { document.title = `${NAME} — Tasks`; }, []);
+  useEffect(() => { document.title = `${NAME} — All tasks`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
 
   const projectName = useMemo(() => {
@@ -71,8 +71,8 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   return (
     <WorkShell
       navigate={navigate}
-      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Tasks' }]}
-      title="Tasks"
+      crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'All tasks' }]}
+      title="All tasks"
       actions={<Button onClick={() => openNew()}><Plus size={16} />New task</Button>}
     >
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-tasks-view" ruled />

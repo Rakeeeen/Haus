@@ -52,7 +52,7 @@ export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => v
     return () => { document.removeEventListener('visibilitychange', onHide); flush(); };
   }, [id]);
 
-  const crumbs = [{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Notes', to: 'work/notes' }];
+  const crumbs = [{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Notes', to: 'work/notes' }];
 
   if (ready && !note) {
     return <WorkShell navigate={navigate} crumbs={crumbs} title="Not found"><p className="font-mono-main text-[13px] text-ink/50">There is no such note — it may have been deleted.</p></WorkShell>;
