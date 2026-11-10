@@ -9,15 +9,14 @@ import {
   IconSun as Sun, IconCamera as Camera, IconMoreVertical as MoreVertical,
   IconLogOut as LogOut, IconMoon as Moon, IconUsers as Users,
 } from '@/ui/icons';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/data/firebase';
+import { signOutUser } from '@/data/auth';
 import { usePomodoro } from '@/data/usePomodoro';
 import { AppModal } from '@/ui/AppModal';
 import type { Viewer } from '@/domain/access';
 import { useGuests } from '@/data/useMembers';
 import { useWorkOptional } from '@/data/useWork';
 import { useWhoseTasks } from '@/data/useWhoseTasks';
-import { filterTasks, moveToStatus, sortTasks } from '@/domain/work/tasks';
+import { filterTasks, sortTasks } from '@/domain/work/tasks';
 import { GuestsModal } from '@/features/home/components/GuestsModal';
 import { getLogicalDate } from '@/domain/day';
 import { usePrayer } from '@/data/usePrayer';
@@ -385,14 +384,20 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
     if (pomodoroRunning || pomodoroOvertime) {
       setLogoutModal(true);
     } else {
-      signOut(auth);
+      signOutUser();
     }
   };
 
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
+    // Everything on the page that depends on the time works in minutes (the clocks, the locks, the greeting) or in
+    // tens of seconds (the zen timer, a manual card pick). So the state only changes when the minute turns or five
+    // seconds have passed — returning the same value is not a render, and Home is big enough that a render a second is felt.
+    const timer = setInterval(() => setNow((prev) => {
+      const next = new Date();
+      return next.getMinutes() !== prev.getMinutes() || next.getTime() - prev.getTime() >= 5000 ? next : prev;
+    }), 1000);
     document.title = NAME;
     return () => clearInterval(timer);
   }, []);
@@ -566,7 +571,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
     }
 
     // Subsequent auto-selects: only if the user hasn't manually clicked in the last 30 s.
-    // `now` (ticks every second, see the setInterval above) has to be a dependency
+    // `now` (ticks every few seconds, see the setInterval above) has to be a dependency
     // here — otherwise nothing re-runs this effect once the 30 s have actually
     // elapsed, and a manual click sticks forever instead of reverting.
     if (now.getTime() - lastManualClickTime < CARD_REVERT_MS) return;
@@ -954,7 +959,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
                   whose={whose}
                   onWhose={setWhose}
                   projectName={projectName}
-                  onFinish={(task) => work?.updateTask(task.id, moveToStatus(task, 'done'))}
+                  onFinish={(task) => work?.setTaskStatus(task, 'done')}
                 />
               )}
 
@@ -1006,7 +1011,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         isOpen={logoutModal}
         onClose={() => setLogoutModal(false)}
         title="Timer is running"
-        confirm={{ message: 'You have an active Pomodoro session. Logging out will stop your timer and unsaved progress will be lost.', confirmText: 'Log out', cancelText: 'Stay', onConfirm: () => { setLogoutModal(false); signOut(auth); } }}
+        confirm={{ message: 'You have an active Pomodoro session. Logging out will stop your timer and unsaved progress will be lost.', confirmText: 'Log out', cancelText: 'Stay', onConfirm: () => { setLogoutModal(false); signOutUser(); } }}
       />
 
       {/* MONTHLY FINGERPRINT MODAL */}

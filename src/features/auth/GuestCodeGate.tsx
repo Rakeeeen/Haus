@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { signOut, type User } from 'firebase/auth';
-import { auth } from '@/data/firebase';
+import { signOutUser, type AuthUser } from '@/data/auth';
 import { requestGuestCode, submitGuestCode } from '@/data/guestAccess';
 import { CODE_LENGTH, formatCode, normalizeCode } from '@/domain/access';
 import { Button } from '@/ui/Button';
@@ -21,7 +20,7 @@ const MESSAGE: Record<State, string> = {
  * by a one-time code that shows up on Hamed's screen when they ask, and that he tells them. Whether the code
  * is right is decided by firestore.rules, not here — this only asks and submits.
  */
-export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
+export const GuestCodeGate: React.FC<{ user: AuthUser }> = ({ user }) => {
   const [code, setCode] = useState('');
   const [state, setState] = useState<State>('asking');
   const [busy, setBusy] = useState(false);
@@ -97,7 +96,7 @@ export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
           <p className="font-mono-main text-[10px] text-ink/40 h-4">{busy ? 'Checking…' : ''}</p>
           <div className="spring-group flex gap-3">
             <Button tone="ghost" onClick={ask} disabled={busy || state === 'asking'} className="flex-1">Ask again</Button>
-            <Button tone="outline" onClick={() => signOut(auth)} className="flex-1">Sign out</Button>
+            <Button tone="outline" onClick={() => signOutUser()} className="flex-1">Sign out</Button>
           </div>
         </div>
       </div>

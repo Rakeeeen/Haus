@@ -11,6 +11,21 @@ export default defineConfig({
     tailwindcss(),
   ],
   base: '/Haus/',
+  build: {
+    rollupOptions: {
+      output: {
+        // The big libraries get files of their own: they rarely change (so a browser keeps them between deploys), and
+        // the browser can fetch and parse them side by side instead of as one 1.2 MB script.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules[\\/](firebase|@firebase)[\\/]/.test(id)) return 'firebase';
+          if (/node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return 'motion';
+          if (/node_modules[\\/](react|react-dom|react-router|react-router-dom|@remix-run|scheduler)[\\/]/.test(id)) return 'react';
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "./src"),

@@ -5,9 +5,9 @@ import {
 import { db } from '@/data/firebase';
 import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
-import { blankTask, nextTaskNo } from '@/domain/work/tasks';
+import { blankTask, moveToStatus, nextTaskNo } from '@/domain/work/tasks';
 import { isInProject, isMineAsGuest, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
-import type { Note, Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/types';
+import type { Note, Project, ProjectPrivate, Task, TaskComment, TaskStatus } from '@/domain/work/types';
 
 /**
  * Projects, tasks and comments, kept live from Firestore. Each kind is its own collection (a task or a project is a
@@ -50,6 +50,10 @@ interface WorkContextType {
   canEditTask: (task: Task) => boolean;
   addTask: (input: NewTask) => Promise<string>;
   updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => Promise<void>;
+  /** Moves a task to a status (when the person may change it), stamping when it was finished or reopened. */
+  setTaskStatus: (task: Task, status: TaskStatus) => Promise<void>;
+  /** The tick: finishes an open task, reopens a finished one. */
+  toggleTaskDone: (task: Task) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
   addProject: (input: NewProject, client?: string | null) => Promise<string>;
   updateProject: (id: string, patch: Partial<Omit<Project, 'id'>>) => Promise<void>;
@@ -155,6 +159,12 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     await setDoc(doc(db, TASKS, id), clean(withViewers), { merge: true });
   }, [uid]);
 
+  const setTaskStatus = useCallback(async (task: Task, status: TaskStatus) => {
+    if (canEditTask(task)) await updateTask(task.id, moveToStatus(task, status));
+  }, [canEditTask, updateTask]);
+
+  const toggleTaskDone = useCallback((task: Task) => setTaskStatus(task, task.status === 'done' ? 'todo' : 'done'), [setTaskStatus]);
+
   const removeTask = useCallback(async (id: string) => {
     await deleteDoc(doc(db, TASKS, id));
   }, []);
@@ -220,8 +230,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
 
   const value = useMemo<WorkContextType>(() => ({
     role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask,
-    addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
-  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
+    addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
+  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

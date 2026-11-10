@@ -90,12 +90,6 @@ export function groupProjects(
     }));
 }
 
-/** The first and last day among the projects' dates ("YYYY-MM-DD"), or null if none is dated. */
-export function dateSpan(projects: readonly Project[]): { from: string; to: string } | null {
-  const dates = projects.map((p) => p.date).filter((d): d is string => d !== null).sort();
-  return dates.length ? { from: dates[0], to: dates[dates.length - 1] } : null;
-}
-
 export interface DaySpan { from: string; to: string }
 
 /** A project shown for at least this long on the timeline, so a single-day project is still a bar. */

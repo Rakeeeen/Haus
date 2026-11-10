@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/data/firebase';
+import { watchAuthUser, type AuthUser } from '@/data/auth';
 import { setDataScope } from '@/data/dataScope';
 import { fetchInvitation } from '@/data/useMembers';
 import { publishGuestProfile, watchGuestApproval } from '@/data/guestAccess';
@@ -9,7 +8,7 @@ import { firstNameOf, isApprovalValid, roleOf, type Role } from '@/domain/access
 import { Wordmark } from '@/ui/Wordmark';
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   /** owner, an invited guest, or none (signed in with Google but not invited). */
   role: Role;
   /** The first word of the person's Google name — what the header line greets them by. */
@@ -38,7 +37,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<Role>('none');
   const [approved, setApproved] = useState(false);
   const [accessError, setAccessError] = useState(false);
@@ -50,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // A guest's approval is watched for as long as they are signed in.
     let stopApproval: (() => void) | null = null;
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = watchAuthUser(async (currentUser) => {
       stopApproval?.();
       stopApproval = null;
       if (!currentUser) {

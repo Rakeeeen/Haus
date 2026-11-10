@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button, IconButton } from '@/ui/Button';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '@/data/firebase';
+import { signInWithGoogle } from '@/data/auth';
 import { isDarkTheme, setTheme } from '@/lib/theme';
 import { IconLogin, IconSun as Sun, IconMoon as Moon } from '@/ui/icons';
 import { Boil, SketchSvg } from '@/ui/Sketch';
@@ -22,7 +21,7 @@ export const Login: React.FC = () => {
     setError('');
     try {
       // Whether this account may come in is decided after sign-in (an invited guest, or the owner).
-      await signInWithPopup(auth, googleProvider);
+      await signInWithGoogle();
     } catch (err) {
       console.error(err);
       setError('Login failed: ' + (err instanceof Error ? err.message : String(err)));

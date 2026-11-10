@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/ui/Button';
+import { useDismiss } from '@/ui/useDismiss';
 import { IconChevronDown as ChevronDown, IconChevronRight as ChevronRight } from '@/ui/icons';
 import { addDays, dayKey, monthGrid, parseDayKey } from '@/domain/work/tasks';
 
@@ -34,14 +35,7 @@ export function DatePicker({ value, onChange, allowClear = true, disabled = fals
   const panelRef = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { const t = e.target as Node; if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc, true);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc, true); };
-  }, [open]);
+  useDismiss(open, () => setOpen(false), [rootRef, panelRef]);
 
   const today = dayKey(new Date());
   const pick = (day: string | null) => { onChange(day); if (day) setShown(parseDayKey(day)); };

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
-import { Field, SelectMenu, SelectMulti, TextInput } from '@/ui/Form';
+import { ChooseRow, Field, SelectMenu, SelectMulti, TextInput } from '@/ui/Form';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/draftMemory';
 import { PRIORITY_COLOR } from '@/features/work/components/chips';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
@@ -38,19 +38,6 @@ function draftOf(editing: ProjectEditing, ownerName: string): ProjectDraft {
 const NEW = '__new__';
 const DRAFT_KEY = 'work_project_draft';
 
-function Choose<T extends string>({ options, value, onChange, colors }: {
-  options: ReadonlyArray<{ value: T; label: string }>; colors?: Partial<Record<T, string>>; value: T; onChange: (value: T) => void;
-}) {
-  return (
-    <div className="spring-group flex flex-wrap gap-2">
-      {options.map((o) => (
-        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} onClick={() => onChange(o.value)}
-          className={o.value === value ? colors?.[o.value] ?? '' : ''}>{o.label}</Button>
-      ))}
-    </div>
-  );
-}
-
 /** Making or changing a project. Who it is for (the client) is written to the owner-only record, never to the project. */
 export const ProjectModal: React.FC<{
   editing: ProjectEditing | null;
@@ -83,7 +70,6 @@ export const ProjectModal: React.FC<{
     setSure(false);
     setError('');
     setNewClient(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
   // Remembered as it is typed (a new project only).
@@ -125,9 +111,9 @@ export const ProjectModal: React.FC<{
             <TextInput dir="auto" autoFocus={editing.kind === 'new'} value={draft.name} onChange={(e) => set('name', e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
           </Field>
-          <Field label="Status"><Choose<ProjectStatus> options={PROJECT_STATUSES} value={draft.status} onChange={(v) => set('status', v)} /></Field>
+          <Field label="Status"><ChooseRow<ProjectStatus> options={PROJECT_STATUSES} value={draft.status} onChange={(v) => set('status', v)} /></Field>
           <Field label="Priority">
-            <Choose<Priority | 'none'> options={[...PRIORITIES, { value: 'none', label: 'None' }]} colors={PRIORITY_COLOR} value={draft.priority ?? 'none'} onChange={(v) => set('priority', v === 'none' ? null : v)} />
+            <ChooseRow<Priority | 'none'> options={[...PRIORITIES, { value: 'none', label: 'None' }]} colors={PRIORITY_COLOR} value={draft.priority ?? 'none'} onChange={(v) => set('priority', v === 'none' ? null : v)} />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Client">

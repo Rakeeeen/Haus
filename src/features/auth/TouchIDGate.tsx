@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, IconButton } from '@/ui/Button';
-import { User } from 'firebase/auth';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/data/firebase';
+import { signOutUser, type AuthUser } from '@/data/auth';
 import {
   getStoredCredentialIds,
   registerTouchID,
@@ -15,7 +13,7 @@ import { Boil, SketchSvg } from '@/ui/Sketch';
 import { FINGERPRINT_ICON } from '@/ui/sketchIcons.data';
 
 interface Props {
-  user: User;
+  user: AuthUser;
   onCleared: () => void;
 }
 
@@ -129,7 +127,7 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await signOutUser();
   };
 
   return (

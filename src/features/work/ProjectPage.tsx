@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { countTasks, progressOf } from '@/domain/work/projects';
-import { dayKey, moveToStatus } from '@/domain/work/tasks';
+import { dayKey } from '@/domain/work/tasks';
 import type { Task } from '@/domain/work/types';
 import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
@@ -28,7 +28,7 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
-  const { role, tasks, notes, privates, ready, canEditTask, updateTask, addNote } = useWork();
+  const { role, tasks, notes, privates, ready, canEditTask, setTaskStatus, toggleTaskDone, addNote } = useWork();
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author, authorPhoto);
 
@@ -52,7 +52,6 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
   }
 
   const counts = countTasks(mine);
-  const toggleDone = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
   const openNew = (status: Task['status'] = 'todo') => editor.open({ kind: 'new', defaults: { projectId: project.id, status, date: dayKey(new Date()) } });
 
   return (
@@ -89,8 +88,8 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
           showDropped={mine.some((t) => t.status === 'dropped')}
           onOpen={(task) => editor.open({ kind: 'edit', task })}
           canEdit={canEditTask}
-          onMove={(task, status) => canEditTask(task) && updateTask(task.id, moveToStatus(task, status))}
-          onToggleDone={toggleDone}
+          onMove={setTaskStatus}
+          onToggleDone={toggleTaskDone}
           onAdd={openNew}
         />
       )}

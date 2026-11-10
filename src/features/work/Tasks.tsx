@@ -3,7 +3,7 @@ import { useWhoseTasks, WHOSE_OPTIONS } from '@/data/useWhoseTasks';
 import { isDay, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
-import { addDays, dayKey, filterTasks, moveToStatus, type DayFilter } from '@/domain/work/tasks';
+import { addDays, dayKey, filterTasks, type DayFilter } from '@/domain/work/tasks';
 import type { Task, TaskStatus } from '@/domain/work/types';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
@@ -39,7 +39,7 @@ const readView = (): View => {
 };
 
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { tasks, projects, ready, canEditTask, updateTask, me } = useWork();
+  const { tasks, projects, ready, canEditTask, setTaskStatus, toggleTaskDone, me } = useWork();
   const [whose, setWhose] = useWhoseTasks();
   const [view, setView] = useState<View>(readView);
   const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_tasks_day', 'all', oneOf(DAYS.map((d) => d.value)));
@@ -68,7 +68,6 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   const dayForNew = day.kind === 'day' ? day.day : dayKey(new Date());
   const openNew = (defaults: Partial<Task> = {}) => editor.open({ kind: 'new', defaults: { date: dayForNew, ...defaults } });
   const openTask = (task: Task) => editor.open({ kind: 'edit', task });
-  const toggleDone = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
 
   return (
     <WorkShell
@@ -104,12 +103,12 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
           showDropped={shown.some((t) => t.status === 'dropped')}
           onOpen={openTask}
           canEdit={canEditTask}
-          onMove={(task, status) => canEditTask(task) && updateTask(task.id, moveToStatus(task, status))}
-          onToggleDone={toggleDone}
+          onMove={setTaskStatus}
+          onToggleDone={toggleTaskDone}
           onAdd={(status) => openNew({ status })}
         />
       ) : view === 'table' ? (
-        <TaskTable tasks={shown} projectName={projectName} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleDone} />
+        <TaskTable tasks={shown} projectName={projectName} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleTaskDone} />
       ) : (
         <TaskCalendar tasks={calendarTasks} onOpen={openTask} onAddOnDay={(d) => openNew({ date: d })} />
       )}

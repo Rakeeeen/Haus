@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareProjects, countTasks, dateSpan, filterProjectsByStatus, groupProjects, projectLabel, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
+import { compareProjects, countTasks, filterProjectsByStatus, groupProjects, projectLabel, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
 import { normalizeProject, normalizeTask } from '@/domain/work/sharing';
 import type { Project, Task } from '@/domain/work/types';
 
@@ -80,13 +80,6 @@ describe('compareProjects / groupProjects', () => {
     const clients: Record<string, string | null> = { a: 'Zed', b: 'Amr', c: null };
     const groups = groupProjects([project({ id: 'a' }), project({ id: 'b' }), project({ id: 'c' })], 'client', (id) => clients[id]);
     expect(groups.map((g) => g.label)).toEqual(['Amr', 'Zed', 'No client']);
-  });
-});
-
-describe('dateSpan', () => {
-  it('is the earliest and latest date, or null with none', () => {
-    expect(dateSpan([project({ date: '2026-05-01' }), project({ date: '2026-02-01' }), project({ date: null })])).toEqual({ from: '2026-02-01', to: '2026-05-01' });
-    expect(dateSpan([project()])).toBeNull();
   });
 });
 

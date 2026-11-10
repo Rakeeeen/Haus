@@ -69,7 +69,7 @@ export function isDueAt(sub, clock) {
 }
 
 /** Posts today's reminder for one subscription. */
-export async function sendSubscriptionAlert(client, channelId, sub, now = new Date()) {
+async function sendSubscriptionAlert(client, channelId, sub, now = new Date()) {
   const date = now.toLocaleDateString('en-EG', { timeZone: TIME_ZONE, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const amount = `${sub.cost.toLocaleString('en-EG')} EGP`;
   await sendEmbed(client, channelId, {

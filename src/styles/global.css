@@ -1,5 +1,3 @@
-@import url('https://api.fontshare.com/v2/css?f[]=general-sans@200,300,400,500,600,700,900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap');
 @import "tailwindcss";
 
 /* === خط ثمانية (Thmanyah Font) === */
@@ -40,7 +38,7 @@
 }
 
 @theme {
-  --font-sans: "General Sans", "Thmanyah", "Inter", sans-serif;
+  --font-sans: "General Sans", "Thmanyah", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Thmanyah", monospace;
   --font-arabic: "Thmanyah", sans-serif;
 
@@ -63,7 +61,6 @@
   --color-sepia: var(--sepia);
   --color-rust: var(--rust);
   --color-forest: var(--forest);
-  --color-amber: var(--amber);
 }
 
 @layer base {
@@ -81,8 +78,6 @@
     --rust: #B7410E;
     /* Only the real gain signal now; as readable on a card as --rust (4.9:1 against 5.0:1). */
     --forest: #0F7A36;
-    /* The middle of three: a medium priority. */
-    --amber: #A86A0A;
     --pomo-focus: var(--ink);
     --pomo-break: var(--ink-faded);
     --pomo-overtime: var(--rust);
@@ -120,7 +115,6 @@
     --sepia: #4D14A2;
     --rust: #E2583A;
     --forest: #3AE272;
-    --amber: #E8A93A;
     --pomo-focus: var(--ink);
     --pomo-break: var(--ink-faded);
     --pomo-overtime: var(--rust);
@@ -487,7 +481,6 @@ body.dark-theme [data-active] {
 /* Arabic letters stack marks above and below the line, so text that may be Arabic (dir="auto") keeps a roomy line:
    a tight line-height, or a clipping box (truncate, a chip), would cut them off. Inputs keep their own height. */
 [dir="auto"]:not(input):not(textarea) { line-height: 1.7; }
-.chip-text { line-height: 1.7; }
 
 /* Scrolls as usual, but with no scrollbar showing. */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

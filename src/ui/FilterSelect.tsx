@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/ui/Button';
+import { useDismiss } from '@/ui/useDismiss';
 import { IconChevronDown as ChevronDown } from '@/ui/icons';
 
 /** The Week / Month / Year choice the chart screens share. */
@@ -45,17 +46,7 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
   const current = options.find((o) => o.value === value);
   const found = options.filter((o) => !typed.trim() || o.label.toLowerCase().includes(typed.trim().toLowerCase()));
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
+  useDismiss(open, () => setOpen(false), [rootRef]);
 
   return (
     <div ref={rootRef} className={`relative inline-block ${className}`}>
@@ -111,14 +102,7 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
   const found = options.filter((o) => !typed.trim() || o.label.toLowerCase().includes(typed.trim().toLowerCase()));
   const summary = chosen.length === 0 ? allLabel : chosen.length <= 2 ? chosen.map((o) => o.label).join(', ') : `${chosen.length} chosen`;
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
-  }, [open]);
+  useDismiss(open, () => setOpen(false), [rootRef]);
 
   const toggle = (value: T) => onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
 

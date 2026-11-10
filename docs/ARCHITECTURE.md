@@ -14,13 +14,15 @@ agent. Read this before adding a file, and see `CLAUDE.md` for the short version
 src/
   app/        the shell — routing, providers, ErrorBoundary, top-level layout (Water, Focus and Finance
               are lazy routes: they load on first visit, which keeps Recharts out of the first screen)
-  data/       Firestore + device-auth. The ONLY place that talks to Firebase.
+  data/       Firestore + sign-in + device-auth. The ONLY place that talks to Firebase (`data/auth.ts` is how
+              the rest of the app signs in and out — never import `firebase/auth` elsewhere).
   domain/     business rules as pure functions + types. No React, no Firestore, no DOM.
   features/   one folder per screen/capability — the React layer
   ui/         design-system primitives (Card, Button, Modal, …) — no business logic
   lib/        framework-agnostic helpers with no Haus rules baked in
   constants/  static data (the Focus week's seed, the salary in finance.json, …)
   styles/     global.css — design tokens live here (see "Design system" below)
+  assets/     files the app imports and Vite fingerprints (the task-done sound; `scripts/` renders it)
 ```
 
 **The dependency direction only ever points one way:**
@@ -341,3 +343,15 @@ speculatively.
   `assigneeUids` too). Only Hamed writes `assigneeUids`; a guest's own task is just for them.
 - **Whose tasks to show** — "Mine" or "Everyone" (what the viewer can see) — is one remembered choice, `data/useWhoseTasks`,
   used by the Tasks home, All tasks and the Tasks card on Home (and its "due today" count), through `filterTasks({ forMe })`.
+
+## Speed, and what was removed
+
+- **Loading.** The big libraries (Firebase, framer-motion, React) are separate files (`vite.config.ts` `manualChunks`), so they
+  are cached between deploys and parsed side by side; Charts (Recharts) and the notes editor (TipTap) load only when their
+  page opens. The two fonts the system uses (General Sans, Geist Mono) are `<link>`ed in `index.html` — not `@import`ed from the
+  CSS, which made the page wait for the CSS before it even asked for them. Fonts nothing used (Inter, DM Sans, Playfair,
+  Scheherazade) and Firebase Analytics are gone.
+- **Rendering.** Home's clock state (`now`) changes only when the minute turns or five seconds pass, not every second:
+  Home is large, and a render a second was felt. A popover that closes on an outside click or Escape uses `ui/useDismiss`.
+- **Shared, not copied.** Finishing or moving a task goes through `useWork().setTaskStatus` / `toggleTaskDone` (permission
+  check and stamps in one place); a row of choice buttons is `ui/Form`'s `ChooseRow`.

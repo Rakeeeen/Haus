@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
-import { Field, SelectMenu, SelectMulti, TextArea, TextInput } from '@/ui/Form';
+import { ChooseRow, Field, SelectMenu, SelectMulti, TextArea, TextInput } from '@/ui/Form';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/draftMemory';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
 import { OWNER_KEY } from '@/domain/work/sharing';
@@ -24,20 +24,6 @@ const toDraft = (editing: TaskEditing): Draft => {
     projectIds: t.projectIds?.length ? t.projectIds : t.projectId ? [t.projectId] : [], assigneeUids: t.assigneeUids?.length ? t.assigneeUids : [OWNER_KEY], description: t.description ?? '',
   };
 };
-
-/** A row of buttons to pick one value from; they share space like every button row. */
-function Choose<T extends string>({ options, value, onChange, disabled = false, colors }: {
-  options: ReadonlyArray<{ value: T; label: string }>; colors?: Partial<Record<T, string>>; value: T; onChange: (value: T) => void; disabled?: boolean;
-}) {
-  return (
-    <div className="spring-group flex flex-wrap gap-2">
-      {options.map((o) => (
-        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} disabled={disabled} onClick={() => onChange(o.value)}
-          className={o.value === value ? colors?.[o.value] ?? '' : ''}>{o.label}</Button>
-      ))}
-    </div>
-  );
-}
 
 /** Someone a task can be for: `key` is `OWNER_KEY` for Hamed, the guest's uid otherwise. */
 export interface Assignee { key: string; name: string; photoUrl?: string | null }
@@ -131,10 +117,10 @@ export const TaskModal: React.FC<{
               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} placeholder="What needs doing?" />
           </Field>
 
-          <Field label="Status"><Choose<TaskStatus> options={TASK_STATUSES} value={draft.status} disabled={locked} onChange={(v) => set('status', v)} /></Field>
+          <Field label="Status"><ChooseRow<TaskStatus> options={TASK_STATUSES} value={draft.status} disabled={locked} onChange={(v) => set('status', v)} /></Field>
 
           <Field label="Priority">
-            <Choose<Priority | 'none'>
+            <ChooseRow<Priority | 'none'>
               options={[...PRIORITIES, { value: 'none', label: 'None' }]}
               value={draft.priority ?? 'none'}
               disabled={locked}

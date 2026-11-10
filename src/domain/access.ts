@@ -82,8 +82,6 @@ export const normalizeCode = (input: string): string => toLatinDigits(input).rep
 /** A code as shown, in two groups: "48291037" → "4829 1037". */
 export const formatCode = (code: string): string => code.replace(/^(\d{4})(\d+)$/, '$1 $2');
 
-export const isCompleteCode = (input: string): boolean => normalizeCode(input).length === CODE_LENGTH;
-
 /** Whether a guest approved at `approvedAtMs` is still in at `nowMs`. */
 export function isApprovalValid(approvedAtMs: number, nowMs: number): boolean {
   return nowMs < approvedAtMs + GUEST_APPROVAL_DAYS * 24 * 60 * 60 * 1000;

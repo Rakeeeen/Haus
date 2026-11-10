@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { User } from 'firebase/auth';
+import type { AuthUser } from '@/data/auth';
 import { onDeviceCodeRequest, generateAndStoreCode, DeviceAuthDoc } from '@/data/deviceAuth';
 
 interface Props {
-  user: User;
+  user: AuthUser;
 }
 
 export const DeviceCodeBanner: React.FC<Props> = ({ user }) => {

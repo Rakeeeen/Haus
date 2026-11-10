@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
@@ -9,8 +8,7 @@ const firebaseConfig = {
   projectId: "rakeeen-home",
   storageBucket: "rakeeen-home.firebasestorage.app",
   messagingSenderId: "725227885738",
-  appId: "1:725227885738:web:0d9c7bb3bce88735202cd3",
-  measurementId: "G-ED2ZQTLSP8"
+  appId: "1:725227885738:web:0d9c7bb3bce88735202cd3"
 };
 
 // Initialize Firebase
@@ -26,4 +24,3 @@ export const db = initializeFirestore(app, {
 });
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-if (typeof window !== 'undefined') getAnalytics(app);

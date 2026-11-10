@@ -3,7 +3,7 @@ import { AutoHeight } from '@/ui/AutoHeight';
 import { projectLabel } from '@/domain/work/projects';
 import { dayKey, isOverdue, sortTasks } from '@/domain/work/tasks';
 import type { Task } from '@/domain/work/types';
-import { DoneTick } from '@/features/work/components/TaskBoard';
+import { DoneTick } from '@/features/work/components/DoneTick';
 import { PriorityChip, shortDate, TaskStatusChip } from '@/features/work/components/chips';
 
 /** The tasks as rows: the tick, the title, and what each is about. Opens a task on click. */

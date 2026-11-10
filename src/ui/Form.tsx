@@ -1,6 +1,8 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar } from '@/ui/Avatar';
+import { Button } from '@/ui/Button';
+import { useDismiss } from '@/ui/useDismiss';
 import { IconChevronDown as ChevronDown } from '@/ui/icons';
 
 /** The form pieces the work screens share: a labelled field, a text input, a text area and a dropdown. */
@@ -28,22 +30,12 @@ export interface MenuOption { value: string; label: string; photoUrl?: string | 
 /** Whether `option` answers what was typed (any part of its label, ignoring case). */
 const matches = (option: MenuOption, typed: string) => !typed.trim() || option.label.toLowerCase().includes(typed.trim().toLowerCase());
 
-/** Open/closed state for a menu: it closes on a click outside it, or Escape (which then does nothing else, e.g. close a modal). */
+/** Open/closed state for a menu, closed by a click outside the field and its list, or by Escape. */
 function useOpenMenu() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!rootRef.current?.contains(t) && !listRef.current?.contains(t)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc, true);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc, true); };
-  }, [open]);
+  useDismiss(open, () => setOpen(false), [rootRef, listRef]);
   return { open, setOpen, rootRef, listRef };
 }
 
@@ -208,3 +200,21 @@ export const SelectMulti: React.FC<{
     </div>
   );
 };
+
+/** A row of buttons to pick one value from; they share space like every button row. `colors` dresses a chosen one. */
+export function ChooseRow<T extends string>({ options, value, onChange, disabled = false, colors }: {
+  options: ReadonlyArray<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+  colors?: Partial<Record<T, string>>;
+}) {
+  return (
+    <div className="spring-group flex flex-wrap gap-2">
+      {options.map((o) => (
+        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} disabled={disabled} onClick={() => onChange(o.value)}
+          className={o.value === value ? colors?.[o.value] ?? '' : ''}>{o.label}</Button>
+      ))}
+    </div>
+  );
+}

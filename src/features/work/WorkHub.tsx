@@ -4,8 +4,8 @@ import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { projectLabel, countTasks, filterProjectsByStatus, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
-import { addDays, dayKey, filterTasks, moveToStatus, sortTasks, type DayFilter } from '@/domain/work/tasks';
-import type { ProjectStatus, Task, TaskStatus } from '@/domain/work/types';
+import { addDays, dayKey, filterTasks, sortTasks, type DayFilter } from '@/domain/work/tasks';
+import type { ProjectStatus, TaskStatus } from '@/domain/work/types';
 import { AutoHeight } from '@/ui/AutoHeight';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
@@ -13,7 +13,7 @@ import { IconPlus as Plus } from '@/ui/icons';
 import { DatePicker } from '@/ui/DatePicker';
 import { FilterMulti, FilterSelect } from '@/ui/FilterSelect';
 import { ProgressBar } from '@/ui/ProgressBar';
-import { DoneTick } from '@/features/work/components/TaskBoard';
+import { DoneTick } from '@/features/work/components/DoneTick';
 import { shortDate, TaskStatusChip } from '@/features/work/components/chips';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
@@ -28,7 +28,7 @@ const TASK_STATUS_OPTIONS = [{ value: 'todo', label: 'To do' }, { value: 'doing'
 
 /** The way into the work side: Projects, Tasks, Notes; the projects and the tasks, each narrowed the way you choose. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { role, me, projects, tasks, notes, privates, ready, canEditTask, updateTask } = useWork();
+  const { role, me, projects, tasks, notes, privates, ready, canEditTask, toggleTaskDone } = useWork();
   const [whose, setWhose] = useWhoseTasks();
   const editor = useTaskEditor(author, authorPhoto);
   // What is chosen here is remembered (even after a refresh); "Today" is remembered as "Today", not as one date.
@@ -47,7 +47,6 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   const forMe = whose === 'mine' ? me : undefined;
   const shownTasks = sortTasks(filterTasks(tasks, { day, statuses: taskStatuses, forMe }));
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
-  const toggle = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
   const open = tasks.filter((t) => (t.status === 'todo' || t.status === 'doing') && (!forMe || t.assigneeUids.includes(forMe))).length;
 
   return (
@@ -79,7 +78,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
               {shownTasks.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No tasks match.</p>}
               {shownTasks.map((task) => (
                 <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
-                  {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0" />}
+                  {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggleTaskDone(task)} /> : <span className="w-5 h-5 shrink-0" />}
                   <div className="min-w-0 flex-1 cursor-pointer" onClick={() => editor.open({ kind: 'edit', task })}>
                     <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
                     {task.date && <p className="font-mono-main text-[12px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}

@@ -1,6 +1,5 @@
 import React from 'react';
-import { signOut, type User } from 'firebase/auth';
-import { auth } from '@/data/firebase';
+import { signOutUser, type AuthUser } from '@/data/auth';
 import { Button } from '@/ui/Button';
 import { Boil, SketchSvg } from '@/ui/Sketch';
 import { LOCK_ICON } from '@/ui/sketchIcons.data';
@@ -9,7 +8,7 @@ import { LOCK_ICON } from '@/ui/sketchIcons.data';
  * Signed in with Google, but not let in: either the owner hasn't invited this email, or the invitation
  * couldn't be checked right now (`error`). Nothing of the system has been loaded for this person.
  */
-export const NoAccess: React.FC<{ user: User; error: boolean }> = ({ user, error }) => (
+export const NoAccess: React.FC<{ user: AuthUser; error: boolean }> = ({ user, error }) => (
   <div className="min-h-screen flex items-center justify-center p-6">
     <div className="w-full max-w-md card p-10 md:p-12 text-center">
       <div className="flex justify-center mb-8 text-ink">
@@ -25,7 +24,7 @@ export const NoAccess: React.FC<{ user: User; error: boolean }> = ({ user, error
       </p>
       <div className="flex flex-col gap-3">
         {error && <Button onClick={() => window.location.reload()} className="w-full">Try again</Button>}
-        <Button tone={error ? 'outline' : 'primary'} onClick={() => signOut(auth)} className="w-full">Sign out</Button>
+        <Button tone={error ? 'outline' : 'primary'} onClick={() => signOutUser()} className="w-full">Sign out</Button>
       </div>
     </div>
   </div>

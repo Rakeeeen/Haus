@@ -43,3 +43,6 @@ backend/gold_cache.json
 
 # The ruleset the last deploy replaced (backend/scripts/deploy-rules.js --rollback)
 backend/.rules-previous
+
+# Claude Code: this machine's own permissions (launch.json, which the preview uses, stays tracked)
+.claude/settings.local.json

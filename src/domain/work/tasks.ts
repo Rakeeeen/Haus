@@ -1,4 +1,4 @@
-import { OWNER_KEY } from '@/domain/work/sharing';
+import { isFor, OWNER_KEY } from '@/domain/work/sharing';
 import type { Priority, Task, TaskStatus } from '@/domain/work/types';
 
 export const TASK_STATUSES: ReadonlyArray<{ value: TaskStatus; label: string }> = [
@@ -128,7 +128,7 @@ export function filterTasks(tasks: readonly Task[], filter: TaskFilter, now: Dat
     if (filter.statuses?.length && !filter.statuses.includes(task.status)) return false;
     if (filter.projectId === 'none' ? task.projectIds.length > 0 : filter.projectId && !task.projectIds.includes(filter.projectId)) return false;
     if (filter.assignee && task.assignee !== filter.assignee) return false;
-    if (filter.forMe && !task.assigneeUids.includes(filter.forMe)) return false;
+    if (filter.forMe && !isFor(task, filter.forMe)) return false;
     if (query && !task.title.toLowerCase().includes(query)) return false;
     return true;
   });

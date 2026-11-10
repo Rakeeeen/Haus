@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CODE_LENGTH, GUEST_APPROVAL_DAYS, codeFromBytes, firstNameOf, formatCode, isApprovalValid, isCompleteCode,
+  CODE_LENGTH, GUEST_APPROVAL_DAYS, codeFromBytes, firstNameOf, formatCode, isApprovalValid,
   isValidEmail, normalizeCode, normalizeEmail, roleOf, secondsLeft,
 } from '@/domain/access';
 
@@ -79,10 +79,6 @@ describe('typing a code', () => {
   it('shows a code in two groups', () => {
     expect(formatCode('48291037')).toBe('4829 1037');
     expect(formatCode('4829')).toBe('4829');
-  });
-  it('knows when a code is complete', () => {
-    expect(isCompleteCode('4829 1037')).toBe(true);
-    expect(isCompleteCode('4829 103')).toBe(false);
   });
 });
 
