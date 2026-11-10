@@ -6,7 +6,7 @@ import taskDoneUrl from '@/assets/sounds/task-done.wav';
  * allow sound only after a click or a key, and finishing a task is one, so it needs no unlocking. Failing to play (no
  * audio, a blocked page) is silent: the task is done either way.
  */
-const VOLUME = 0.42;
+const VOLUME = 0.5;
 let loaded: HTMLAudioElement | null = null;
 
 export function playTaskDone(): void {
