@@ -154,3 +154,16 @@ describe('tasks that span days', () => {
     expect(filterTasks([t], { day: { kind: 'today' } }, new Date(2026, 10, 14))).toHaveLength(0);
   });
 });
+
+describe('tasks for someone', () => {
+  const mine = normalizeTask({ id: 'm', title: 'mine' });
+  const hers = normalizeTask({ id: 'h', title: 'hers', assigneeUids: ['g1'] });
+  const both = normalizeTask({ id: 'b', title: 'both', assigneeUids: ['owner', 'g1'] });
+  it('keeps the ones that are for the person, among several', () => {
+    expect(filterTasks([mine, hers, both], { day: { kind: 'all' }, forMe: 'owner' }).map((t) => t.id)).toEqual(['m', 'b']);
+    expect(filterTasks([mine, hers, both], { day: { kind: 'all' }, forMe: 'g1' }).map((t) => t.id)).toEqual(['h', 'b']);
+  });
+  it('keeps everything with no person asked for', () => {
+    expect(filterTasks([mine, hers, both], { day: { kind: 'all' } })).toHaveLength(3);
+  });
+});

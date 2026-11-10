@@ -6,7 +6,7 @@ import { db } from '@/data/firebase';
 import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
 import { blankTask, nextTaskNo } from '@/domain/work/tasks';
-import { isInProject, normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
+import { isInProject, isMineAsGuest, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
 import type { Note, Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/types';
 
 /**
@@ -36,6 +36,8 @@ interface WorkContextType {
   role: WorkScope['kind'];
   /** A guest's own uid (null for Hamed). */
   guestUid: string | null;
+  /** How this person stands in a task's `assigneeUids`: `OWNER_KEY` for Hamed, the uid for a guest. */
+  me: string;
   projects: Project[];
   tasks: Task[];
   /** Who each project is for — Hamed's only. */
@@ -105,13 +107,13 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   /** The sharing of each of the projects a task is in (the ones that exist), for working out who may see it. */
   const projectsOf = (ids: readonly string[]) => ids.map((id) => projectsRef.current.find((p) => p.id === id)).filter((p): p is Project => !!p);
 
-  const canEditTask = useCallback((task: Task) => !uid || task.assigneeUid === uid || task.createdByUid === uid, [uid]);
+  const canEditTask = useCallback((task: Task) => !uid || isMineAsGuest(task, uid), [uid]);
 
   const addTask = useCallback(async (input: NewTask) => {
     const ref = doc(collection(db, TASKS));
     const { title, ...rest } = input;
     // A guest's task is for themself, made by themself, and numbered 0 (the numbers are Hamed's running count).
-    const mine = uid ? { no: 0, createdByUid: uid, assigneeUid: uid, assignee: guestName } : {};
+    const mine = uid ? { no: 0, createdByUid: uid, assigneeUid: uid, assigneeUids: [uid], assignee: guestName } : {};
     const base = { ...blankTask(nextTaskNo(tasksRef.current), null), ...rest, ...mine, title };
     // A task keeps its first project as `projectId` (older code reads that) and all of them in `projectIds`.
     const projectIds = base.projectIds.length ? base.projectIds : base.projectId ? [base.projectId] : [];
@@ -119,7 +121,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const viewerUids = viewersOf(withProjects, projectsOf(projectIds));
     // A guest's task is in one project at most, and has no end date unless they set one: the rules know no other fields.
     const body = uid
-      ? (({ projectIds: _ids, endDate, ...others }) => ({ ...others, ...(endDate ? { endDate } : {}) }))(withProjects)
+      ? (({ projectIds: _ids, assigneeUids: _who, endDate, ...others }) => ({ ...others, ...(endDate ? { endDate } : {}) }))(withProjects)
       : withProjects;
     await setDoc(ref, clean({ ...body, viewerUids }));
     return ref.id;
@@ -147,7 +149,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       const ids = stamped.projectIds ?? [];
       next = { ...next, projectIds: ids, projectId: ids[0] ?? null };
     }
-    const withViewers = next && ('projectIds' in stamped || 'projectId' in stamped || 'assigneeUid' in stamped)
+    const withViewers = next && ('projectIds' in stamped || 'projectId' in stamped || 'assigneeUid' in stamped || 'assigneeUids' in stamped)
       ? { ...stamped, projectIds: next.projectIds, projectId: next.projectId, viewerUids: viewersOf(next, projectsOf(next.projectIds)) }
       : stamped;
     await setDoc(doc(db, TASKS, id), clean(withViewers), { merge: true });
@@ -217,7 +219,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   }, []);
 
   const value = useMemo<WorkContextType>(() => ({
-    role: scope.kind, guestUid: uid, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask,
+    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask,
     addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
   }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
 

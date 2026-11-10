@@ -1,3 +1,4 @@
+import { OWNER_KEY } from '@/domain/work/sharing';
 import type { Priority, Task, TaskStatus } from '@/domain/work/types';
 
 export const TASK_STATUSES: ReadonlyArray<{ value: TaskStatus; label: string }> = [
@@ -107,6 +108,8 @@ export interface TaskFilter {
   statuses?: readonly TaskStatus[];
   projectId?: string | 'none';
   assignee?: string;
+  /** Keep only the tasks that are for this person (`OWNER_KEY` for Hamed, or a guest's uid). */
+  forMe?: string;
   query?: string;
 }
 
@@ -125,6 +128,7 @@ export function filterTasks(tasks: readonly Task[], filter: TaskFilter, now: Dat
     if (filter.statuses?.length && !filter.statuses.includes(task.status)) return false;
     if (filter.projectId === 'none' ? task.projectIds.length > 0 : filter.projectId && !task.projectIds.includes(filter.projectId)) return false;
     if (filter.assignee && task.assignee !== filter.assignee) return false;
+    if (filter.forMe && !task.assigneeUids.includes(filter.forMe)) return false;
     if (query && !task.title.toLowerCase().includes(query)) return false;
     return true;
   });
@@ -137,7 +141,7 @@ export function blankTask(no: number, day: string | null, now: Date = new Date()
   const at = now.toISOString();
   return {
     no, title: '', status: 'todo', priority: null, date: day, endDate: null, projectId: null, projectIds: [], assignee: null,
-    assigneeUid: null, createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: at, updatedAt: at, doneAt: null,
+    assigneeUid: null, assigneeUids: [OWNER_KEY], createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: at, updatedAt: at, doneAt: null,
   };
 }
 

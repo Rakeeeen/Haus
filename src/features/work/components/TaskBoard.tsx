@@ -26,12 +26,14 @@ export const DoneTick: React.FC<{ done: boolean; onToggle: () => void }> = ({ do
   </button>
 );
 
-export type PersonOf = (task: Task) => { name: string; photoUrl: string | null } | null;
+export interface Person { name: string; photoUrl: string | null }
+/** Everyone a task is for. */
+export type PersonOf = (task: Task) => Person[];
 
 const TaskCard: React.FC<{
-  task: Task; projectName: string | null; person?: { name: string; photoUrl: string | null } | null; editable?: boolean;
+  task: Task; projectName: string | null; people?: Person[]; editable?: boolean;
   onOpen: () => void; onToggleDone: () => void; overlay?: boolean;
-}> = ({ task, projectName, person = null, editable = true, onOpen, onToggleDone, overlay = false }) => {
+}> = ({ task, projectName, people = [], editable = true, onOpen, onToggleDone, overlay = false }) => {
   const overdue = isOverdue(task, dayKey(new Date()));
   return (
     <div
@@ -44,15 +46,19 @@ const TaskCard: React.FC<{
           {task.title || 'Untitled'}
         </p>
       </div>
-      {(projectName || task.date || task.priority || person) && (
+      {(projectName || task.date || task.priority || people.length > 0) && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2.5 pl-[30px]">
           {projectName && <span dir="auto" className="font-mono-main text-[11px] tracking-wider text-ink/45 truncate max-w-full text-left">{projectName}</span>}
           {task.date && <span className={`font-mono-main text-[11px] uppercase tracking-wider ${overdue ? 'text-rust' : 'text-ink/45'}`}>{shortDate(task.date)}</span>}
           <PriorityChip priority={task.priority} />
-          {person && (
+          {people.length > 0 && (
             <span className="ml-auto flex items-center gap-1.5 min-w-0">
-              <Avatar name={person.name} photoUrl={person.photoUrl} size={16} />
-              <span dir="auto" className="font-mono-main text-[11px] tracking-wider text-ink/50 truncate max-w-[90px]">{person.name}</span>
+              <span className="flex -space-x-1.5">
+                {people.slice(0, 3).map((p, i) => <Avatar key={i} name={p.name} photoUrl={p.photoUrl} size={16} className="ring-2 ring-[var(--paper-dark)]" />)}
+              </span>
+              <span dir="auto" className="font-mono-main text-[11px] tracking-wider text-ink/50 truncate max-w-[90px]">
+                {people[0].name}{people.length > 1 ? ` +${people.length - 1}` : ''}
+              </span>
             </span>
           )}
         </div>
@@ -92,7 +98,7 @@ const Column: React.FC<{
       <AutoHeight>
         <div className="flex flex-col gap-2.5">
           {tasks.map((task) => (
-          <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
+          <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} people={personOf?.(task) ?? []} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
         ))}
         {onAdd && (
           <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
@@ -160,7 +166,7 @@ export const TaskBoard: React.FC<{
         ))}
       </div>
       <DragOverlay dropAnimation={null}>
-        {dragging && <TaskCard task={dragging} projectName={projectLabel(dragging, projectName)} person={personOf?.(dragging) ?? null} onOpen={() => {}} onToggleDone={() => {}} overlay />}
+        {dragging && <TaskCard task={dragging} projectName={projectLabel(dragging, projectName)} people={personOf?.(dragging) ?? []} onOpen={() => {}} onToggleDone={() => {}} overlay />}
       </DragOverlay>
     </DndContext>
   );

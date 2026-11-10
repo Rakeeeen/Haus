@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useGuests } from '@/data/useMembers';
 import { useWork } from '@/data/useWork';
+import { OWNER_KEY } from '@/domain/work/sharing';
 import { moveToStatus } from '@/domain/work/tasks';
 import type { Task } from '@/domain/work/types';
+import type { PersonOf } from '@/features/work/components/TaskBoard';
 import { TaskModal, type Assignee, type TaskEditing } from '@/features/work/components/TaskModal';
 
 /**
@@ -17,22 +19,28 @@ export function useTaskEditor(author: string, authorPhoto: string | null = null)
 
   const assignees = useMemo<Assignee[]>(
     () => (role === 'owner'
-      ? [{ uid: null, name: author, photoUrl: authorPhoto }, ...guests.filter((g) => g.uid && g.active).map((g) => ({ uid: g.uid as string, name: g.name || g.email, photoUrl: g.photoUrl ?? null }))]
+      ? [{ key: OWNER_KEY, name: author, photoUrl: authorPhoto }, ...guests.filter((g) => g.uid && g.active).map((g) => ({ key: g.uid as string, name: g.name || g.email, photoUrl: g.photoUrl ?? null }))]
       : []),
     [role, guests, author, authorPhoto],
   );
 
-  /** Who a task is for, with their photo, for the cards: the owner's own tasks show him; a guest's show the guest. */
-  const personOf = useMemo(() => {
-    const byUid = new Map(assignees.filter((a) => a.uid).map((a) => [a.uid as string, a]));
-    return (task: Task): { name: string; photoUrl: string | null } | null => {
-      if (task.assigneeUid) {
-        const known = byUid.get(task.assigneeUid);
-        return { name: known?.name ?? task.assignee ?? '', photoUrl: known?.photoUrl ?? null };
-      }
-      return role === 'owner' ? { name: author, photoUrl: authorPhoto } : task.assignee ? { name: task.assignee, photoUrl: null } : null;
-    };
-  }, [assignees, role, author, authorPhoto]);
+  /** Everyone a task is for, with their photos, for the cards. A guest sees only the people they can name. */
+  const personOf = useMemo<PersonOf>(() => {
+    const byKey = new Map(assignees.map((a) => [a.key, a]));
+    return (task: Task) => task.assigneeUids.flatMap((key) => {
+      const known = byKey.get(key);
+      if (known) return [{ name: known.name, photoUrl: known.photoUrl ?? null }];
+      // A guest knows themself (and a task's first person by name), not the owner or the other guests.
+      if (role !== 'owner' && key === guestUid) return [{ name: author, photoUrl: authorPhoto }];
+      return [];
+    });
+  }, [assignees, role, guestUid, author, authorPhoto]);
+
+  /** What goes on a task for the people chosen: the list, and its first person the way older code reads it. */
+  const who = (assigneeUids: string[]): Pick<Task, 'assigneeUids' | 'assigneeUid' | 'assignee'> => {
+    const first = assignees.find((a) => a.key === assigneeUids[0]);
+    return { assigneeUids, assigneeUid: first && first.key !== OWNER_KEY ? first.key : null, assignee: first?.name ?? author };
+  };
 
   const target = editing?.kind === 'edit' ? editing.task : null;
   const canEdit = target ? canEditTask(target) : true;
@@ -48,10 +56,10 @@ export function useTaskEditor(author: string, authorPhoto: string | null = null)
       canDelete={canDelete}
       assignees={assignees}
       onClose={() => setEditing(null)}
-      onCreate={async (draft) => { await addTask({ ...draft, tags: [], doneAt: draft.status === 'done' ? new Date().toISOString() : null }); }}
+      onCreate={async (draft) => { await addTask({ ...draft, ...who(draft.assigneeUids), tags: [], doneAt: draft.status === 'done' ? new Date().toISOString() : null }); }}
       onUpdate={async (id, draft) => {
         const current = tasks.find((t) => t.id === id);
-        await updateTask(id, { ...draft, ...(current ? moveToStatus(current, draft.status) : {}) });
+        await updateTask(id, { ...draft, ...who(draft.assigneeUids), ...(current ? moveToStatus(current, draft.status) : {}) });
       }}
       onDelete={removeTask}
     />

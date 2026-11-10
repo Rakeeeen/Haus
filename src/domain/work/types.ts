@@ -19,10 +19,15 @@ export interface Task {
   projectId: string | null;
   /** Every project it belongs to — a task can be in several. */
   projectIds: string[];
-  /** Who it is for, by name. */
+  /** Who it is for, by name — the first of `assigneeUids` (what older code and the bot read). */
   assignee: string | null;
-  /** The uid of who it is for, when that is a guest (Hamed's own tasks have none). */
+  /** The uid of the first person it is for, when that is a guest (null when it is Hamed's). */
   assigneeUid: string | null;
+  /**
+   * Everyone it is for: Hamed as `OWNER_KEY` and guests by uid. A task can be for several people. Older tasks have no
+   * list; `normalizeTask` fills it from `assigneeUid` (or Hamed, when there was none).
+   */
+  assigneeUids: string[];
   /** The uid of the guest who made it, if a guest did. */
   createdByUid: string | null;
   /**

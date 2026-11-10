@@ -16,6 +16,7 @@ import { AppModal } from '@/ui/AppModal';
 import type { Viewer } from '@/domain/access';
 import { useGuests } from '@/data/useMembers';
 import { useWorkOptional } from '@/data/useWork';
+import { useWhoseTasks } from '@/data/useWhoseTasks';
 import { filterTasks, moveToStatus, sortTasks } from '@/domain/work/tasks';
 import { GuestsModal } from '@/features/home/components/GuestsModal';
 import { getLogicalDate } from '@/domain/day';
@@ -76,9 +77,10 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const [guestsOpen, setGuestsOpen] = useState(false);
   // Today's tasks still to do: Hamed's, or a guest's own.
   const work = useWorkOptional();
+  const [whose, setWhose] = useWhoseTasks();
   const todayTasks = useMemo(
-    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'] })) : []),
-    [work],
+    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: whose === 'mine' ? work.me : undefined })) : []),
+    [work, whose],
   );
   const projectName = (id: string | null) => work?.projects.find((p) => p.id === id)?.name ?? null;
   const [activeCardId, setActiveCardId] = useState<CardId>(() => _lastActiveCardId);
@@ -949,6 +951,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               {displayedCardId === 'tasks' && (
                 <TasksCardBody
                   today={todayTasks}
+                  whose={whose}
+                  onWhose={setWhose}
                   projectName={projectName}
                   onFinish={(task) => work?.updateTask(task.id, moveToStatus(task, 'done'))}
                 />

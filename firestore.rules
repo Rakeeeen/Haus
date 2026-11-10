@@ -179,7 +179,9 @@ service cloud.firestore {
     }
 
     function guestMayEditTask() {
-      return (resource.data.assigneeUid == request.auth.uid || resource.data.createdByUid == request.auth.uid)
+      // A task can be for several people (`assigneeUids`, Hamed's to write); a guest it is for may change it, like its first one.
+      return (resource.data.assigneeUid == request.auth.uid || resource.data.createdByUid == request.auth.uid
+              || request.auth.uid in resource.data.get('assigneeUids', []))
         && request.auth.uid in resource.data.viewerUids
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['title', 'status', 'priority', 'date', 'endDate', 'description', 'tags', 'doneAt', 'updatedAt'])

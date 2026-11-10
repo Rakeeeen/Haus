@@ -332,3 +332,12 @@ speculatively.
 - **No scrollbars.** `global.css` hides every scrollbar (`*`); everything still scrolls. Don't add a custom one.
 - **Cards ease to their height.** Content that grows or shrinks (a filtered list, a column gaining a card) is wrapped in
   `ui/AutoHeight`, which animates the height on the system's spring instead of jumping. It clips, so popovers go outside it.
+
+## A task for several people, and whose tasks to show
+
+- A task has `assigneeUids`: everyone it is for, Hamed as `OWNER_KEY` ('owner') and guests by uid. `assigneeUid`/`assignee`
+  stay as the first of them (older code and the bot read those). `normalizeTask` fills the list for older tasks (their guest,
+  or Hamed). A guest the task is for sees it (`viewersOf`) and may change it (`isMineAsGuest`; `firestore.rules` checks
+  `assigneeUids` too). Only Hamed writes `assigneeUids`; a guest's own task is just for them.
+- **Whose tasks to show** — "Mine" or "Everyone" (what the viewer can see) — is one remembered choice, `data/useWhoseTasks`,
+  used by the Tasks home, All tasks and the Tasks card on Home (and its "due today" count), through `filterTasks({ forMe })`.

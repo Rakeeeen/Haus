@@ -5,6 +5,9 @@ import type { Project, Task } from '@/domain/work/types';
  * guest sees a project they are a member of, and its tasks as the project's `guestsSeeAll` decides: every task of it,
  * or only the ones that are theirs. A task outside any project is seen by whoever it is for and whoever made it.
  */
+/** How Hamed stands in a task's `assigneeUids` (he has no guest uid). */
+export const OWNER_KEY = 'owner';
+
 const unique = (uids: ReadonlyArray<string | null | undefined>): string[] => [...new Set(uids.filter((u): u is string => !!u))];
 
 type Sharing = Pick<Project, 'memberUids' | 'guestsSeeAll'>;
@@ -14,8 +17,9 @@ type Sharing = Pick<Project, 'memberUids' | 'guestsSeeAll'>;
  * task for the rules. A task in several projects is seen by the union of what each project allows, so a guest who is
  * on one of them sees it there — and only learns the names of the projects they are on (they can read no other).
  */
-export function viewersOf(task: Pick<Task, 'assigneeUid' | 'createdByUid'>, projects: readonly Sharing[]): string[] {
-  const own = unique([task.assigneeUid, task.createdByUid]);
+export function viewersOf(task: Pick<Task, 'assigneeUids' | 'createdByUid'>, projects: readonly Sharing[]): string[] {
+  // Hamed needs no listing; the guests it is for, and the guest who made it, are its own people.
+  const own = unique([...task.assigneeUids.filter((u) => u !== OWNER_KEY), task.createdByUid]);
   if (projects.length === 0) return own;
   return unique(projects.flatMap((project) => (project.guestsSeeAll ? project.memberUids : own.filter((uid) => project.memberUids.includes(uid)))));
 }
@@ -24,8 +28,11 @@ export function viewersOf(task: Pick<Task, 'assigneeUid' | 'createdByUid'>, proj
 export const isInProject = (task: Pick<Task, 'projectIds'>, projectId: string): boolean => task.projectIds.includes(projectId);
 
 /** A guest may change a task that is theirs: it is for them, or they made it. */
-export const isMineAsGuest = (task: Pick<Task, 'assigneeUid' | 'createdByUid'>, uid: string): boolean =>
-  task.assigneeUid === uid || task.createdByUid === uid;
+export const isMineAsGuest = (task: Pick<Task, 'assigneeUids' | 'createdByUid'>, uid: string): boolean =>
+  task.assigneeUids.includes(uid) || task.createdByUid === uid;
+
+/** Whether `task` is for the person `me` (`OWNER_KEY` for Hamed, a uid for a guest). */
+export const isFor = (task: Pick<Task, 'assigneeUids'>, me: string): boolean => task.assigneeUids.includes(me);
 
 /**
  * A project's tasks with `viewerUids` that are out of date after the project's sharing changed. `others` are the
@@ -51,12 +58,14 @@ export function staleViewers(
 export function normalizeTask(raw: Partial<Task> & { id: string }): Task {
   const task: Task = {
     no: 0, title: '', status: 'todo', priority: null, date: null, endDate: null, projectId: null, projectIds: [], assignee: null,
-    assigneeUid: null, createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: '', updatedAt: '', doneAt: null,
+    assigneeUid: null, assigneeUids: [], createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: '', updatedAt: '', doneAt: null,
     ...raw,
   };
   // Older tasks (and a guest's, which the rules keep to one project) have only `projectId`.
   const projectIds = raw.projectIds && raw.projectIds.length ? raw.projectIds : task.projectId ? [task.projectId] : [];
-  return { ...task, projectIds, projectId: projectIds[0] ?? null };
+  // Older tasks have one person (a guest's uid) or none, which meant Hamed.
+  const assigneeUids = raw.assigneeUids && raw.assigneeUids.length ? raw.assigneeUids : task.assigneeUid ? [task.assigneeUid] : [OWNER_KEY];
+  return { ...task, projectIds, projectId: projectIds[0] ?? null, assigneeUids };
 }
 
 export function normalizeProject(raw: Partial<Project> & { id: string }): Project {

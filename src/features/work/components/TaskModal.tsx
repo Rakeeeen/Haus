@@ -5,6 +5,7 @@ import { DatePicker } from '@/ui/DatePicker';
 import { Field, SelectMenu, SelectMulti, TextArea, TextInput } from '@/ui/Form';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/draftMemory';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
+import { OWNER_KEY } from '@/domain/work/sharing';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
 import { useComments } from '@/data/useWork';
 import { PRIORITY_COLOR, shortDate } from '@/features/work/components/chips';
@@ -12,7 +13,7 @@ import { PRIORITY_COLOR, shortDate } from '@/features/work/components/chips';
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
 
-type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'endDate' | 'projectIds' | 'assignee' | 'assigneeUid' | 'description'>;
+type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'endDate' | 'projectIds' | 'assigneeUids' | 'description'>;
 
 const DRAFT_KEY = 'work_task_draft';
 
@@ -20,7 +21,7 @@ const toDraft = (editing: TaskEditing): Draft => {
   const t: Partial<Task> = editing.kind === 'edit' ? editing.task : editing.defaults;
   return {
     title: t.title ?? '', status: t.status ?? 'todo', priority: t.priority ?? null, date: t.date ?? null, endDate: t.endDate ?? null,
-    projectIds: t.projectIds?.length ? t.projectIds : t.projectId ? [t.projectId] : [], assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '',
+    projectIds: t.projectIds?.length ? t.projectIds : t.projectId ? [t.projectId] : [], assigneeUids: t.assigneeUids?.length ? t.assigneeUids : [OWNER_KEY], description: t.description ?? '',
   };
 };
 
@@ -38,7 +39,8 @@ function Choose<T extends string>({ options, value, onChange, disabled = false, 
   );
 }
 
-export interface Assignee { uid: string | null; name: string; photoUrl?: string | null }
+/** Someone a task can be for: `key` is `OWNER_KEY` for Hamed, the guest's uid otherwise. */
+export interface Assignee { key: string; name: string; photoUrl?: string | null }
 
 export const TaskModal: React.FC<{
   editing: TaskEditing | null;
@@ -96,9 +98,10 @@ export const TaskModal: React.FC<{
   const save = () => {
     if (!draft || !editing) return;
     if (!draft.title.trim()) { setError('Give the task a title'); return; }
+    // A task is always for someone: with nobody chosen it is Hamed's.
     if (draft.date && draft.endDate && draft.endDate < draft.date) { setError('The end is before the start'); return; }
     run(async () => {
-      const body = { ...draft, title: draft.title.trim() };
+      const body = { ...draft, title: draft.title.trim(), assigneeUids: draft.assigneeUids.length ? draft.assigneeUids : [OWNER_KEY] };
       if (editing.kind === 'edit') await onUpdate(editing.task.id, body); else await onCreate(body);
       clearDraft(DRAFT_KEY);
       onClose();
@@ -109,7 +112,7 @@ export const TaskModal: React.FC<{
 
   // For a task in projects, who it can be for is those projects' members (and Hamed); outside any project, any guest.
   const memberUids = projects.filter((p) => draft?.projectIds.includes(p.id)).flatMap((p) => p.memberUids);
-  const choices = assignees.filter((a) => a.uid === null || !draft?.projectIds.length || memberUids.includes(a.uid));
+  const choices = assignees.filter((a) => a.key === OWNER_KEY || !draft?.projectIds.length || memberUids.includes(a.key));
   const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
   const locked = !canEdit;
 
@@ -166,15 +169,13 @@ export const TaskModal: React.FC<{
             </Field>
             {assignees.length > 1 && guestUid === undefined && (
               <Field label="For">
-                <SelectMenu
+                <SelectMulti
                   ariaLabel="For"
-                  value={draft.assigneeUid ?? ''}
+                  empty="Hamed"
+                  values={draft.assigneeUids}
                   disabled={locked}
-                  onChange={(v) => {
-                    const picked = assignees.find((a) => (a.uid ?? '') === v);
-                    setDraft((d) => (d ? { ...d, assigneeUid: picked?.uid ?? null, assignee: picked?.name ?? null } : d));
-                  }}
-                  options={choices.map((a) => ({ value: a.uid ?? '', label: a.name, photoUrl: a.photoUrl, withAvatar: true }))}
+                  onChange={(v) => set('assigneeUids', v)}
+                  options={choices.map((a) => ({ value: a.key, label: a.name, photoUrl: a.photoUrl, withAvatar: true }))}
                 />
               </Field>
             )}

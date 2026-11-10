@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
+import { useWhoseTasks, WHOSE_OPTIONS } from '@/data/useWhoseTasks';
 import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
@@ -27,7 +28,8 @@ const TASK_STATUS_OPTIONS = [{ value: 'todo', label: 'To do' }, { value: 'doing'
 
 /** The way into the work side: Projects, Tasks, Notes; the projects and the tasks, each narrowed the way you choose. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { role, projects, tasks, notes, privates, ready, canEditTask, updateTask } = useWork();
+  const { role, me, projects, tasks, notes, privates, ready, canEditTask, updateTask } = useWork();
+  const [whose, setWhose] = useWhoseTasks();
   const editor = useTaskEditor(author, authorPhoto);
   // What is chosen here is remembered (even after a refresh); "Today" is remembered as "Today", not as one date.
   const [projectStatuses, setProjectStatuses] = useStoredState<ProjectStatus[]>('work_hub_project_statuses', [], manyOf(PROJECT_STATUSES.map((s) => s.value)));
@@ -42,10 +44,11 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   // "Today" and "Tomorrow" are worked out as the page draws, so they follow the real date.
   const day: DayFilter = dayChoice === 'pick' ? { kind: 'day', day: picked }
     : dayChoice === 'tomorrow' ? { kind: 'day', day: addDays(dayKey(new Date()), 1) } : { kind: dayChoice };
-  const shownTasks = sortTasks(filterTasks(tasks, { day, statuses: taskStatuses }));
+  const forMe = whose === 'mine' ? me : undefined;
+  const shownTasks = sortTasks(filterTasks(tasks, { day, statuses: taskStatuses, forMe }));
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
   const toggle = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
-  const open = tasks.filter((t) => t.status === 'todo' || t.status === 'doing').length;
+  const open = tasks.filter((t) => (t.status === 'todo' || t.status === 'doing') && (!forMe || t.assigneeUids.includes(forMe))).length;
 
   return (
     <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks' }]} title="Tasks" tight>
@@ -65,6 +68,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-mono-main text-[13px] font-semibold uppercase tracking-[0.22em] text-ink/50">Tasks</h2>
               <div className="spring-group flex flex-wrap items-center gap-2">
+                <FilterSelect label="Whose" options={WHOSE_OPTIONS} value={whose} onChange={setWhose} />
                 <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />
                 {dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
                 <FilterMulti label="Status" options={TASK_STATUS_OPTIONS} values={taskStatuses} onChange={setTaskStatuses} />
