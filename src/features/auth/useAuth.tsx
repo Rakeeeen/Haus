@@ -3,7 +3,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/data/firebase';
 import { setDataScope } from '@/data/dataScope';
 import { fetchInvitation } from '@/data/useMembers';
-import { watchGuestApproval } from '@/data/guestAccess';
+import { publishGuestProfile, watchGuestApproval } from '@/data/guestAccess';
 import { OWNER_UID } from '@/constants/owner';
 import { firstNameOf, isApprovalValid, roleOf, type Role } from '@/domain/access';
 import { Wordmark } from '@/ui/Wordmark';
@@ -85,6 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setApproved(ok);
       };
       if (next === 'guest') {
+        // Hamed's app learns who this guest is (to share projects with them by name). Best-effort.
+        publishGuestProfile(currentUser.uid, currentUser.email ?? '', currentUser.displayName, currentUser.photoURL)
+          .catch((error) => console.warn('Could not publish the guest profile:', error));
         // Wait for the first answer, so a guest already let in doesn't flash the code screen.
         await new Promise<void>((resolve) => {
           let first = true;

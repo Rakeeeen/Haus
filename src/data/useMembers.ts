@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
 import { isValidEmail, normalizeEmail, type Invitation } from '@/domain/access';
@@ -14,20 +14,34 @@ export async function fetchInvitation(email: string | null | undefined): Promise
 
 /** The owner's list of invited guests, kept live, with what changes it. Only the owner can read or write these. */
 export function useGuests(enabled = true) {
-  const [guests, setGuests] = useState<Invitation[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [profiles, setProfiles] = useState<Array<{ uid: string; email: string; name?: string; photoUrl?: string }>>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!enabled) return;
-    return onSnapshot(
+    const stopInvitations = onSnapshot(
       collection(db, COL),
       (snap) => {
-        setGuests(snap.docs.map((d) => d.data() as Invitation).sort((a, b) => (a.addedAt ?? '').localeCompare(b.addedAt ?? '')));
+        setInvitations(snap.docs.map((d) => d.data() as Invitation).sort((a, b) => (a.addedAt ?? '').localeCompare(b.addedAt ?? '')));
         setError('');
       },
       (e) => setError(e.message),
     );
+    // What each guest says about themself when they sign in: who their uid is, and their name and photo.
+    const stopProfiles = onSnapshot(
+      collection(db, 'guest_profiles'),
+      (snap) => setProfiles(snap.docs.map((d) => ({ ...(d.data() as { email: string; name?: string; photoUrl?: string }), uid: d.id }))),
+      () => { /* nothing to join yet */ },
+    );
+    return () => { stopInvitations(); stopProfiles(); };
   }, [enabled]);
+
+  // An invited guest with what is known about them from their own sign-in.
+  const guests = useMemo<Invitation[]>(() => invitations.map((invitation) => {
+    const profile = profiles.find((p) => p.email === invitation.email);
+    return profile ? { ...invitation, uid: profile.uid, name: invitation.name ?? profile.name, photoUrl: profile.photoUrl } : invitation;
+  }), [invitations, profiles]);
 
   const invite = useCallback(async (email: string, name?: string) => {
     if (!isValidEmail(email)) throw new Error('That is not an email address');
@@ -42,7 +56,8 @@ export function useGuests(enabled = true) {
   }, []);
 
   const setActive = useCallback(async (guest: Invitation, active: boolean) => {
-    await setDoc(doc(db, COL, guest.email), { ...guest, active });
+    // Only what belongs on the invitation: what was joined in from their profile stays on the profile.
+    await setDoc(doc(db, COL, guest.email), { email: guest.email, active, addedAt: guest.addedAt ?? new Date().toISOString(), ...(guest.name ? { name: guest.name } : {}) });
   }, []);
 
   const remove = useCallback(async (email: string) => {

@@ -118,6 +118,16 @@ service cloud.firestore {
         && request.resource.data.requestedAt == request.time;
     }
 
+    // Who a guest is, so Hamed's app can put them on projects by name: they write their own, he reads them.
+    match /guest_profiles/{uid} {
+      allow read: if isOwner();
+      allow create, update: if isGuest() && request.auth.uid == uid
+        && onlyKeys(['email', 'name', 'photoUrl'])
+        && request.resource.data.email == request.auth.token.email.lower()
+        && request.resource.data.get('name', '') is string
+        && request.resource.data.get('photoUrl', '') is string;
+    }
+
     match /guest_codes/{uid} {
       allow read, write: if isOwner();
     }

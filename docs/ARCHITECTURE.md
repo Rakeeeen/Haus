@@ -187,8 +187,8 @@ and comments) and, later, notes. Notion's sprints and the git field are left out
   queries ask for exactly that (`array-contains` their uid). A guest can add a task for themself (in a project they are on,
   or none) and change the tasks that are theirs, never a task's project, who it is for, or who may see it; they never see a
   project's client (it is in its own owner-only document). Changing a project's sharing rewrites its tasks' viewers
-  (`setSharing`). A guest's uid and photo reach Hamed's app when they ask for a code (`members/{email}`), so he can pick them
-  by name.
+  (`setSharing`). A guest writes their own uid, name and photo to `guest_profiles/{uid}` when they sign in; Hamed's app joins
+  these to the invitations by email, so he can pick them by name.
 
 ## The Discord bot (`backend/`)
 
