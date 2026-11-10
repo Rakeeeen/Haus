@@ -425,3 +425,11 @@ before React can re-render, so effects that restart on a state change never get 
 - **Finance's screens** are tested through `features/finance/Finance.test.tsx`, with `useFinance` replaced by plain state.
 - **The bot's HTTP API** (`backend/src/server.js`) listens on this machine only, answers only Haus's own origins, and accepts only a
   valid list of Payit (`backend/src/lib/webApi.js`).
+
+## Reads, and Firestore's free plan
+
+The free plan allows 50,000 reads a day, and every document a listener delivers is one. So: the data layer keeps a **persistent cache**
+(`data/firebase.ts`, IndexedDB, shared by tabs; wiped on sign-out by `signOutUser`), so a reload reads only what changed (within ~30 min of the
+last listen); **notes** are read only once a notes screen asks (`useWork().loadNotes`); a guest's approvals are read only while the Guests list
+is open; and the bot's activity watcher asks only for lines after what it has told (`watchCollectionAfter`), its overdue check remembers what it
+has read. Before adding a listener on a whole collection, ask how many documents it will deliver on every page load.
