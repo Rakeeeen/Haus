@@ -35,6 +35,8 @@ function readJson<T>(key: string, fallback: T): T {
 }
 
 function readStored(): PrayerData {
+  // No browser (a build step, a test in plain node): nothing saved, nothing yet.
+  if (typeof localStorage === 'undefined') return { times: {}, hijri: '', hijriDate: null, loading: true };
   return {
     times: readJson<PrayerTimes>(TIMES_KEY, {}),
     hijri: localStorage.getItem(HIJRI_KEY) || '',
