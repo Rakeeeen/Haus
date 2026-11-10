@@ -164,11 +164,6 @@ export const ProjectModal: React.FC<{
             </Field>}
             {!limited && <Field label="Lead">
               <SelectMulti ariaLabel="Lead" empty="No lead" values={draft.leads} onChange={setLeads} options={leadOptions} />
-              {draft.leads.some((k) => k !== OWNER_KEY) && (
-                <p className="font-mono-main text-[11px] leading-relaxed text-ink/40 mt-2">
-                  A guest who leads runs the project with you: sees all its tasks, adds and changes them, gives them to other members, and edits its name, status and dates.
-                </p>
-              )}
             </Field>}
             <Field label="Start"><DatePicker flow ariaLabel="Start" value={draft.date} onChange={(d) => set('date', d)} /></Field>
             <Field label="End"><DatePicker flow ariaLabel="End" value={draft.endDate} onChange={(d) => set('endDate', d)} /></Field>
