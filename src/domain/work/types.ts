@@ -30,6 +30,8 @@ export interface Task {
   assigneeUids: string[];
   /** The uid of the guest who made it, if a guest did. */
   createdByUid: string | null;
+  /** The project admin who last changed it (set only when an admin does; Hamed's own changes reset it to null). Tells the bot whose doing a change was. */
+  updatedByUid?: string | null;
   /**
    * The guests who may see this task (firestore.rules checks it): decided by the project's sharing, see
    * `viewersOf` in sharing.ts. Hamed reads everything and is never listed.
@@ -58,6 +60,13 @@ export interface Project {
   memberUids: string[];
   /** Whether a member sees every task of the project, or only the ones that are theirs. */
   guestsSeeAll: boolean;
+  /**
+   * The members who run the project with Hamed (a subset of `memberUids`): they see every task of it, add and change its
+   * tasks and give them to other members, and change its name, status, priority and dates — never who is on it.
+   */
+  adminUids: string[];
+  /** Who the members are by name and photo, written by Hamed's app when he shares the project: a guest can't read the guest list. Hamed is `OWNER_KEY`. */
+  memberProfiles: Record<string, { name: string; photoUrl: string | null }>;
   createdAt: string;
   updatedAt: string;
 }

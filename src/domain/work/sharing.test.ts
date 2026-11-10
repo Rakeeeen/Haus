@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isFor, isMineAsGuest, normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
+import { adminProjectOf, assignableIn, canEditAsGuest, isAdminOf, isFor, isMineAsGuest, normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
 import type { Task } from '@/domain/work/types';
 
 const task = (over: Partial<Task> = {}): Task => normalizeTask({ id: 't', ...over });
@@ -82,5 +82,39 @@ describe('normalize', () => {
   });
   it('keeps what the record has', () => {
     expect(normalizeProject({ id: 'p', memberUids: ['a'], guestsSeeAll: true })).toMatchObject({ memberUids: ['a'], guestsSeeAll: true });
+  });
+});
+
+describe('project admins', () => {
+  const project = { id: 'p', memberUids: ['a', 'b', 'c'], guestsSeeAll: false, adminUids: ['b'] };
+
+  it('see every task of the project, whoever it is for', () => {
+    expect(viewersOf({ assigneeUids: ['a'], createdByUid: null }, [project])).toEqual(['a', 'b']);
+    expect(viewersOf({ assigneeUids: ['owner'], createdByUid: null }, [project])).toEqual(['b']);
+  });
+  it('are told apart from members', () => {
+    expect(isAdminOf(project, 'b')).toBe(true);
+    expect(isAdminOf(project, 'a')).toBe(false);
+    expect(isAdminOf(null, 'b')).toBe(false);
+  });
+  it('run a task only when it is in exactly one project, and theirs', () => {
+    expect(adminProjectOf({ projectIds: ['p'] }, [project], 'b')).toBe(project);
+    expect(adminProjectOf({ projectIds: ['p'] }, [project], 'a')).toBeNull();
+    expect(adminProjectOf({ projectIds: ['p', 'q'] }, [project], 'b')).toBeNull();
+    expect(adminProjectOf({ projectIds: [] }, [project], 'b')).toBeNull();
+  });
+  it('may change a task of their project, and still only their own elsewhere', () => {
+    const others = { assigneeUids: ['c'], createdByUid: null, projectIds: ['p'] };
+    expect(canEditAsGuest(others, 'b', [project])).toBe(true);
+    expect(canEditAsGuest(others, 'a', [project])).toBe(false);
+    expect(canEditAsGuest({ ...others, projectIds: [] }, 'b', [project])).toBe(false);
+    expect(canEditAsGuest({ assigneeUids: ['a'], createdByUid: null, projectIds: [] }, 'a', [project])).toBe(true);
+  });
+  it('can give a task to the members and to Hamed', () => {
+    expect(assignableIn(project)).toEqual(['owner', 'a', 'b', 'c']);
+  });
+  it('are filled in as nobody for an older project', () => {
+    expect(normalizeProject({ id: 'x' }).adminUids).toEqual([]);
+    expect(normalizeProject({ id: 'x' }).memberProfiles).toEqual({});
   });
 });

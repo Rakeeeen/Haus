@@ -6,7 +6,7 @@ import { db } from '@/data/firebase';
 import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
 import { blankTask, moveToStatus, nextTaskNo } from '@/domain/work/tasks';
-import { isInProject, isMineAsGuest, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
+import { adminProjectOf, assignableIn, canEditAsGuest, isAdminOf, isInProject, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
 import type { Note, Project, ProjectPrivate, Task, TaskComment, TaskStatus } from '@/domain/work/types';
 
 /**
@@ -27,6 +27,10 @@ const clean = <T extends object>(value: T): T => JSON.parse(JSON.stringify(value
 
 /** The fields a guest may change on a task (firestore.rules allows exactly these). */
 const GUEST_TASK_FIELDS = ['title', 'status', 'priority', 'date', 'endDate', 'description', 'tags', 'doneAt', 'updatedAt'] as const;
+/** What a project's admin may change on a task of that project: the same, and who it is for (with who may then see it, and who changed it). */
+const ADMIN_TASK_FIELDS = [...GUEST_TASK_FIELDS, 'assignee', 'assigneeUid', 'assigneeUids', 'viewerUids', 'updatedByUid'] as const;
+/** What a project's admin may change on the project itself (never who is on it). */
+const ADMIN_PROJECT_FIELDS = ['name', 'status', 'priority', 'date', 'endDate', 'updatedAt'] as const;
 
 export type WorkScope = { kind: 'owner' } | { kind: 'guest'; uid: string; name: string };
 export type NewTask = Partial<Omit<Task, 'id' | 'no'>> & { title: string };
@@ -46,8 +50,12 @@ interface WorkContextType {
   notes: Note[];
   /** The first answer from Firestore has arrived (before it, lists are empty rather than missing). */
   ready: boolean;
-  /** May this person change this task? Hamed any; a guest the ones that are theirs. */
+  /** May this person change this task? Hamed any; a guest the ones that are theirs, and any of a project they run. */
   canEditTask: (task: Task) => boolean;
+  /** May this person delete it? Hamed any; a guest the ones they made, and any of a project they run. */
+  canDeleteTask: (task: Task) => boolean;
+  /** Does this guest run the project (are they one of its admins)? Always false for Hamed's own screens — he can do everything. */
+  isProjectAdmin: (projectId: string | null | undefined) => boolean;
   addTask: (input: NewTask) => Promise<string>;
   updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => Promise<void>;
   /** Moves a task to a status (when the person may change it), stamping when it was finished or reopened. */
@@ -58,7 +66,7 @@ interface WorkContextType {
   addProject: (input: NewProject, client?: string | null) => Promise<string>;
   updateProject: (id: string, patch: Partial<Omit<Project, 'id'>>) => Promise<void>;
   /** Who is on a project, and whether they see every task of it: also brings each task's viewers up to date. */
-  setSharing: (projectId: string, memberUids: string[], guestsSeeAll: boolean) => Promise<void>;
+  setSharing: (projectId: string, memberUids: string[], guestsSeeAll: boolean, adminUids?: string[], memberProfiles?: Project['memberProfiles']) => Promise<void>;
   setClient: (projectId: string, client: string | null) => Promise<void>;
   /** Removes the project and its client record; its tasks stay, with no project. */
   removeProject: (id: string) => Promise<void>;
@@ -111,11 +119,32 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   /** The sharing of each of the projects a task is in (the ones that exist), for working out who may see it. */
   const projectsOf = (ids: readonly string[]) => ids.map((id) => projectsRef.current.find((p) => p.id === id)).filter((p): p is Project => !!p);
 
-  const canEditTask = useCallback((task: Task) => !uid || isMineAsGuest(task, uid), [uid]);
+  const canEditTask = useCallback((task: Task) => !uid || canEditAsGuest(task, uid, projectsRef.current), [uid]);
+  const canDeleteTask = useCallback((task: Task) => !uid || task.createdByUid === uid || adminProjectOf(task, projectsRef.current, uid) !== null, [uid]);
+  const isProjectAdmin = useCallback((projectId: string | null | undefined) => !!uid && !!projectId && isAdminOf(projectsRef.current.find((p) => p.id === projectId), uid), [uid]);
 
   const addTask = useCallback(async (input: NewTask) => {
     const ref = doc(collection(db, TASKS));
     const { title, ...rest } = input;
+    // The project a guest is making a task in, if they run it: there they may give the task to any member.
+    const wantedProject = rest.projectIds?.[0] ?? rest.projectId ?? null;
+    const run = uid && wantedProject ? projectsRef.current.find((p) => p.id === wantedProject && isAdminOf(p, uid)) : undefined;
+    if (uid && run) {
+      const allowed = new Set(assignableIn(run));
+      const wanted = (rest.assigneeUids ?? []).filter((who) => allowed.has(who));
+      const assigneeUids = wanted.length ? wanted : [uid];
+      const first = assigneeUids[0];
+      const base = blankTask(0, run.id);
+      const body = {
+        ...base, ...rest, title, no: 0, projectId: run.id, createdByUid: uid, updatedByUid: uid,
+        assigneeUids, assigneeUid: first === OWNER_KEY ? null : first, assignee: rest.assignee ?? guestName,
+        viewerUids: viewersOf({ assigneeUids, createdByUid: uid }, [run]),
+      };
+      // The rules know no `projectIds` on a guest's task, nor an end date that is not set.
+      const { projectIds: _ids, endDate, ...others } = body;
+      await setDoc(ref, clean({ ...others, ...(endDate ? { endDate } : {}) }));
+      return ref.id;
+    }
     // A guest's task is for themself, made by themself, and numbered 0 (the numbers are Hamed's running count).
     const mine = uid ? { no: 0, createdByUid: uid, assigneeUid: uid, assigneeUids: [uid], assignee: guestName } : {};
     const base = { ...blankTask(nextTaskNo(tasksRef.current), null), ...rest, ...mine, title };
@@ -138,10 +167,23 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     if (uid) {
       // A guest changes only what firestore.rules lets them.
       const current = tasksRef.current.find((t) => t.id === id);
+      const run = current ? adminProjectOf(current, projectsRef.current, uid) : null;
+      // A project's admin may also change who a task is for (among the members and Hamed), and then who sees it.
+      let fields: Partial<Task> = stamped;
+      if (run && current) {
+        fields = { ...stamped, updatedByUid: uid };
+        if (stamped.assigneeUids) {
+          const allowed = new Set(assignableIn(run));
+          const assigneeUids = stamped.assigneeUids.filter((who) => allowed.has(who));
+          const next = assigneeUids.length ? assigneeUids : current.assigneeUids;
+          const first = next[0];
+          fields = { ...fields, assigneeUids: next, assigneeUid: first === OWNER_KEY ? null : first, viewerUids: viewersOf({ assigneeUids: next, createdByUid: current.createdByUid }, [run]) };
+        }
+      }
       // An end date goes in only when it is set (or being cleared): sending an empty one would add a field the rules don't expect.
-      const allowed = Object.fromEntries(GUEST_TASK_FIELDS
-        .filter((k) => k in stamped && (k !== 'endDate' || stamped.endDate || current?.endDate))
-        .map((k) => [k, stamped[k]]));
+      const names: readonly string[] = run ? ADMIN_TASK_FIELDS : GUEST_TASK_FIELDS;
+      const allowed = Object.fromEntries(Object.entries(fields)
+        .filter(([k]) => names.includes(k) && (k !== 'endDate' || stamped.endDate || current?.endDate)));
       await setDoc(doc(db, TASKS, id), clean(allowed), { merge: true });
       return;
     }
@@ -156,7 +198,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const withViewers = next && ('projectIds' in stamped || 'projectId' in stamped || 'assigneeUid' in stamped || 'assigneeUids' in stamped)
       ? { ...stamped, projectIds: next.projectIds, projectId: next.projectId, viewerUids: viewersOf(next, projectsOf(next.projectIds)) }
       : stamped;
-    await setDoc(doc(db, TASKS, id), clean(withViewers), { merge: true });
+    // Hamed's own change: an earlier change by a project's admin must not be taken for this one.
+    await setDoc(doc(db, TASKS, id), clean({ ...withViewers, updatedByUid: null }), { merge: true });
   }, [uid]);
 
   const setTaskStatus = useCallback(async (task: Task, status: TaskStatus) => {
@@ -173,7 +216,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const ref = doc(collection(db, PROJECTS));
     const at = new Date().toISOString();
     const project: Omit<Project, 'id'> = {
-      status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, createdAt: at, updatedAt: at, ...input,
+      status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, adminUids: [], memberProfiles: {}, createdAt: at, updatedAt: at, ...input,
     };
     await setDoc(ref, clean(project));
     if (client) await setDoc(doc(db, PRIVATES, ref.id), { client });
@@ -181,15 +224,21 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   }, []);
 
   const updateProject = useCallback(async (id: string, patch: Partial<Omit<Project, 'id'>>) => {
-    await setDoc(doc(db, PROJECTS, id), clean({ ...patch, updatedAt: new Date().toISOString() }), { merge: true });
-  }, []);
+    const stamped = { ...patch, updatedAt: new Date().toISOString() };
+    // A project's admin changes only what firestore.rules lets them: its name, status, priority and dates.
+    const body = uid ? Object.fromEntries(Object.entries(stamped).filter(([k]) => (ADMIN_PROJECT_FIELDS as readonly string[]).includes(k))) : stamped;
+    await setDoc(doc(db, PROJECTS, id), clean(body), { merge: true });
+  }, [uid]);
 
-  const setSharing = useCallback(async (projectId: string, memberUids: string[], guestsSeeAll: boolean) => {
+  const setSharing = useCallback(async (projectId: string, memberUids: string[], guestsSeeAll: boolean, requestedAdmins: string[] = [], memberProfiles: Project['memberProfiles'] = {}) => {
     const batch = writeBatch(db);
-    batch.set(doc(db, PROJECTS, projectId), { memberUids, guestsSeeAll, updatedAt: new Date().toISOString() }, { merge: true });
+    // An admin is a member; a name is kept only for someone who is on the project (and for Hamed).
+    const adminUids = requestedAdmins.filter((who) => memberUids.includes(who));
+    const profiles = Object.fromEntries(Object.entries(memberProfiles).filter(([who]) => who === OWNER_KEY || memberUids.includes(who)));
+    batch.set(doc(db, PROJECTS, projectId), { memberUids, guestsSeeAll, adminUids, memberProfiles: profiles, updatedAt: new Date().toISOString() }, { merge: true });
     const inProject = tasksRef.current.filter((t) => isInProject(t, projectId));
     const sharingOf = (id: string) => projectsRef.current.find((p) => p.id === id) ?? null;
-    for (const { id, viewerUids } of staleViewers(inProject, { id: projectId, memberUids, guestsSeeAll }, sharingOf)) {
+    for (const { id, viewerUids } of staleViewers(inProject, { id: projectId, memberUids, guestsSeeAll, adminUids }, sharingOf)) {
       batch.set(doc(db, TASKS, id), { viewerUids }, { merge: true });
     }
     await batch.commit();
@@ -229,9 +278,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   }, []);
 
   const value = useMemo<WorkContextType>(() => ({
-    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask,
+    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
     addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
-  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
+  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

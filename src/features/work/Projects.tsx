@@ -33,7 +33,12 @@ export function useProjectEditing() {
   const clients = useMemo(() => [...new Set(Object.values(privates).map((p) => p.client).filter((c): c is string => !!c))].sort(), [privates]);
 
   const save = async (target: ProjectEditing, draft: ProjectDraft) => {
-    const { client, memberUids, guestsSeeAll, ...fields } = draft;
+    const { client, memberUids, guestsSeeAll, adminUids, memberProfiles, ...fields } = draft;
+    // A project's admin (a guest) changes only what the rules let them: its name, status, priority and dates.
+    if (role !== 'owner') {
+      if (target.kind === 'edit') await updateProject(target.project.id, { name: fields.name, status: fields.status, priority: fields.priority, date: fields.date, endDate: fields.endDate });
+      return;
+    }
     let id: string;
     if (target.kind === 'edit') {
       id = target.project.id;
@@ -44,7 +49,9 @@ export function useProjectEditing() {
     }
     // Sharing changes who may see the project's tasks, so it is written on its own, with the tasks' viewers.
     const before = target.kind === 'edit' ? target.project : null;
-    if (memberUids.length || before?.memberUids.length || guestsSeeAll !== (before?.guestsSeeAll ?? false)) await setSharing(id, memberUids, guestsSeeAll);
+    const sharingChanged = memberUids.length || before?.memberUids.length || guestsSeeAll !== (before?.guestsSeeAll ?? false)
+      || [...adminUids].sort().join() !== [...(before?.adminUids ?? [])].sort().join();
+    if (sharingChanged) await setSharing(id, memberUids, guestsSeeAll, adminUids, memberProfiles);
   };
 
   return { role, projects, clients, guests, editing, setEditing, save, remove: (p: Project) => removeProject(p.id) };

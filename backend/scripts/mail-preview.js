@@ -17,7 +17,8 @@ const appUrl = 'https://rakeeen-uxdesign.github.io/Haus/';
 const task = { title: 'إرسال دليل الهوية البصرية المعدّل', description: 'مع ألوان الهوية الجديدة وقواعد الأيقونات التي اتفقنا عليها، ثم مشاركة الرابط في المشروع.', date: '2026-11-12', endDate: '2026-11-14', priority: 'high' };
 const samples = {
   invitation: invitationEmail({ inviter: 'حامد', name: 'سارة أحمد', email: 'sara@example.com', appUrl }),
-  task: tasksAssignedEmail({ giver: 'حامد', name: 'سارة أحمد', items: [{ task, projectName: 'تجديد الهوية' }], appUrl }),
+  task: tasksAssignedEmail({ giver: 'حامد', name: 'سارة أحمد', items: [{ task, projectName: 'تجديد الهوية' }], appUrl, at: '2026-11-10T09:05:00Z' }),
+  notice: tasksAssignedEmail({ giver: 'سارة', name: 'حامد', forName: 'عمر', items: [{ task, projectName: 'تجديد الهوية' }], appUrl, at: '2026-11-10T09:05:00Z' }),
   tasks: tasksAssignedEmail({ giver: 'حامد', name: 'سارة أحمد', appUrl, items: [
     { task, projectName: 'تجديد الهوية' },
     { task: { title: 'Review the English copy', date: '2026-11-15' }, projectName: null },

@@ -151,9 +151,16 @@ service cloud.firestore {
     // whose `viewerUids` lists them — Hamed's app writes those lists from each project's sharing (domain/work/sharing.ts).
     // A guest may add a task for themself (in a project they are on, or none) and change the tasks that are theirs, but
     // never a task's project, who it is for, or who may see it. A project's client is in its own document, Hamed's alone.
+    // A project's ADMINS (`adminUids`, chosen by Hamed from its members) run it with him: they see all of its tasks, make
+    // and change its tasks and give them to its members (or Hamed), and change the project's name, status, priority and
+    // dates — never who is on it, who the admins are, or its client.
     match /work_projects/{id} {
       allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in resource.data.memberUids);
-      allow write: if isOwner();
+      allow create, delete: if isOwner();
+      allow update: if isOwner() || (isApprovedGuest()
+        && request.auth.uid in resource.data.get('adminUids', [])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'status', 'priority', 'date', 'endDate', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 200);
     }
 
     match /work_projects_private/{id} {
@@ -173,9 +180,56 @@ service cloud.firestore {
         && (d.projectId == null
             ? d.viewerUids == [request.auth.uid]
             : request.auth.uid in get(projectPath(d.projectId)).data.memberUids
-              && d.viewerUids == (get(projectPath(d.projectId)).data.guestsSeeAll
-                                  ? get(projectPath(d.projectId)).data.memberUids
-                                  : [request.auth.uid]));
+              // The project's members when it shares everything; otherwise this guest and the project's admins.
+              && d.viewerUids.toSet() == (get(projectPath(d.projectId)).data.guestsSeeAll
+                                          ? get(projectPath(d.projectId)).data.memberUids.toSet()
+                                          : [request.auth.uid].toSet().union(get(projectPath(d.projectId)).data.get('adminUids', []).toSet())));
+    }
+
+    // Who may see a task in project `p` that is for `assignees` and was made by `maker`: all the members, or — when the project
+    // does not share everything — the members it is for, the one who made it, and the admins (domain/work/sharing.ts, viewersOf).
+    function viewersFor(p, assignees, maker) {
+      return p.guestsSeeAll
+        ? p.memberUids.toSet()
+        : assignees.toSet().union([maker].toSet()).union(p.get('adminUids', []).toSet()).intersection(p.memberUids.toSet());
+    }
+
+    // A project's admin making a task in it: for any of the members (or Hamed), seen by whoever the project says.
+    function adminMayAddTask() {
+      let d = request.resource.data;
+      let p = get(projectPath(d.projectId)).data;
+      return onlyKeys(['no', 'title', 'status', 'priority', 'date', 'endDate', 'projectId', 'assignee', 'assigneeUid', 'assigneeUids', 'createdByUid',
+                       'updatedByUid', 'viewerUids', 'tags', 'description', 'createdAt', 'updatedAt', 'doneAt'])
+        && d.projectId is string
+        && request.auth.uid in p.get('adminUids', [])
+        && d.no == 0
+        && d.createdByUid == request.auth.uid
+        && d.updatedByUid == request.auth.uid
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 300
+        && d.status in ['todo', 'doing', 'done', 'dropped']
+        && d.assigneeUids is list && d.assigneeUids.size() > 0
+        && d.assigneeUids.hasOnly(p.memberUids.concat(['owner']))
+        && d.viewerUids.toSet() == viewersFor(p, d.assigneeUids, request.auth.uid);
+    }
+
+    // A project's admin changing a task that is in that project alone (a task in several is Hamed's to arrange). If they change
+    // who it is for, who may see it is changed with it, to what the project says.
+    function adminMayEditTask() {
+      let before = resource.data;
+      let d = request.resource.data;
+      let p = get(projectPath(before.projectId)).data;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return before.projectId is string
+        && before.get('projectIds', []).size() <= 1
+        && request.auth.uid in p.get('adminUids', [])
+        && changed.hasOnly(['title', 'status', 'priority', 'date', 'endDate', 'description', 'tags', 'doneAt', 'updatedAt',
+                            'assignee', 'assigneeUid', 'assigneeUids', 'viewerUids', 'updatedByUid'])
+        && d.updatedByUid == request.auth.uid
+        && d.title is string && d.title.size() <= 300
+        && (!changed.hasAny(['assigneeUids', 'viewerUids'])
+            || (d.assigneeUids is list && d.assigneeUids.size() > 0
+                && d.assigneeUids.hasOnly(p.memberUids.concat(['owner']))
+                && d.viewerUids.toSet() == viewersFor(p, d.assigneeUids, before.get('createdByUid', null))));
     }
 
     function guestMayEditTask() {
@@ -190,9 +244,11 @@ service cloud.firestore {
 
     match /work_tasks/{id} {
       allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in resource.data.viewerUids);
-      allow create: if isOwner() || (isApprovedGuest() && guestMayAddTask());
-      allow update: if isOwner() || (isApprovedGuest() && guestMayEditTask());
-      allow delete: if isOwner() || (isApprovedGuest() && resource.data.createdByUid == request.auth.uid);
+      allow create: if isOwner() || (isApprovedGuest() && (guestMayAddTask() || adminMayAddTask()));
+      allow update: if isOwner() || (isApprovedGuest() && (guestMayEditTask() || adminMayEditTask()));
+      allow delete: if isOwner() || (isApprovedGuest() && (resource.data.createdByUid == request.auth.uid
+        || (resource.data.projectId is string && resource.data.get('projectIds', []).size() <= 1
+            && request.auth.uid in get(projectPath(resource.data.projectId)).data.get('adminUids', []))));
 
       match /comments/{commentId} {
         allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in get(taskPath(id)).data.viewerUids);

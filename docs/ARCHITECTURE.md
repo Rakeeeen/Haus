@@ -267,6 +267,21 @@ reads and writes `dashboard/*`, the work collections, his fingerprint record and
 replaces is remembered, `--rollback` puts it back). The rules have no automated tests yet — the service account may not run
 Google's rules evaluator, and the local emulator needs Java; add them with the next collections.
 
+## Project admins
+
+A project can have **admins**: members Hamed picks (`Project.adminUids`, a subset of `memberUids`, chosen in the project's form). An admin
+runs the project with him: they see every task of it (`viewersOf` lists them), add and change its tasks, give them to the other members
+or to Hamed, delete them, and change the project's name, status, priority and dates — never who is on it, who the admins are, or its
+client. `firestore.rules` enforces it (`adminMayAddTask`, `adminMayEditTask`, and `viewersFor`, which must agree with `viewersOf`), and
+only for a task that is in that project alone. A guest cannot read the guest list, so Hamed's app writes each member's name and photo
+onto the project (`memberProfiles`) when he shares it; that is also how a guest names who a task is for. A change by an admin is stamped
+`updatedByUid`; Hamed's own writes reset it to null, so the bot knows whose doing a change was.
+
+The bot (`features/mailNotifications.js`) tells the person a task was given to, and tells Hamed when an admin gave a task to someone
+else (or to him). It is not always on, so it keeps in Firestore what it has told (`mail_state/tasks`: task id → who was told;
+`mail_state/invites`: when invitations began) and, when it wakes, sends what it missed with the time it happened. The very first run
+only learns what is already there. `mail_state` and `mail_sent` have no rule, so only the bot (Admin SDK) reads or writes them.
+
 ## The website holds no secrets
 
 Everything compiled into the site is public, so nothing secret is a `VITE_` variable. When the app needs

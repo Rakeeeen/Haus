@@ -28,7 +28,7 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
-  const { role, tasks, notes, privates, ready, canEditTask, setTaskStatus, toggleTaskDone, addNote } = useWork();
+  const { role, tasks, notes, privates, ready, canEditTask, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author, authorPhoto);
 
@@ -60,7 +60,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
       crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Projects', to: 'work/projects' }, { label: project.name }]}
       title={project.name}
       actions={<>
-        {role === 'owner' && <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>}
+        {(role === 'owner' || isProjectAdmin(project.id)) && <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>}
         <Button onClick={() => openNew()}><Plus size={16} />New task</Button>
       </>}
     >
@@ -118,6 +118,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
         clients={clients}
         guests={guests}
         owner={{ name: author, photoUrl: authorPhoto }}
+        limited={role !== 'owner'}
         onClose={() => setProjectEditing(null)}
         onSave={save}
         onDelete={async (p) => { await remove(p); navigate('work/projects', true); }}

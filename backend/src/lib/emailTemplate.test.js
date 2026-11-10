@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
-import { IMAGE_FILES, MAX_LISTED, cidOf, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksPhrase, whenOf } from './emailTemplate.js';
+import { IMAGE_FILES, MAX_LISTED, cidOf, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksPhrase, whenOf, whenSent } from './emailTemplate.js';
 
 const APP = 'https://example.com/Haus/';
 const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets', 'mail');
@@ -27,6 +27,12 @@ describe('small helpers', () => {
     expect(tasksPhrase(2)).toBe('مهمتين جديدتين');
     expect(tasksPhrase(5)).toBe('5 مهام جديدة');
     expect(tasksPhrase(12)).toBe('12 مهمة جديدة');
+  });
+  it('writes a moment in Cairo time', () => {
+    expect(whenSent('2026-11-10T09:05:00Z')).toBe('الثلاثاء 10 نوفمبر، 11:05 ص');
+    expect(whenSent('2026-11-10T21:30:00Z')).toBe('الثلاثاء 10 نوفمبر، 11:30 م');
+    expect(whenSent('not a time')).toBe('');
+    expect(whenSent(undefined)).toBe('');
   });
   it('cuts a long note at a word', () => {
     expect(snippet('short')).toBe('short');
@@ -105,7 +111,7 @@ describe('tasksAssignedEmail', () => {
   it('sends several as one email, and counts the ones it does not list', () => {
     const items = Array.from({ length: MAX_LISTED + 3 }, (_, i) => ({ task: { title: `Task ${i}` }, projectName: null }));
     const mail = tasksAssignedEmail({ giver: 'حامد', name: 'Sara', items, appUrl: APP });
-    expect(mail.subject).toBe(`حامد أعطاك ${items.length} مهمة جديدة`);
+    expect(mail.subject).toBe(`${items.length} مهمة جديدة من حامد`);
     expect(mail.html).toContain('و3 أخرى');
     expect(mail.html).toContain('cid:hero-tasks');
     expect(mail.html).toContain('Task 0');
@@ -115,5 +121,19 @@ describe('tasksAssignedEmail', () => {
     const mail = tasksAssignedEmail({ giver: 'حامد', items: [{ task: { title: 'Line one\r\nBcc: x@y.z <b>' }, projectName: null }], appUrl: APP });
     expect(mail.subject).not.toMatch(/[\r\n]/);
     expect(mail.html).not.toContain('<b>');
+  });
+
+  it('says when it was given, when told', () => {
+    const mail = tasksAssignedEmail({ giver: 'حامد', name: 'Sara', items: [{ task, projectName: null }], appUrl: APP, at: '2026-11-10T09:05:00Z' });
+    expect(mail.html).toContain('وقت التعيين: الثلاثاء 10 نوفمبر، 11:05 ص');
+    expect(mail.text).toContain('وقت التعيين: الثلاثاء 10 نوفمبر، 11:05 ص');
+    expect(tasksAssignedEmail({ giver: 'حامد', items: [{ task, projectName: null }], appUrl: APP }).html).not.toContain('وقت التعيين');
+  });
+  it('tells Hamed when a guest who runs a project gave someone else a task', () => {
+    const mail = tasksAssignedEmail({ giver: 'سارة', name: 'حامد', forName: 'عمر', items: [{ task, projectName: 'Brand' }], appUrl: APP, at: '2026-11-10T09:05:00Z' });
+    expect(mail.subject).toBe('مهمة جديدة: Send the guide من سارة إلى عمر');
+    expect(mail.html).toContain('مهمة جديدة من سارة إلى عمر');
+    expect(mail.html).toContain('cid:hero-notice');
+    expect(mail.attachments.map((a) => a.cid)).toContain('hero-notice');
   });
 });

@@ -38,13 +38,16 @@ export const TaskModal: React.FC<{
   /** May this person change the task (a guest, only their own)? A task they can't change is read, and commented on. */
   canEdit: boolean;
   canDelete: boolean;
-  /** Who a task can be for: Hamed first, then guests (empty or one: the field is not shown). */
-  assignees: readonly Assignee[];
+  /**
+   * Who a task in this project (undefined: none) can be for — Hamed first, then guests. For Hamed that is everyone he has invited; for a
+   * guest it is the members of a project they run, and nobody elsewhere. Empty or one: the field is not shown.
+   */
+  assigneesFor: (projectId: string | undefined) => readonly Assignee[];
   onClose: () => void;
   onCreate: (draft: Draft) => Promise<void>;
   onUpdate: (id: string, draft: Draft) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-}> = ({ editing, projects, author, guestUid, canEdit, canDelete, assignees, onClose, onCreate, onUpdate, onDelete }) => {
+}> = ({ editing, projects, author, guestUid, canEdit, canDelete, assigneesFor, onClose, onCreate, onUpdate, onDelete }) => {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -97,6 +100,7 @@ export const TaskModal: React.FC<{
   const sendComment = () => run(async () => { await add(author, comment, guestUid); setComment(''); });
 
   // For a task in projects, who it can be for is those projects' members (and Hamed); outside any project, any guest.
+  const assignees = assigneesFor(draft?.projectIds[0]);
   const memberUids = projects.filter((p) => draft?.projectIds.includes(p.id)).flatMap((p) => p.memberUids);
   const choices = assignees.filter((a) => a.key === OWNER_KEY || !draft?.projectIds.length || memberUids.includes(a.key));
   const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
@@ -153,7 +157,7 @@ export const TaskModal: React.FC<{
                 />
               )}
             </Field>
-            {assignees.length > 1 && guestUid === undefined && (
+            {assignees.length > 1 && (
               <Field label="For">
                 <SelectMulti
                   ariaLabel="For"

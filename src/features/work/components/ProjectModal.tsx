@@ -8,6 +8,7 @@ import { PRIORITY_COLOR } from '@/features/work/components/chips';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
 import { PRIORITIES } from '@/domain/work/tasks';
 import type { Invitation } from '@/domain/access';
+import { OWNER_KEY } from '@/domain/work/sharing';
 import type { Priority, Project, ProjectStatus } from '@/domain/work/types';
 
 export type ProjectEditing = { kind: 'edit'; project: Project; client: string | null } | { kind: 'new'; client: string | null };
@@ -23,6 +24,10 @@ export interface ProjectDraft {
   /** The guests on the project, and whether they see everyone's tasks in it. */
   memberUids: string[];
   guestsSeeAll: boolean;
+  /** The members who run the project with Hamed (each is also in `memberUids`). */
+  adminUids: string[];
+  /** The names and photos of the members (and Hamed), written onto the project so a guest can name who a task is for. */
+  memberProfiles: Project['memberProfiles'];
 }
 
 /** What the form starts with: the project being changed, or a new one (led by Hamed unless told otherwise). */
@@ -31,7 +36,7 @@ function draftOf(editing: ProjectEditing, ownerName: string): ProjectDraft {
   return {
     name: p?.name ?? '', status: p?.status ?? 'active', priority: p?.priority ?? null,
     lead: p?.lead ?? ownerName, date: p?.date ?? null, endDate: p?.endDate ?? null, client: editing.client,
-    memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false,
+    memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false, adminUids: p?.adminUids ?? [], memberProfiles: p?.memberProfiles ?? {},
   };
 }
 
@@ -46,10 +51,12 @@ export const ProjectModal: React.FC<{
   guests: readonly Invitation[];
   /** Hamed himself, who can lead a project too. */
   owner: { name: string; photoUrl: string | null };
+  /** A project's admin (a guest) changes only its name, status, priority and dates — no client, lead, guests or deleting. */
+  limited?: boolean;
   onClose: () => void;
   onSave: (editing: ProjectEditing, draft: ProjectDraft) => Promise<void>;
   onDelete: (project: Project) => Promise<void>;
-}> = ({ editing, clients, guests, owner, onClose, onSave, onDelete }) => {
+}> = ({ editing, clients, guests, owner, limited = false, onClose, onSave, onDelete }) => {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -94,7 +101,13 @@ export const ProjectModal: React.FC<{
     if (!draft || !editing) return;
     if (!draft.name.trim()) { setError('Give the project a name'); return; }
     if (draft.date && draft.endDate && draft.endDate < draft.date) { setError('The end is before the start'); return; }
-    run(async () => { await onSave(editing, { ...draft, name: draft.name.trim() }); clearDraft(DRAFT_KEY); onClose(); });
+    // Who is on the project is written with their names and photos, so a guest (who can't read the guest list) can name them.
+    const named = Object.fromEntries([
+      [OWNER_KEY, { name: owner.name, photoUrl: owner.photoUrl }],
+      ...signedIn.filter((g) => draft.memberUids.includes(g.uid as string)).map((g) => [g.uid as string, { name: g.name || g.email, photoUrl: g.photoUrl ?? null }] as const),
+    ]);
+    const adminUids = draft.adminUids.filter((uid) => draft.memberUids.includes(uid));
+    run(async () => { await onSave(editing, { ...draft, adminUids, memberProfiles: named, name: draft.name.trim() }); clearDraft(DRAFT_KEY); onClose(); });
   };
 
   return (
@@ -116,7 +129,7 @@ export const ProjectModal: React.FC<{
             <ChooseRow<Priority | 'none'> options={[...PRIORITIES, { value: 'none', label: 'None' }]} colors={PRIORITY_COLOR} value={draft.priority ?? 'none'} onChange={(v) => set('priority', v === 'none' ? null : v)} />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Client">
+            {!limited && <Field label="Client">
               <SelectMenu
                 ariaLabel="Client"
                 value={newClient ? NEW : draft.client ?? ''}
@@ -124,8 +137,8 @@ export const ProjectModal: React.FC<{
                 options={[{ value: '', label: 'No client' }, ...clients.map((c) => ({ value: c, label: c })), ...(draft.client && !clients.includes(draft.client) && !newClient ? [{ value: draft.client, label: draft.client }] : []), { value: NEW, label: '+ New client…' }]}
               />
               {newClient && <TextInput dir="auto" autoFocus className="mt-2" value={draft.client ?? ''} onChange={(e) => set('client', e.target.value || null)} placeholder="The new client's name" />}
-            </Field>
-            <Field label="Lead">
+            </Field>}
+            {!limited && <Field label="Lead">
               <SelectMenu
                 ariaLabel="Lead"
                 value={draft.lead ?? ''}
@@ -136,12 +149,12 @@ export const ProjectModal: React.FC<{
                   ...(draft.lead && !people.some((p) => p.name === draft.lead) ? [{ value: draft.lead, label: draft.lead, withAvatar: true }] : []),
                 ]}
               />
-            </Field>
+            </Field>}
             <Field label="Start"><DatePicker flow ariaLabel="Start" value={draft.date} onChange={(d) => set('date', d)} /></Field>
             <Field label="End"><DatePicker flow ariaLabel="End" value={draft.endDate} onChange={(d) => set('endDate', d)} /></Field>
           </div>
 
-          <Field label="Guests on this project">
+          {!limited && <Field label="Guests on this project">
             {guests.length === 0 ? (
               <p className="font-mono-main text-[12px] text-ink/40">Invite someone from the Guests list on Home first.</p>
             ) : (
@@ -153,16 +166,30 @@ export const ProjectModal: React.FC<{
                   onChange={(v) => set('memberUids', v)}
                   options={signedIn.map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true }))}
                 />
+                {draft.memberUids.length > 0 && (
+                  <>
+                    <SelectMulti
+                      ariaLabel="Admins of this project"
+                      empty="No admins"
+                      values={draft.adminUids.filter((uid) => draft.memberUids.includes(uid))}
+                      onChange={(v) => set('adminUids', v)}
+                      options={signedIn.filter((g) => draft.memberUids.includes(g.uid as string)).map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true }))}
+                    />
+                    <p className="font-mono-main text-[11px] leading-relaxed text-ink/40">
+                      An admin runs the project with you: sees all its tasks, adds and changes them, gives them to other members, and edits its name, status and dates.
+                    </p>
+                  </>
+                )}
                 <div className="spring-group flex gap-2">
                   <Button size="sm" tone={draft.guestsSeeAll ? 'outline' : 'ink'} onClick={() => set('guestsSeeAll', false)}>Only their own tasks</Button>
                   <Button size="sm" tone={draft.guestsSeeAll ? 'ink' : 'outline'} onClick={() => set('guestsSeeAll', true)}>Everyone's tasks</Button>
                 </div>
               </div>
             )}
-          </Field>
+          </Field>}
           {error && <p className="font-mono-main text-[12px] text-rust">{error}</p>}
           <div className="spring-group flex gap-3 justify-end pt-2">
-            {editing.kind === 'edit' && (
+            {editing.kind === 'edit' && !limited && (
               <Button tone="danger" disabled={busy}
                 onClick={() => (sure ? run(async () => { await onDelete(editing.project); onClose(); }) : setSure(true))}>
                 {sure ? 'Sure? Delete' : 'Delete'}

@@ -18,7 +18,7 @@ const tasks: Task[] = [
 
 const work = {
   role: 'owner', guestUid: null, me: 'owner', ready: true, projects, tasks, notes: [], privates: {},
-  canEditTask: () => true, toggleTaskDone: vi.fn(), setTaskStatus: vi.fn(), updateTask: vi.fn(), addTask: vi.fn(), removeTask: vi.fn(),
+  canEditTask: () => true, canDeleteTask: () => true, isProjectAdmin: () => false, toggleTaskDone: vi.fn(), setTaskStatus: vi.fn(), updateTask: vi.fn(), addTask: vi.fn(), removeTask: vi.fn(),
   addProject: vi.fn(), updateProject: vi.fn(), setSharing: vi.fn(), setClient: vi.fn(), removeProject: vi.fn(),
 };
 vi.mock('@/data/useWork', () => ({ useWork: () => work, useWorkOptional: () => work, useComments: () => ({ comments: [], add: vi.fn(), remove: vi.fn() }) }));

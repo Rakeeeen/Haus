@@ -23,6 +23,8 @@ export function mailConfig(env = process.env) {
     auth: { user, pass },
     from: env.MAIL_FROM?.trim() || `${NAME} <${user}>`,
     ownerName: env.OWNER_NAME?.trim() || 'حامد',
+    // Where the notices to Hamed go (a guest who runs a project gave someone a task): his own address unless told otherwise.
+    ownerEmail: env.OWNER_EMAIL?.trim() || user,
     appUrl: env.APP_URL?.trim() || 'https://rakeeen-uxdesign.github.io/Haus/',
   };
 }

@@ -10,7 +10,7 @@ export const OWNER_KEY = 'owner';
 
 const unique = (uids: ReadonlyArray<string | null | undefined>): string[] => [...new Set(uids.filter((u): u is string => !!u))];
 
-type Sharing = Pick<Project, 'memberUids' | 'guestsSeeAll'>;
+type Sharing = Pick<Project, 'memberUids' | 'guestsSeeAll'> & Partial<Pick<Project, 'adminUids'>>;
 
 /**
  * The guests who may see `task`, given the projects it is in (none: the task is outside any project). Written onto the
@@ -21,8 +21,31 @@ export function viewersOf(task: Pick<Task, 'assigneeUids' | 'createdByUid'>, pro
   // Hamed needs no listing; the guests it is for, and the guest who made it, are its own people.
   const own = unique([...task.assigneeUids.filter((u) => u !== OWNER_KEY), task.createdByUid]);
   if (projects.length === 0) return own;
-  return unique(projects.flatMap((project) => (project.guestsSeeAll ? project.memberUids : own.filter((uid) => project.memberUids.includes(uid)))));
+  // A project's admins see all of its tasks, whoever they are for (they run it).
+  return unique(projects.flatMap((project) => (project.guestsSeeAll
+    ? project.memberUids
+    : [...own.filter((uid) => project.memberUids.includes(uid)), ...(project.adminUids ?? [])])));
 }
+
+/** Whether `uid` runs `project` (is one of its admins). */
+export const isAdminOf = (project: Pick<Project, 'adminUids'> | null | undefined, uid: string): boolean => !!project && project.adminUids.includes(uid);
+
+/**
+ * The project of `task` that `uid` runs, if they do: only a task in exactly one project counts (what a task in several
+ * projects shows to whom is Hamed's to settle).
+ */
+export function adminProjectOf<P extends Pick<Project, 'id' | 'adminUids'>>(task: Pick<Task, 'projectIds'>, projects: readonly P[], uid: string): P | null {
+  if (task.projectIds.length !== 1) return null;
+  const project = projects.find((p) => p.id === task.projectIds[0]);
+  return project && isAdminOf(project, uid) ? project : null;
+}
+
+/** Everyone a project's admin may give a task to: the members, and Hamed. */
+export const assignableIn = (project: Pick<Project, 'memberUids'>): string[] => [OWNER_KEY, ...project.memberUids];
+
+/** May this guest change this task: it is theirs, or they run its project. */
+export const canEditAsGuest = (task: Pick<Task, 'assigneeUids' | 'createdByUid' | 'projectIds'>, uid: string, projects: readonly Pick<Project, 'id' | 'adminUids'>[]): boolean =>
+  isMineAsGuest(task, uid) || adminProjectOf(task, projects, uid) !== null;
 
 /** Whether `task` belongs to the project `projectId`. */
 export const isInProject = (task: Pick<Task, 'projectIds'>, projectId: string): boolean => task.projectIds.includes(projectId);
@@ -70,7 +93,7 @@ export function normalizeTask(raw: Partial<Task> & { id: string }): Task {
 
 export function normalizeProject(raw: Partial<Project> & { id: string }): Project {
   return {
-    name: '', status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, createdAt: '', updatedAt: '',
+    name: '', status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, adminUids: [], memberProfiles: {}, createdAt: '', updatedAt: '',
     ...raw,
   };
 }

@@ -19,7 +19,7 @@ const C = {
 const NAME_AR = 'هاوس';
 
 /** The pictures the emails use: file in `backend/assets/mail`, and the cid it is attached under. */
-export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
+export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'hero-notice.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
 export const cidOf = (file) => file.replace(/\.[a-z]+$/, '');
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -46,6 +46,18 @@ export function prettyDay(day) {
 export function whenOf(task) {
   if (!task.date) return task.endDate ? prettyDay(task.endDate) : null;
   return task.endDate && task.endDate !== task.date ? `من ${prettyDay(task.date)} إلى ${prettyDay(task.endDate)}` : prettyDay(task.date);
+}
+
+/** When something happened, in Cairo time: "الثلاثاء 10 نوفمبر، 11:05 ص". Empty when there is no moment. */
+export function whenSent(iso) {
+  const at = new Date(iso ?? '');
+  if (Number.isNaN(at.getTime())) return '';
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(at).map((p) => [p.type, p.value]));
+  const day = prettyDay(`${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`);
+  const hour = Number(parts.hour);
+  return `${day}، ${hour % 12 || 12}:${parts.minute} ${hour < 12 ? 'ص' : 'م'}`;
 }
 
 /** "مهمة جديدة", "مهمتان جديدتان", "٣ مهام جديدة" — the count of tasks the way Arabic says it. */
@@ -97,6 +109,9 @@ const box = (inner, bottom = 24) =>
 
 const paragraph = (b, text) => `<div style="margin:0 0 22px;">${b.words(text, { size: 17, weight: 400, width: 492, lineHeight: 1.85 })}</div>`;
 
+/** A small faded line saying when it happened ("تم التعيين الثلاثاء 10 نوفمبر، 11:05 ص"); nothing without a moment. */
+const when = (b, at, label) => (whenSent(at) ? `<div style="margin-top:6px;">${b.words(`${label} ${whenSent(at)}`, { size: 13, weight: 400, color: C.faded, width: 450, lineHeight: 1.7 })}</div>` : '');
+
 const SPACER = '<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>';
 
 /** The page every email sits on. `hero` is the picture over the card, `icon` the animated one in the footer. */
@@ -143,14 +158,14 @@ function frame(b, { title, preheader, hero, icon, body }) {
  * The invitation: who invited them and a button. There is no code in it — the inviter gives that in person — and no
  * address to sign in with: the button goes straight to the page. `inviter` is who is inviting; `name` the guest's.
  */
-export function invitationEmail({ inviter, name, appUrl }) {
+export function invitationEmail({ inviter, name, appUrl, at }) {
   const b = builder();
   const who = oneLine(inviter) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
   const hello = first ? `${first}، ` : '';
   const body = `
     ${paragraph(b, `${hello}أضافك ${who} كضيف في ${NAME_AR}: مساحة هادئة للمياه والتركيز والوقت، مع المشاريع والمهام التي تُشارَك معك.`)}
-    ${box(b.words(`بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`, { size: 16, weight: 700, width: 450, lineHeight: 1.7 }))}
+    ${box(`${b.words(`بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`, { size: 16, weight: 700, width: 450, lineHeight: 1.7 })}${when(b, at, 'تمت الدعوة')}`)}
     ${button(b, appUrl, `ادخل إلى ${NAME_AR}`)}
     ${SPACER}`;
   const html = frame(b, { title: `تمت دعوتك إلى ${NAME_AR}`, preheader: `اضغط للدخول إلى ${NAME_AR}.`, hero: 'hero-invitation.jpg', icon: 'icon-lock.gif', body });
@@ -193,7 +208,7 @@ function taskLine(b, task, projectName) {
  * Tasks given to someone: one gets its own box with the details; several (an import, a busy minute) arrive as one email
  * with a short list, so nobody's inbox fills up. `items` is `[{ task, projectName }]`.
  */
-export function tasksAssignedEmail({ giver, name, items, appUrl }) {
+export function tasksAssignedEmail({ giver, name, items, appUrl, at, forName }) {
   const b = builder();
   const who = oneLine(giver) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
@@ -201,19 +216,29 @@ export function tasksAssignedEmail({ giver, name, items, appUrl }) {
   const many = items.length > 1;
   const shown = items.slice(0, MAX_LISTED);
 
-  const intro = many ? `${hello}أعطاك ${who} ${tasksPhrase(items.length)}.` : `${hello}أعطاك ${who} مهمة جديدة.`;
+  // `forName`: this is a notice to Hamed that a guest who runs a project gave someone else a task.
+  const notice = oneLine(forName);
+  // Worded without a verb that has a gender: the person who gave the task may be a man or a woman.
+  const intro = notice
+    ? `${hello}${tasksPhrase(items.length)} من ${who} إلى ${notice}.`
+    : `${hello}وصلتك ${tasksPhrase(items.length)} من ${who}.`;
   const listing = many
     ? `<div style="margin:0 0 22px;">${shown.map((i) => taskLine(b, i.task, i.projectName)).join('')}${items.length > shown.length ? `<div style="margin-top:8px;">${b.words(`و${items.length - shown.length} أخرى`, { size: 13, color: C.faded, width: 492, lineHeight: 1.7 })}</div>` : ''}</div>`
     : taskCard(b, items[0].task, items[0].projectName);
 
-  const body = `${paragraph(b, intro)}${listing}${button(b, appUrl, many ? 'افتح مهامي' : 'افتح المهمة')}${SPACER}`;
-  const title = many ? tasksPhrase(items.length) : 'مهمة جديدة';
-  const html = frame(b, { title, preheader: `${who} أعطاك ${many ? tasksPhrase(items.length) : 'مهمة'}.`, hero: many ? 'hero-tasks.jpg' : 'hero-task.jpg', icon: 'icon-tasks.gif', body });
+  const stamp = when(b, at, 'وقت التعيين:');
+  const body = `${paragraph(b, intro)}${stamp ? `<div style="margin:-12px 0 22px;">${stamp}</div>` : ''}${listing}${button(b, appUrl, notice || many ? 'افتح المهام' : 'افتح المهمة')}${SPACER}`;
+  const title = notice ? 'تم تكليف مهمة' : many ? tasksPhrase(items.length) : 'مهمة جديدة';
+  const hero = notice ? 'hero-notice.jpg' : many ? 'hero-tasks.jpg' : 'hero-task.jpg';
+  const html = frame(b, { title, preheader: notice ? `${tasksPhrase(items.length)} من ${who} إلى ${notice}.` : `${tasksPhrase(items.length)} من ${who}.`, hero, icon: 'icon-tasks.gif', body });
   return {
-    subject: many ? `${who} أعطاك ${tasksPhrase(items.length)}` : `مهمة جديدة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`,
+    subject: notice
+      ? `${many ? tasksPhrase(items.length) : `مهمة جديدة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`} من ${who} إلى ${notice}`
+      : many ? `${tasksPhrase(items.length)} من ${who}` : `مهمة جديدة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`,
     html,
     text: [
-      many ? `${who} أعطاك ${tasksPhrase(items.length)}:` : `${who} أعطاك مهمة جديدة:`,
+      notice ? `${tasksPhrase(items.length)} من ${who} إلى ${notice}:` : `وصلتك ${tasksPhrase(items.length)} من ${who}:`,
+      ...(whenSent(at) ? [`وقت التعيين: ${whenSent(at)}`] : []),
       '',
       ...shown.map(({ task, projectName }) => `• ${oneLine(task.title) || 'بدون عنوان'}${projectName ? ` (${projectName})` : ''}${whenOf(task) ? ` — ${whenOf(task)}` : ''}`),
       ...(items.length > shown.length ? [`... و${items.length - shown.length} أخرى`] : []),
