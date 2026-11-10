@@ -162,7 +162,8 @@ service cloud.firestore {
 
     function guestMayAddTask() {
       let d = request.resource.data;
-      return onlyKeys(['no', 'title', 'status', 'priority', 'date', 'projectId', 'assignee', 'assigneeUid', 'createdByUid',
+      // `projectIds` (several projects) is Hamed's alone: a guest's task is in one project at most.
+      return onlyKeys(['no', 'title', 'status', 'priority', 'date', 'endDate', 'projectId', 'assignee', 'assigneeUid', 'createdByUid',
                        'viewerUids', 'tags', 'description', 'createdAt', 'updatedAt', 'doneAt'])
         && d.no == 0
         && d.createdByUid == request.auth.uid
@@ -181,7 +182,7 @@ service cloud.firestore {
       return (resource.data.assigneeUid == request.auth.uid || resource.data.createdByUid == request.auth.uid)
         && request.auth.uid in resource.data.viewerUids
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['title', 'status', 'priority', 'date', 'description', 'tags', 'doneAt', 'updatedAt'])
+             .hasOnly(['title', 'status', 'priority', 'date', 'endDate', 'description', 'tags', 'doneAt', 'updatedAt'])
         && request.resource.data.title is string && request.resource.data.title.size() <= 300;
     }
 

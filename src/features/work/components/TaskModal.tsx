@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
-import { Field, SelectMenu, TextArea, TextInput } from '@/ui/Form';
+import { Field, SelectMenu, SelectMulti, TextArea, TextInput } from '@/ui/Form';
+import { clearDraft, loadDraft, saveDraft } from '@/lib/draftMemory';
 import { PRIORITIES, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
 import { useComments } from '@/data/useWork';
@@ -11,13 +12,15 @@ import { PRIORITY_COLOR, shortDate } from '@/features/work/components/chips';
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
 
-type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'projectId' | 'assignee' | 'assigneeUid' | 'description'>;
+type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'endDate' | 'projectIds' | 'assignee' | 'assigneeUid' | 'description'>;
+
+const DRAFT_KEY = 'work_task_draft';
 
 const toDraft = (editing: TaskEditing): Draft => {
   const t: Partial<Task> = editing.kind === 'edit' ? editing.task : editing.defaults;
   return {
-    title: t.title ?? '', status: t.status ?? 'todo', priority: t.priority ?? null, date: t.date ?? null,
-    projectId: t.projectId ?? null, assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '',
+    title: t.title ?? '', status: t.status ?? 'todo', priority: t.priority ?? null, date: t.date ?? null, endDate: t.endDate ?? null,
+    projectIds: t.projectIds?.length ? t.projectIds : t.projectId ? [t.projectId] : [], assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '',
   };
 };
 
@@ -62,12 +65,24 @@ export const TaskModal: React.FC<{
   const taskId = editing?.kind === 'edit' ? editing.task.id : null;
   const { comments, add, remove } = useComments(taskId);
 
+  const [restored, setRestored] = useState(false);
+
   useEffect(() => {
-    setDraft(editing ? toDraft(editing) : null);
+    const fresh = editing ? toDraft(editing) : null;
+    // A new task closed by accident (Escape, a click beside it) comes back as it was left, for a few minutes.
+    const saved = editing?.kind === 'new' ? loadDraft<Draft>(DRAFT_KEY) : null;
+    const keep = !!saved && !!(saved.title.trim() || saved.description.trim());
+    setDraft(fresh && keep && saved ? { ...fresh, ...saved } : fresh);
+    setRestored(keep);
     setSure(false);
     setError('');
     setComment('');
   }, [editing]);
+
+  // Remembered as it is typed (a new task only).
+  useEffect(() => {
+    if (editing?.kind === 'new' && draft && (draft.title.trim() || draft.description.trim())) saveDraft(DRAFT_KEY, draft);
+  }, [draft, editing]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
@@ -81,24 +96,33 @@ export const TaskModal: React.FC<{
   const save = () => {
     if (!draft || !editing) return;
     if (!draft.title.trim()) { setError('Give the task a title'); return; }
+    if (draft.date && draft.endDate && draft.endDate < draft.date) { setError('The end is before the start'); return; }
     run(async () => {
       const body = { ...draft, title: draft.title.trim() };
       if (editing.kind === 'edit') await onUpdate(editing.task.id, body); else await onCreate(body);
+      clearDraft(DRAFT_KEY);
       onClose();
     });
   };
 
   const sendComment = () => run(async () => { await add(author, comment, guestUid); setComment(''); });
 
-  // For a task in a project, who it can be for is that project's members; otherwise any guest.
-  const memberUids = projects.find((p) => p.id === draft?.projectId)?.memberUids;
-  const choices = assignees.filter((a) => a.uid === null || !draft?.projectId || (memberUids ?? []).includes(a.uid));
+  // For a task in projects, who it can be for is those projects' members (and Hamed); outside any project, any guest.
+  const memberUids = projects.filter((p) => draft?.projectIds.includes(p.id)).flatMap((p) => p.memberUids);
+  const choices = assignees.filter((a) => a.uid === null || !draft?.projectIds.length || memberUids.includes(a.uid));
+  const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
   const locked = !canEdit;
 
   return (
     <AppModal isOpen={editing !== null} onClose={onClose} title={editing?.kind === 'edit' ? `Task #${editing.task.no}` : 'New task'} maxWidth="max-w-2xl">
       {draft && editing && (
         <div className="flex flex-col gap-5 max-h-[72vh] overflow-y-auto pr-1">
+          {restored && (
+            <div className="flex items-center justify-between gap-3 rounded-box bg-ink/5 px-4 py-2.5 font-mono-main text-[13px] text-ink/60">
+              <span>Picked up where you left off.</span>
+              <Button tone="ghost" size="sm" onClick={() => { clearDraft(DRAFT_KEY); setRestored(false); setDraft(editing ? toDraft(editing) : null); }}>Start over</Button>
+            </div>
+          )}
           <Field label="Title">
             <TextInput dir="auto" disabled={locked} autoFocus={editing.kind === 'new'} value={draft.title} onChange={(e) => set('title', e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} placeholder="What needs doing?" />
@@ -117,15 +141,28 @@ export const TaskModal: React.FC<{
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Date"><DatePicker flow ariaLabel="Date" disabled={locked} value={draft.date} onChange={(d) => set('date', d)} /></Field>
-            <Field label="Project">
-              <SelectMenu
-                ariaLabel="Project"
-                value={draft.projectId ?? ''}
-                disabled={locked || (guestUid !== undefined && editing.kind === 'edit')}
-                onChange={(v) => set('projectId', v || null)}
-                options={[{ value: '', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
-              />
+            <Field label="Start"><DatePicker flow ariaLabel="Start" disabled={locked} value={draft.date} onChange={(d) => set('date', d)} /></Field>
+            <Field label="End"><DatePicker flow ariaLabel="End" disabled={locked} value={draft.endDate} onChange={(d) => set('endDate', d)} /></Field>
+            <Field label={guestUid !== undefined ? 'Project' : 'Projects'}>
+              {guestUid !== undefined ? (
+                // A guest's task is in one project (the rules allow no more), and can't be moved once made.
+                <SelectMenu
+                  ariaLabel="Project"
+                  value={draft.projectIds[0] ?? ''}
+                  disabled={locked || editing.kind === 'edit'}
+                  onChange={(v) => set('projectIds', v ? [v] : [])}
+                  options={[{ value: '', label: 'No project' }, ...projectOptions]}
+                />
+              ) : (
+                <SelectMulti
+                  ariaLabel="Projects"
+                  empty="No project"
+                  values={draft.projectIds}
+                  disabled={locked}
+                  onChange={(v) => set('projectIds', v)}
+                  options={projectOptions}
+                />
+              )}
             </Field>
             {assignees.length > 1 && guestUid === undefined && (
               <Field label="For">

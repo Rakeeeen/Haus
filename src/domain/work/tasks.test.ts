@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  addDays, blankTask, compareTasks, dayKey, filterTasks, groupByStatus, isOverdue, monthGrid, moveToStatus,
+  addDays, blankTask, compareTasks, coversDay, dayKey, filterTasks, groupByStatus, isOverdue, lastDayOf, monthGrid, moveToStatus,
   nextTaskNo, parseDayKey, sortTasks,
 } from '@/domain/work/tasks';
 import { normalizeTask } from '@/domain/work/sharing';
@@ -127,5 +127,30 @@ describe('monthGrid', () => {
       expect(weeks.flat().some((d) => d.key === dayKey(lastDay))).toBe(true);
       expect(weeks[weeks.length - 1].some((d) => d.inMonth)).toBe(true);
     }
+  });
+});
+
+describe('tasks that span days', () => {
+  const span = { date: '2026-11-10', endDate: '2026-11-12' };
+  it('cover every day from the start to the end', () => {
+    expect(coversDay(span, '2026-11-09')).toBe(false);
+    expect(coversDay(span, '2026-11-10')).toBe(true);
+    expect(coversDay(span, '2026-11-11')).toBe(true);
+    expect(coversDay(span, '2026-11-12')).toBe(true);
+    expect(coversDay(span, '2026-11-13')).toBe(false);
+  });
+  it('are one day when they have no end (or an end before the start)', () => {
+    expect(coversDay({ date: '2026-11-10', endDate: null }, '2026-11-11')).toBe(false);
+    expect(lastDayOf({ date: '2026-11-10', endDate: '2026-11-09' })).toBe('2026-11-10');
+  });
+  it('are late only after their last day', () => {
+    const t = normalizeTask({ id: 'x', status: 'doing', ...span });
+    expect(isOverdue(t, '2026-11-12')).toBe(false);
+    expect(isOverdue(t, '2026-11-13')).toBe(true);
+  });
+  it('show under today while today is within them', () => {
+    const t = normalizeTask({ id: 'x', ...span });
+    expect(filterTasks([t], { day: { kind: 'today' } }, new Date(2026, 10, 11))).toHaveLength(1);
+    expect(filterTasks([t], { day: { kind: 'today' } }, new Date(2026, 10, 14))).toHaveLength(0);
   });
 });

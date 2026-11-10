@@ -3,6 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
+import { projectLabel } from '@/domain/work/projects';
 import { groupByStatus, isOverdue, dayKey, TASK_STATUSES } from '@/domain/work/tasks';
 import type { Task, TaskStatus } from '@/domain/work/types';
 import { Avatar } from '@/ui/Avatar';
@@ -88,7 +89,7 @@ const Column: React.FC<{
         <span className="font-mono-main text-[12px] text-ink/35 tabular-nums">{tasks.length}</span>
       </div>
       {tasks.map((task) => (
-        <DraggableCard key={task.id} task={task} projectName={projectName(task.projectId)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
+        <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} person={personOf?.(task) ?? null} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
       ))}
       {onAdd && (
         <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
@@ -154,7 +155,7 @@ export const TaskBoard: React.FC<{
         ))}
       </div>
       <DragOverlay dropAnimation={null}>
-        {dragging && <TaskCard task={dragging} projectName={projectName(dragging.projectId)} person={personOf?.(dragging) ?? null} onOpen={() => {}} onToggleDone={() => {}} overlay />}
+        {dragging && <TaskCard task={dragging} projectName={projectLabel(dragging, projectName)} person={personOf?.(dragging) ?? null} onOpen={() => {}} onToggleDone={() => {}} overlay />}
       </DragOverlay>
     </DndContext>
   );

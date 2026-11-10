@@ -305,3 +305,19 @@ speculatively.
   presentational, closure-free pieces are split out (`features/home/components/`); splitting the stateful
   parts further is higher-risk and is best done alongside a visual change rather than as a separate pass.
   (Finance is already split into one component per tab.)
+
+## Tasks in several projects, dates and drafts
+
+- A task has `projectIds` (every project it is in) and `projectId` (always the first — what older code and the bot read).
+  `normalizeTask` fills one from the other. Who may see it (`viewerUids`) is the **union** of what each of its projects
+  allows (`viewersOf` in `domain/work/sharing.ts`), recomputed when its projects, its assignee or a project's sharing
+  change. A guest only ever learns the names of projects they are a member of (they can read no other), so a task shared
+  into a second project does not reveal that project's name to them.
+- **Guests cannot put a task in several projects**: `firestore.rules` lets a guest write `projectId` but not `projectIds`,
+  so `useWork.addTask` leaves `projectIds` off a guest's write. Likewise `endDate` is only sent when set.
+- A task or project has a start (`date`) and an end (`endDate`). A task covers every day from start to end, so it shows
+  under "Today" while today is inside it and is overdue only after its last day (`coversDay`, `lastDayOf`, `isOverdue`).
+- `lib/draftMemory.ts` keeps an unsaved **new** task or project in localStorage for ten minutes, and the form offers it
+  again ("Picked up where you left off" / "Start over").
+- Dropdowns (`SelectMenu`, `SelectMulti` in `ui/Form.tsx`) are found by typing in the field itself; a long
+  `FilterSelect`/`FilterMulti` gets a search box.

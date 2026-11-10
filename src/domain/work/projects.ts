@@ -1,4 +1,4 @@
-import { addDays, daysBetween, parseDayKey, dayKey } from '@/domain/work/tasks';
+import { addDays, daysBetween, lastDayOf, parseDayKey, dayKey } from '@/domain/work/tasks';
 import type { Priority, Project, ProjectStatus, Task } from '@/domain/work/types';
 
 export const PROJECT_STATUSES: ReadonlyArray<{ value: ProjectStatus; label: string; hint: string }> = [
@@ -38,13 +38,18 @@ export function countTasks(tasks: readonly Task[]): ProjectTaskCounts {
   return { total: counted.length, done, open: counted.length - done };
 }
 
+/** The names of the projects a task is in that `nameOf` knows (a guest knows only the ones they are on), joined for display. */
+export const projectLabel = (task: Pick<Task, 'projectIds'>, nameOf: (id: string) => string | null): string | null =>
+  task.projectIds.map(nameOf).filter((n): n is string => !!n).join(' · ') || null;
+
 /** Tasks grouped by their project's id (tasks with no project are left out). */
 export function tasksByProject(tasks: readonly Task[]): Map<string, Task[]> {
   const map = new Map<string, Task[]>();
   for (const task of tasks) {
-    if (!task.projectId) continue;
-    const list = map.get(task.projectId);
-    if (list) list.push(task); else map.set(task.projectId, [task]);
+    for (const projectId of task.projectIds) {
+      const list = map.get(projectId);
+      if (list) list.push(task); else map.set(projectId, [task]);
+    }
   }
   return map;
 }
@@ -102,9 +107,11 @@ export const MIN_SPAN_DAYS = 7;
  */
 export function projectSpan(project: Project, tasks: readonly Task[], today: string): DaySpan {
   const dated = tasks.map((t) => t.date).filter((d): d is string => d !== null).sort();
+  const ends = [...tasks.map((t) => lastDayOf(t)), project.endDate].filter((d): d is string => d !== null).sort();
   const from = project.date ?? dated[0] ?? today;
-  let to = dated.length ? dated[dated.length - 1] : from;
-  if (isWorkedOn(project) && to < today) to = today;
+  let to = ends.length ? ends[ends.length - 1] : from;
+  // A project with an end date of its own is shown to that day; otherwise a live one is shown up to today.
+  if (!project.endDate && isWorkedOn(project) && to < today) to = today;
   if (to < from) to = from;
   if (daysBetween(from, to) < MIN_SPAN_DAYS) to = addDays(from, MIN_SPAN_DAYS);
   return { from, to };

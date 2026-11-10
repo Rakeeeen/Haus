@@ -9,19 +9,25 @@ describe('viewersOf', () => {
   const private_ = { memberUids: ['a', 'b'], guestsSeeAll: false };
 
   it('shows every member the tasks of a project shared with everyone', () => {
-    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, shared)).toEqual(['a', 'b']);
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, [shared])).toEqual(['a', 'b']);
   });
   it('shows a member only their own tasks when the project does not share them', () => {
-    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, private_)).toEqual(['a']);
-    expect(viewersOf({ assigneeUid: 'a', createdByUid: 'b' }, private_)).toEqual(['a', 'b']);
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, [private_])).toEqual(['a']);
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: 'b' }, [private_])).toEqual(['a', 'b']);
   });
   it('shows nobody a task that is not for a member', () => {
-    expect(viewersOf({ assigneeUid: 'x', createdByUid: null }, private_)).toEqual([]);
-    expect(viewersOf({ assigneeUid: null, createdByUid: null }, private_)).toEqual([]);
+    expect(viewersOf({ assigneeUid: 'x', createdByUid: null }, [private_])).toEqual([]);
+    expect(viewersOf({ assigneeUid: null, createdByUid: null }, [private_])).toEqual([]);
+  });
+  it('shows a task in several projects to what each of them allows, together', () => {
+    const other = { memberUids: ['c'], guestsSeeAll: true };
+    // 'c' is on the other project, which shares everything: they see the task; 'b' (on neither) does not.
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, [private_, other])).toEqual(['a', 'c']);
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: null }, [shared, other])).toEqual(['a', 'b', 'c']);
   });
   it('shows a task with no project to who it is for and who made it', () => {
-    expect(viewersOf({ assigneeUid: 'a', createdByUid: 'a' }, null)).toEqual(['a']);
-    expect(viewersOf({ assigneeUid: null, createdByUid: null }, null)).toEqual([]);
+    expect(viewersOf({ assigneeUid: 'a', createdByUid: 'a' }, [])).toEqual(['a']);
+    expect(viewersOf({ assigneeUid: null, createdByUid: null }, [])).toEqual([]);
   });
 });
 
@@ -36,14 +42,14 @@ describe('isMineAsGuest', () => {
 describe('staleViewers', () => {
   it('lists only the tasks whose viewers changed with the project sharing', () => {
     const tasks = [
-      task({ id: '1', assigneeUid: 'a', viewerUids: ['a'] }),
-      task({ id: '2', assigneeUid: 'a', viewerUids: ['a', 'b'] }),
+      task({ id: '1', assigneeUid: 'a', viewerUids: ['a'], projectIds: ['p'] }),
+      task({ id: '2', assigneeUid: 'a', viewerUids: ['a', 'b'], projectIds: ['p'] }),
     ];
-    expect(staleViewers(tasks, { memberUids: ['a', 'b'], guestsSeeAll: true })).toEqual([{ id: '1', viewerUids: ['a', 'b'] }]);
-    expect(staleViewers(tasks, { memberUids: ['a', 'b'], guestsSeeAll: false })).toEqual([{ id: '2', viewerUids: ['a'] }]);
+    expect(staleViewers(tasks, { id: 'p', memberUids: ['a', 'b'], guestsSeeAll: true })).toEqual([{ id: '1', viewerUids: ['a', 'b'] }]);
+    expect(staleViewers(tasks, { id: 'p', memberUids: ['a', 'b'], guestsSeeAll: false })).toEqual([{ id: '2', viewerUids: ['a'] }]);
   });
   it('is empty when nothing changed', () => {
-    expect(staleViewers([task({ assigneeUid: 'a', viewerUids: ['a'] })], { memberUids: ['a'], guestsSeeAll: false })).toEqual([]);
+    expect(staleViewers([task({ assigneeUid: 'a', viewerUids: ['a'], projectIds: ['p'] })], { id: 'p', memberUids: ['a'], guestsSeeAll: false })).toEqual([]);
   });
 });
 
@@ -51,6 +57,11 @@ describe('normalize', () => {
   it('fills what an older record lacks', () => {
     expect(normalizeTask({ id: 'x', title: 'T' })).toMatchObject({ title: 'T', viewerUids: [], assigneeUid: null, createdByUid: null, tags: [] });
     expect(normalizeProject({ id: 'p', name: 'P' })).toMatchObject({ memberUids: [], guestsSeeAll: false });
+  });
+  it('puts an older task\'s single project in the list, and keeps the first of several as its project', () => {
+    expect(normalizeTask({ id: 'x', projectId: 'p' })).toMatchObject({ projectId: 'p', projectIds: ['p'] });
+    expect(normalizeTask({ id: 'x', projectIds: ['q', 'p'] })).toMatchObject({ projectId: 'q', projectIds: ['q', 'p'] });
+    expect(normalizeTask({ id: 'x' })).toMatchObject({ projectId: null, projectIds: [], endDate: null });
   });
   it('keeps what the record has', () => {
     expect(normalizeProject({ id: 'p', memberUids: ['a'], guestsSeeAll: true })).toMatchObject({ memberUids: ['a'], guestsSeeAll: true });

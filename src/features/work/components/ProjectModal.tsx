@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
-import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
-import { Field, SelectMenu, TextInput } from '@/ui/Form';
+import { Field, SelectMenu, SelectMulti, TextInput } from '@/ui/Form';
+import { clearDraft, loadDraft, saveDraft } from '@/lib/draftMemory';
 import { PRIORITY_COLOR } from '@/features/work/components/chips';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
 import { PRIORITIES } from '@/domain/work/tasks';
@@ -18,13 +18,25 @@ export interface ProjectDraft {
   priority: Priority | null;
   lead: string | null;
   date: string | null;
+  endDate: string | null;
   client: string | null;
   /** The guests on the project, and whether they see everyone's tasks in it. */
   memberUids: string[];
   guestsSeeAll: boolean;
 }
 
+/** What the form starts with: the project being changed, or a new one (led by Hamed unless told otherwise). */
+function draftOf(editing: ProjectEditing, ownerName: string): ProjectDraft {
+  const p = editing.kind === 'edit' ? editing.project : null;
+  return {
+    name: p?.name ?? '', status: p?.status ?? 'active', priority: p?.priority ?? null,
+    lead: p?.lead ?? ownerName, date: p?.date ?? null, endDate: p?.endDate ?? null, client: editing.client,
+    memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false,
+  };
+}
+
 const NEW = '__new__';
+const DRAFT_KEY = 'work_project_draft';
 
 function Choose<T extends string>({ options, value, onChange, colors }: {
   options: ReadonlyArray<{ value: T; label: string }>; colors?: Partial<Record<T, string>>; value: T; onChange: (value: T) => void;
@@ -45,10 +57,12 @@ export const ProjectModal: React.FC<{
   clients: readonly string[];
   /** The guests Hamed has invited; the ones who have signed in (so have a uid) can be put on a project. */
   guests: readonly Invitation[];
+  /** Hamed himself, who can lead a project too. */
+  owner: { name: string; photoUrl: string | null };
   onClose: () => void;
   onSave: (editing: ProjectEditing, draft: ProjectDraft) => Promise<void>;
   onDelete: (project: Project) => Promise<void>;
-}> = ({ editing, clients, guests, onClose, onSave, onDelete }) => {
+}> = ({ editing, clients, guests, owner, onClose, onSave, onDelete }) => {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -56,18 +70,30 @@ export const ProjectModal: React.FC<{
   /** Typing the name of a client who is not in the list yet. */
   const [newClient, setNewClient] = useState(false);
 
+  const [restored, setRestored] = useState(false);
+
   useEffect(() => {
     if (!editing) { setDraft(null); return; }
-    const p = editing.kind === 'edit' ? editing.project : null;
-    setDraft({
-      name: p?.name ?? '', status: p?.status ?? 'active', priority: p?.priority ?? null,
-      lead: p?.lead ?? 'Hamed', date: p?.date ?? null, client: editing.client,
-      memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false,
-    });
+    const fresh = draftOf(editing, owner.name);
+    // A new project closed by accident comes back as it was left, for a few minutes.
+    const saved = editing.kind === 'new' ? loadDraft<ProjectDraft>(DRAFT_KEY) : null;
+    const keep = !!saved && !!saved.name.trim();
+    setDraft(keep ? { ...fresh, ...saved } : fresh);
+    setRestored(keep);
     setSure(false);
     setError('');
     setNewClient(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
+
+  // Remembered as it is typed (a new project only).
+  useEffect(() => {
+    if (editing?.kind === 'new' && draft && (draft.name.trim() || draft.client)) saveDraft(DRAFT_KEY, draft);
+  }, [draft, editing]);
+
+  // Everyone who can lead a project: Hamed and the guests he has invited (a guest is on the list once they have signed in).
+  const people = [{ name: owner.name, photoUrl: owner.photoUrl }, ...guests.map((g) => ({ name: g.name || g.email, photoUrl: g.photoUrl ?? null }))];
+  const signedIn = guests.filter((g) => !!g.uid && g.active !== false);
 
   const set = <K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
@@ -81,13 +107,20 @@ export const ProjectModal: React.FC<{
   const save = () => {
     if (!draft || !editing) return;
     if (!draft.name.trim()) { setError('Give the project a name'); return; }
-    run(async () => { await onSave(editing, { ...draft, name: draft.name.trim() }); onClose(); });
+    if (draft.date && draft.endDate && draft.endDate < draft.date) { setError('The end is before the start'); return; }
+    run(async () => { await onSave(editing, { ...draft, name: draft.name.trim() }); clearDraft(DRAFT_KEY); onClose(); });
   };
 
   return (
     <AppModal isOpen={editing !== null} onClose={onClose} title={editing?.kind === 'edit' ? 'Project' : 'New project'}>
       {draft && editing && (
         <div className="flex flex-col gap-5 max-h-[72vh] overflow-y-auto pr-1">
+          {restored && (
+            <div className="flex items-center justify-between gap-3 rounded-box bg-ink/5 px-4 py-2.5 font-mono-main text-[13px] text-ink/60">
+              <span>Picked up where you left off.</span>
+              <Button tone="ghost" size="sm" onClick={() => { clearDraft(DRAFT_KEY); setRestored(false); setDraft(draftOf(editing, owner.name)); }}>Start over</Button>
+            </div>
+          )}
           <Field label="Name">
             <TextInput dir="auto" autoFocus={editing.kind === 'new'} value={draft.name} onChange={(e) => set('name', e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
@@ -106,8 +139,20 @@ export const ProjectModal: React.FC<{
               />
               {newClient && <TextInput dir="auto" autoFocus className="mt-2" value={draft.client ?? ''} onChange={(e) => set('client', e.target.value || null)} placeholder="The new client's name" />}
             </Field>
-            <Field label="Lead"><TextInput dir="auto" value={draft.lead ?? ''} onChange={(e) => set('lead', e.target.value || null)} /></Field>
-            <Field label="Date"><DatePicker flow ariaLabel="Date" value={draft.date} onChange={(d) => set('date', d)} /></Field>
+            <Field label="Lead">
+              <SelectMenu
+                ariaLabel="Lead"
+                value={draft.lead ?? ''}
+                onChange={(v) => set('lead', v || null)}
+                options={[
+                  { value: '', label: 'No lead' },
+                  ...people.map((p) => ({ value: p.name, label: p.name, photoUrl: p.photoUrl, withAvatar: true })),
+                  ...(draft.lead && !people.some((p) => p.name === draft.lead) ? [{ value: draft.lead, label: draft.lead, withAvatar: true }] : []),
+                ]}
+              />
+            </Field>
+            <Field label="Start"><DatePicker flow ariaLabel="Start" value={draft.date} onChange={(d) => set('date', d)} /></Field>
+            <Field label="End"><DatePicker flow ariaLabel="End" value={draft.endDate} onChange={(d) => set('endDate', d)} /></Field>
           </div>
 
           <Field label="Guests on this project">
@@ -115,24 +160,13 @@ export const ProjectModal: React.FC<{
               <p className="font-mono-main text-[12px] text-ink/40">Invite someone from the Guests list on Home first.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="spring-group flex flex-wrap gap-2">
-                  {guests.map((guest) => {
-                    const on = !!guest.uid && draft.memberUids.includes(guest.uid);
-                    return (
-                      <Button
-                        key={guest.email}
-                        size="sm"
-                        tone={on ? 'ink' : 'outline'}
-                        disabled={!guest.uid}
-                        data-tip={guest.uid ? undefined : 'They appear here once they have signed in'}
-                        onClick={() => guest.uid && set('memberUids', on ? draft.memberUids.filter((u) => u !== guest.uid) : [...draft.memberUids, guest.uid])}
-                      >
-                        <Avatar name={guest.name || guest.email} photoUrl={guest.photoUrl} size={20} />
-                        <span dir="auto">{guest.name || guest.email}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
+                <SelectMulti
+                  ariaLabel="Guests on this project"
+                  empty="Nobody"
+                  values={draft.memberUids}
+                  onChange={(v) => set('memberUids', v)}
+                  options={signedIn.map((g) => ({ value: g.uid as string, label: g.name || g.email, photoUrl: g.photoUrl, withAvatar: true }))}
+                />
                 <div className="spring-group flex gap-2">
                   <Button size="sm" tone={draft.guestsSeeAll ? 'outline' : 'ink'} onClick={() => set('guestsSeeAll', false)}>Only their own tasks</Button>
                   <Button size="sm" tone={draft.guestsSeeAll ? 'ink' : 'outline'} onClick={() => set('guestsSeeAll', true)}>Everyone's tasks</Button>

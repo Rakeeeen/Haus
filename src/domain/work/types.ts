@@ -11,9 +11,14 @@ export interface Task {
   title: string;
   status: TaskStatus;
   priority: Priority | null;
-  /** The day it is for, "YYYY-MM-DD". */
+  /** The day it starts (or is for), "YYYY-MM-DD". */
   date: string | null;
+  /** The day it ends, when it spans days; null for a one-day task. */
+  endDate: string | null;
+  /** The task's first project (what older code and the bot read); always `projectIds[0]`. */
   projectId: string | null;
+  /** Every project it belongs to — a task can be in several. */
+  projectIds: string[];
   /** Who it is for, by name. */
   assignee: string | null;
   /** The uid of who it is for, when that is a guest (Hamed's own tasks have none). */
@@ -40,8 +45,10 @@ export interface Project {
   status: ProjectStatus;
   priority: Priority | null;
   lead: string | null;
-  /** The project's date, "YYYY-MM-DD". */
+  /** The day the project starts, "YYYY-MM-DD". */
   date: string | null;
+  /** The day it ends, if it has an end. */
+  endDate: string | null;
   /** The guests on this project: they see it, and its tasks as `guestsSeeAll` says. */
   memberUids: string[];
   /** Whether a member sees every task of the project, or only the ones that are theirs. */

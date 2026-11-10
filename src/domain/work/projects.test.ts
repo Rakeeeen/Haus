@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareProjects, countTasks, dateSpan, filterProjectsByStatus, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
+import { compareProjects, countTasks, dateSpan, filterProjectsByStatus, groupProjects, projectLabel, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
 import { normalizeProject, normalizeTask } from '@/domain/work/sharing';
 import type { Project, Task } from '@/domain/work/types';
 
@@ -40,6 +40,18 @@ describe('isWorkedOn', () => {
     expect(isWorkedOn(project({ status: 'maintenance' }))).toBe(true);
     expect(isWorkedOn(project({ status: 'paused' }))).toBe(false);
     expect(isWorkedOn(project({ status: 'done' }))).toBe(false);
+  });
+});
+
+describe('projectLabel', () => {
+  const names: Record<string, string> = { a: 'Alpha', b: 'Beta' };
+  it('joins the names of the projects the task is in', () => {
+    expect(projectLabel(task({ projectIds: ['a', 'b'] }), (id) => names[id] ?? null)).toBe('Alpha · Beta');
+  });
+  it('leaves out a project the viewer cannot see, and is null when none shows', () => {
+    expect(projectLabel(task({ projectIds: ['a', 'x'] }), (id) => names[id] ?? null)).toBe('Alpha');
+    expect(projectLabel(task({ projectIds: ['x'] }), (id) => names[id] ?? null)).toBeNull();
+    expect(projectLabel(task({}), (id) => names[id] ?? null)).toBeNull();
   });
 });
 

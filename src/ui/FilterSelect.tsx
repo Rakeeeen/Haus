@@ -9,6 +9,23 @@ export const PERIOD_OPTIONS = [
   { value: 'year', label: 'Year' },
 ] as const;
 
+/** A list longer than this gets a box to type in, to find a line by its name. */
+const SEARCH_FROM = 8;
+
+const FilterSearch = ({ typed, onType }: { typed: string; onType: (value: string) => void }) => (
+  <li className="sticky top-0 bg-paper-dark border-b border-ink/10 p-2">
+    <input
+      autoFocus
+      dir="auto"
+      value={typed}
+      onChange={(e) => onType(e.target.value)}
+      placeholder="Type to find…"
+      aria-label="Find in the list"
+      className="w-full bg-ink/5 rounded-box px-3 py-2 text-[14px] outline-none font-mono-main placeholder:text-ink/35"
+    />
+  </li>
+);
+
 /**
  * A real filter: a small button naming what's being shown, opening a short list to pick
  * from. For narrowing a list or a chart (a period, a range) — page-level navigation uses
@@ -23,8 +40,10 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
   const current = options.find((o) => o.value === value);
+  const found = options.filter((o) => !typed.trim() || o.label.toLowerCase().includes(typed.trim().toLowerCase()));
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +59,7 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
 
   return (
     <div ref={rootRef} className={`relative inline-block ${className}`}>
-      <Button tone="outline" size="sm" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <Button tone="outline" size="sm" aria-haspopup="listbox" aria-expanded={open} onClick={() => { setTyped(''); setOpen((o) => !o); }}>
         <span className="text-ink/40">{label}</span>
         <span>{current?.label}</span>
         <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -51,7 +70,9 @@ export function FilterSelect<T extends string>({ label, options, value, onChange
           role="listbox"
           className="absolute right-0 top-full mt-1 z-30 min-w-full max-h-64 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box"
         >
-          {options.map((o) => {
+          {options.length > SEARCH_FROM && <FilterSearch typed={typed} onType={setTyped} />}
+          {found.length === 0 && <li className="px-3.5 py-2.5 font-mono-main text-[12px] text-ink/40">Nothing matches.</li>}
+          {found.map((o) => {
             const selected = o.value === value;
             return (
               <li key={o.value} role="option" aria-selected={selected}>
@@ -84,8 +105,10 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
   const chosen = options.filter((o) => values.includes(o.value));
+  const found = options.filter((o) => !typed.trim() || o.label.toLowerCase().includes(typed.trim().toLowerCase()));
   const summary = chosen.length === 0 ? allLabel : chosen.length <= 2 ? chosen.map((o) => o.label).join(', ') : `${chosen.length} chosen`;
 
   useEffect(() => {
@@ -109,7 +132,8 @@ export function FilterMulti<T extends string>({ label, options, values, onChange
 
       {open && (
         <ul role="listbox" aria-multiselectable className="absolute right-0 top-full mt-1 z-30 min-w-full max-h-64 overflow-y-auto bg-paper-dark border border-ink/14 rounded-box">
-          {options.map((o) => {
+          {options.length > SEARCH_FROM && <FilterSearch typed={typed} onType={setTyped} />}
+          {found.map((o) => {
             const selected = values.includes(o.value);
             return (
               <li key={o.value} role="option" aria-selected={selected}>

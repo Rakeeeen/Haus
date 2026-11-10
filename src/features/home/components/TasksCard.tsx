@@ -1,5 +1,6 @@
 import React from 'react';
 import { Chip } from '@/ui/Chip';
+import { projectLabel } from '@/domain/work/projects';
 import type { Task } from '@/domain/work/types';
 import { TasksVector } from '@/features/home/components/visuals';
 
@@ -22,7 +23,7 @@ export const TasksCardBody: React.FC<{
         {today.length === 0 ? (
           <p className="font-mono-main text-[15px] text-ink/45">Nothing left for today.</p>
         ) : today.slice(0, 5).map((task) => {
-          const project = projectName(task.projectId);
+          const project = projectLabel(task, projectName);
           return (
             <div key={task.id} className="flex items-center gap-3 min-w-0 rounded-box bg-ink/5 px-3.5 py-2.5">
               <button

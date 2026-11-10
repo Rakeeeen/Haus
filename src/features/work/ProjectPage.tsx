@@ -118,6 +118,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
         editing={projectEditing}
         clients={clients}
         guests={guests}
+        owner={{ name: author, photoUrl: authorPhoto }}
         onClose={() => setProjectEditing(null)}
         onSave={save}
         onDelete={async (p) => { await remove(p); navigate('work/projects', true); }}

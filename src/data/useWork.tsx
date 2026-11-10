@@ -5,7 +5,7 @@ import {
 import { db } from '@/data/firebase';
 import { blankNote } from '@/domain/work/notes';
 import { blankTask, nextTaskNo } from '@/domain/work/tasks';
-import { normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
+import { isInProject, normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
 import type { Note, Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/types';
 
 /**
@@ -25,7 +25,7 @@ const NOTES = 'work_notes';
 const clean = <T extends object>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** The fields a guest may change on a task (firestore.rules allows exactly these). */
-const GUEST_TASK_FIELDS = ['title', 'status', 'priority', 'date', 'description', 'tags', 'doneAt', 'updatedAt'] as const;
+const GUEST_TASK_FIELDS = ['title', 'status', 'priority', 'date', 'endDate', 'description', 'tags', 'doneAt', 'updatedAt'] as const;
 
 export type WorkScope = { kind: 'owner' } | { kind: 'guest'; uid: string; name: string };
 export type NewTask = Partial<Omit<Task, 'id' | 'no'>> & { title: string };
@@ -101,7 +101,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     return () => stops.forEach((stop) => stop());
   }, [uid]);
 
-  const projectOf = (id: string | null | undefined) => (id ? projectsRef.current.find((p) => p.id === id) ?? null : null);
+  /** The sharing of each of the projects a task is in (the ones that exist), for working out who may see it. */
+  const projectsOf = (ids: readonly string[]) => ids.map((id) => projectsRef.current.find((p) => p.id === id)).filter((p): p is Project => !!p);
 
   const canEditTask = useCallback((task: Task) => !uid || task.assigneeUid === uid || task.createdByUid === uid, [uid]);
 
@@ -111,8 +112,15 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     // A guest's task is for themself, made by themself, and numbered 0 (the numbers are Hamed's running count).
     const mine = uid ? { no: 0, createdByUid: uid, assigneeUid: uid, assignee: guestName } : {};
     const base = { ...blankTask(nextTaskNo(tasksRef.current), null), ...rest, ...mine, title };
-    const viewerUids = viewersOf(base, projectOf(base.projectId));
-    await setDoc(ref, clean({ ...base, viewerUids }));
+    // A task keeps its first project as `projectId` (older code reads that) and all of them in `projectIds`.
+    const projectIds = base.projectIds.length ? base.projectIds : base.projectId ? [base.projectId] : [];
+    const withProjects = { ...base, projectIds, projectId: projectIds[0] ?? null };
+    const viewerUids = viewersOf(withProjects, projectsOf(projectIds));
+    // A guest's task is in one project at most, and has no end date unless they set one: the rules know no other fields.
+    const body = uid
+      ? (({ projectIds: _ids, endDate, ...others }) => ({ ...others, ...(endDate ? { endDate } : {}) }))(withProjects)
+      : withProjects;
+    await setDoc(ref, clean({ ...body, viewerUids }));
     return ref.id;
   }, [uid, guestName]);
 
@@ -120,15 +128,24 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const stamped = { ...patch, updatedAt: patch.updatedAt ?? new Date().toISOString() };
     if (uid) {
       // A guest changes only what firestore.rules lets them.
-      const allowed = Object.fromEntries(GUEST_TASK_FIELDS.filter((k) => k in stamped).map((k) => [k, stamped[k]]));
+      const current = tasksRef.current.find((t) => t.id === id);
+      // An end date goes in only when it is set (or being cleared): sending an empty one would add a field the rules don't expect.
+      const allowed = Object.fromEntries(GUEST_TASK_FIELDS
+        .filter((k) => k in stamped && (k !== 'endDate' || stamped.endDate || current?.endDate))
+        .map((k) => [k, stamped[k]]));
       await setDoc(doc(db, TASKS, id), clean(allowed), { merge: true });
       return;
     }
     // Hamed moving a task to another project, or to someone else, changes who may see it.
     const current = tasksRef.current.find((t) => t.id === id);
-    const next = current ? { ...current, ...stamped } : null;
-    const withViewers = next && ('projectId' in stamped || 'assigneeUid' in stamped)
-      ? { ...stamped, viewerUids: viewersOf(next, projectOf(next.projectId)) }
+    let next = current ? { ...current, ...stamped } : null;
+    // Changing the projects keeps `projectId` as the first of them.
+    if (next && 'projectIds' in stamped) {
+      const ids = stamped.projectIds ?? [];
+      next = { ...next, projectIds: ids, projectId: ids[0] ?? null };
+    }
+    const withViewers = next && ('projectIds' in stamped || 'projectId' in stamped || 'assigneeUid' in stamped)
+      ? { ...stamped, projectIds: next.projectIds, projectId: next.projectId, viewerUids: viewersOf(next, projectsOf(next.projectIds)) }
       : stamped;
     await setDoc(doc(db, TASKS, id), clean(withViewers), { merge: true });
   }, [uid]);
@@ -141,7 +158,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const ref = doc(collection(db, PROJECTS));
     const at = new Date().toISOString();
     const project: Omit<Project, 'id'> = {
-      status: 'active', priority: null, lead: null, date: null, memberUids: [], guestsSeeAll: false, createdAt: at, updatedAt: at, ...input,
+      status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, createdAt: at, updatedAt: at, ...input,
     };
     await setDoc(ref, clean(project));
     if (client) await setDoc(doc(db, PRIVATES, ref.id), { client });
@@ -155,8 +172,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const setSharing = useCallback(async (projectId: string, memberUids: string[], guestsSeeAll: boolean) => {
     const batch = writeBatch(db);
     batch.set(doc(db, PROJECTS, projectId), { memberUids, guestsSeeAll, updatedAt: new Date().toISOString() }, { merge: true });
-    const inProject = tasksRef.current.filter((t) => t.projectId === projectId);
-    for (const { id, viewerUids } of staleViewers(inProject, { memberUids, guestsSeeAll })) {
+    const inProject = tasksRef.current.filter((t) => isInProject(t, projectId));
+    const sharingOf = (id: string) => projectsRef.current.find((p) => p.id === id) ?? null;
+    for (const { id, viewerUids } of staleViewers(inProject, { id: projectId, memberUids, guestsSeeAll }, sharingOf)) {
       batch.set(doc(db, TASKS, id), { viewerUids }, { merge: true });
     }
     await batch.commit();
@@ -170,7 +188,11 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const removeProject = useCallback(async (id: string) => {
     const batch = writeBatch(db);
     for (const task of tasksRef.current) {
-      if (task.projectId === id) batch.set(doc(db, TASKS, task.id), { projectId: null, viewerUids: viewersOf(task, null), updatedAt: new Date().toISOString() }, { merge: true });
+      if (!isInProject(task, id)) continue;
+      const projectIds = task.projectIds.filter((p) => p !== id);
+      batch.set(doc(db, TASKS, task.id), {
+        projectIds, projectId: projectIds[0] ?? null, viewerUids: viewersOf(task, projectsOf(projectIds)), updatedAt: new Date().toISOString(),
+      }, { merge: true });
     }
     batch.delete(doc(db, PROJECTS, id));
     batch.delete(doc(db, PRIVATES, id));

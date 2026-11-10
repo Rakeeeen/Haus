@@ -2,10 +2,12 @@ import React, { useEffect, useMemo } from 'react';
 import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
-import { countTasks, filterProjectsByStatus, isWorkedOn, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
+import { projectLabel, countTasks, filterProjectsByStatus, isWorkedOn, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
 import { addDays, dayKey, filterTasks, moveToStatus, sortTasks, type DayFilter } from '@/domain/work/tasks';
 import type { ProjectStatus, Task, TaskStatus } from '@/domain/work/types';
+import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { IconPlus as Plus } from '@/ui/icons';
 import { DatePicker } from '@/ui/DatePicker';
 import { FilterMulti, FilterSelect } from '@/ui/FilterSelect';
 import { ProgressBar } from '@/ui/ProgressBar';
@@ -87,11 +89,14 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                     <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
                     {task.date && <p className="font-mono-main text-[12px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}
                   </div>
-                  {projectName(task.projectId) && <Chip tone="neutral" className="max-w-[120px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectName(task.projectId)}</span></Chip>}
+                  {projectLabel(task, projectName) && <Chip tone="neutral" className="max-w-[180px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectLabel(task, projectName)}</span></Chip>}
                   <TaskStatusChip status={task.status} />
                 </div>
               ))}
             </div>
+            <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 self-start">
+              <Plus size={14} /> New task
+            </Button>
           </section>
           <section className="card flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">

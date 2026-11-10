@@ -47,7 +47,7 @@ export function useProjectEditing() {
   return { role, projects, clients, guests, editing, setEditing, save, remove: (p: Project) => removeProject(p.id) };
 }
 
-export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
+export const Projects: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { tasks, privates, ready, setClient } = useWork();
   const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
@@ -84,7 +84,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
         <ProjectTimeline {...common} />
       )}
 
-      <ProjectModal editing={editing} clients={clients} guests={guests} onClose={() => setEditing(null)} onSave={save} onDelete={remove} />
+      <ProjectModal editing={editing} clients={clients} guests={guests} owner={{ name: author, photoUrl: authorPhoto }} onClose={() => setEditing(null)} onSave={save} onDelete={remove} />
     </WorkShell>
   );
 };

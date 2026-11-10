@@ -1,4 +1,5 @@
 import React from 'react';
+import { projectLabel } from '@/domain/work/projects';
 import { dayKey, isOverdue, sortTasks } from '@/domain/work/tasks';
 import type { Task } from '@/domain/work/types';
 import { DoneTick } from '@/features/work/components/TaskBoard';
@@ -28,7 +29,7 @@ export const TaskTable: React.FC<{
         >
           {canEdit(task) ? <DoneTick done={task.status === 'done'} onToggle={() => onToggleDone(task)} /> : <span />}
           <span dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed truncate text-left ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</span>
-          <span dir="auto" className="col-start-2 md:col-start-auto font-mono-main text-[12px] leading-relaxed text-ink/50 truncate text-left">{projectName(task.projectId) ?? '—'}</span>
+          <span dir="auto" className="col-start-2 md:col-start-auto font-mono-main text-[12px] leading-relaxed text-ink/50 truncate text-left">{projectLabel(task, projectName) ?? '—'}</span>
           <span className="hidden md:block"><TaskStatusChip status={task.status} /></span>
           <span className={`hidden md:block font-mono-main text-[12px] uppercase tracking-wider ${isOverdue(task, today) ? 'text-rust' : 'text-ink/50'}`}>{shortDate(task.date) || '—'}</span>
           <span className="hidden md:block"><PriorityChip priority={task.priority} /></span>

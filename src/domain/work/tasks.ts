@@ -42,8 +42,22 @@ export const daysBetween = (from: string, to: string): number =>
 /** Still to be done: not finished and not dropped. */
 export const isOpen = (task: Task): boolean => task.status === 'todo' || task.status === 'doing';
 
-/** Open and dated before `today`. */
-export const isOverdue = (task: Task, today: string): boolean => isOpen(task) && task.date !== null && task.date < today;
+/** The last day a task covers: its end date, or its own date if it has no (later) end. */
+export const lastDayOf = (task: Pick<Task, 'date' | 'endDate'>): string | null =>
+  task.date === null ? task.endDate : task.endDate && task.endDate > task.date ? task.endDate : task.date;
+
+/** Whether `day` falls within the days the task covers (from its date to its end date). */
+export const coversDay = (task: Pick<Task, 'date' | 'endDate'>, day: string): boolean => {
+  const last = lastDayOf(task);
+  if (task.date === null) return last === day;
+  return task.date <= day && day <= (last ?? task.date);
+};
+
+/** Open and ended before `today` (a task that spans days is late only after its last day). */
+export const isOverdue = (task: Task, today: string): boolean => {
+  const last = lastDayOf(task);
+  return isOpen(task) && last !== null && last < today;
+};
 
 /** High first, then the sooner date, then the older task. Undated tasks come after dated ones. */
 export function compareTasks(a: Task, b: Task): number {
@@ -102,14 +116,14 @@ export function filterTasks(tasks: readonly Task[], filter: TaskFilter, now: Dat
   const query = filter.query?.trim().toLowerCase();
   return tasks.filter((task) => {
     switch (filter.day.kind) {
-      case 'today': if (task.date !== today) return false; break;
-      case 'day': if (task.date !== filter.day.day) return false; break;
+      case 'today': if (!coversDay(task, today)) return false; break;
+      case 'day': if (!coversDay(task, filter.day.day)) return false; break;
       case 'overdue': if (!isOverdue(task, today)) return false; break;
       case 'undated': if (task.date !== null) return false; break;
       case 'all': break;
     }
     if (filter.statuses?.length && !filter.statuses.includes(task.status)) return false;
-    if (filter.projectId === 'none' ? task.projectId !== null : filter.projectId && task.projectId !== filter.projectId) return false;
+    if (filter.projectId === 'none' ? task.projectIds.length > 0 : filter.projectId && !task.projectIds.includes(filter.projectId)) return false;
     if (filter.assignee && task.assignee !== filter.assignee) return false;
     if (query && !task.title.toLowerCase().includes(query)) return false;
     return true;
@@ -122,7 +136,7 @@ export const nextTaskNo = (tasks: readonly Task[]): number => tasks.reduce((max,
 export function blankTask(no: number, day: string | null, now: Date = new Date()): Omit<Task, 'id'> {
   const at = now.toISOString();
   return {
-    no, title: '', status: 'todo', priority: null, date: day, projectId: null, assignee: null,
+    no, title: '', status: 'todo', priority: null, date: day, endDate: null, projectId: null, projectIds: [], assignee: null,
     assigneeUid: null, createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: at, updatedAt: at, doneAt: null,
   };
 }

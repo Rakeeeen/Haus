@@ -106,7 +106,7 @@ const AppRoutes: React.FC = () => {
         {/* The work side is for everyone let in (a guest sees what is shared with them); finance is Hamed's alone. */}
         <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
-        <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />
+        <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         {role === 'owner' && <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />}
