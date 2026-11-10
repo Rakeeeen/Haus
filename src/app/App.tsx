@@ -101,11 +101,11 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
         <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
         <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
-        {/* Finance and the work side are Hamed's alone (for now). */}
-        {role === 'owner' && <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} /></AnimatedPage>} />}
-        {role === 'owner' && <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} /></AnimatedPage>} />}
-        {role === 'owner' && <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />}
-        {role === 'owner' && <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} /></AnimatedPage>} />}
+        {/* The work side is for everyone let in (a guest sees what is shared with them); finance is Hamed's alone. */}
+        <Route path="/work" element={<AnimatedPage><WorkHub navigate={nav} /></AnimatedPage>} />
+        <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} /></AnimatedPage>} />
+        <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />
+        <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} /></AnimatedPage>} />
         {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -118,8 +118,8 @@ const AppRoutes: React.FC = () => {
       <DailyResetManager />
       {role === 'owner' && <GoldPriceRefresher />}
 
-      {/* The work side's data (projects, tasks) is only listened to for Hamed. */}
-      {role === 'owner' ? <WorkProvider>{routes}</WorkProvider> : routes}
+      {/* The work side's data: all of it for Hamed, a guest's own part for a guest. */}
+      <WorkProvider scope={role === 'owner' ? { kind: 'owner' } : { kind: 'guest', uid: user.uid, name: firstName }}>{routes}</WorkProvider>
 
       <FloatingTimer currentPage={currentPage} onNavigate={() => nav('pomodoro')} />
       {role === 'owner' && <DeviceCodeBanner user={user} />}

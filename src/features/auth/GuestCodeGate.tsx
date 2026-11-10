@@ -31,7 +31,7 @@ export const GuestCodeGate: React.FC<{ user: User }> = ({ user }) => {
   const ask = async () => {
     setState('asking');
     try {
-      await requestGuestCode(user.uid, user.email ?? '', user.displayName);
+      await requestGuestCode(user.uid, user.email ?? '', user.displayName, user.photoURL);
       setState('waiting');
     } catch (error) {
       console.warn('Could not ask for a code:', error);

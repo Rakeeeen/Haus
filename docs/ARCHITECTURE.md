@@ -161,8 +161,8 @@ system: the Pomodoro focus ring (scales with its own size), Recharts `ReferenceL
 
 ## Work: projects, tasks and comments
 
-The work side (`features/work/`, routes `/work`, `/work/tasks`, `/work/projects`, `/work/projects/:id`) is Hamed's alone for
-now. It is the Notion setup he ran his work from: **projects** (each for a client, with a status, priority, lead and date),
+The work side (`features/work/`, routes `/work`, `/work/tasks`, `/work/projects`, `/work/projects/:id`) is the Notion setup
+Hamed ran his work from, now shared with guests project by project: **projects** (each for a client, with a status, priority, lead and date),
 **tasks** (a title, status To do / Doing / Done / Dropped, priority, a date, a project, who it is for, tags, a description
 and comments) and, later, notes. Notion's sprints and the git field are left out.
 
@@ -179,7 +179,16 @@ and comments) and, later, notes. Notion's sprints and the git field are left out
   (today's open tasks, with a tick to finish each).
 - **Importing Notion.** `node backend/scripts/import-notion.js "<export folder>"` reads a Notion Markdown & CSV export
   (`backend/src/lib/notionImport.js`, tested) and says what it found; `--write` imports it. Ids come from the export and
-  anything already in Haus is left alone, so it can be run again. Notion leaves comments out of its exports.
+  anything already in Haus is left alone, so it can be run again. Notion leaves comments out of its exports, and a task's
+  page text is what is left after the template's own furniture is stripped (the banner, rules).
+- **Sharing with guests.** A project has `memberUids` (the guests on it) and `guestsSeeAll` (a member sees every task of it,
+  or only their own). Each task carries `viewerUids` — the guests who may see it, from `viewersOf` in `domain/work/sharing.ts`
+  — and `firestore.rules` lets a guest read a project they are a member of and a task that lists them, nothing else. A guest's
+  queries ask for exactly that (`array-contains` their uid). A guest can add a task for themself (in a project they are on,
+  or none) and change the tasks that are theirs, never a task's project, who it is for, or who may see it; they never see a
+  project's client (it is in its own owner-only document). Changing a project's sharing rewrites its tasks' viewers
+  (`setSharing`). A guest's uid and photo reach Hamed's app when they ask for a code (`members/{email}`), so he can pick them
+  by name.
 
 ## The Discord bot (`backend/`)
 

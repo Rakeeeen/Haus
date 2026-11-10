@@ -1,14 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { compareProjects, countTasks, dateSpan, groupProjects, isWorkedOn, monthStarts, progressOf, projectSpan, tasksByProject } from '@/domain/work/projects';
+import { normalizeProject, normalizeTask } from '@/domain/work/sharing';
 import type { Project, Task } from '@/domain/work/types';
 
-const task = (over: Partial<Task> = {}): Task => ({
-  id: 'x', no: 1, title: 'T', status: 'todo', priority: null, date: null, projectId: null, assignee: null,
-  tags: [], description: '', createdAt: '', updatedAt: '', doneAt: null, ...over,
-});
-const project = (over: Partial<Project> = {}): Project => ({
-  id: 'p', name: 'P', status: 'active', priority: null, lead: null, date: null, createdAt: '', updatedAt: '', ...over,
-});
+const task = (over: Partial<Task> = {}): Task => normalizeTask({ id: 'x', no: 1, title: 'Task', ...over });
+const project = (over: Partial<Project> = {}): Project => normalizeProject({ id: 'p', name: 'P', ...over });
 
 describe('progressOf', () => {
   it('is the share of finished tasks, leaving out the dropped ones', () => {

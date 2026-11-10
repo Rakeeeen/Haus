@@ -43,9 +43,8 @@ const noteRows = read('الملاحظات');
 
 const built = buildWork({
   projectRows, taskRows, noteRows,
-  taskPages: pages.filter((p) => p.properties['Task ID']),
-  notePages: pages.filter((p) => inside(p.file, 'الملاحظات') && !p.properties['Task ID']),
-  projectPages: pages.filter((p) => inside(p.file, 'المشاريع') && !p.properties['Task ID']),
+  taskPages: pages.filter((p) => inside(p.file, 'يوميتي') && p.properties['الحاله']),
+  notePages: pages.filter((p) => inside(p.file, 'الملاحظات')),
 });
 
 const count = (items, key) => items.reduce((acc, i) => ({ ...acc, [i[key] ?? 'none']: (acc[i[key] ?? 'none'] ?? 0) + 1 }), {});

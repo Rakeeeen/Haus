@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
@@ -11,7 +11,7 @@ import { ProgressBar } from '@/ui/ProgressBar';
 import { PriorityChip, ProjectStatusChip, shortDate } from '@/features/work/components/chips';
 import { ProjectModal } from '@/features/work/components/ProjectModal';
 import { TaskBoard } from '@/features/work/components/TaskBoard';
-import { TaskModal, type TaskEditing } from '@/features/work/components/TaskModal';
+import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkShell } from '@/features/work/components/WorkShell';
 import { useProjectEditing } from '@/features/work/Projects';
 
@@ -25,9 +25,9 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: string }> = ({ navigate, author }) => {
   const { id } = useParams<{ id: string }>();
-  const { tasks, privates, ready, addTask, updateTask, removeTask } = useWork();
-  const { projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
-  const [editing, setEditing] = useState<TaskEditing | null>(null);
+  const { role, tasks, privates, ready, canEditTask, updateTask } = useWork();
+  const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
+  const editor = useTaskEditor(author);
 
   const project = projects.find((p) => p.id === id) ?? null;
   const mine = useMemo(() => tasks.filter((t) => t.projectId === id), [tasks, id]);
@@ -47,8 +47,8 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
   }
 
   const counts = countTasks(mine);
-  const toggleDone = (task: Task) => updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
-  const openNew = (status: Task['status'] = 'todo') => setEditing({ kind: 'new', defaults: { projectId: project.id, status, date: dayKey(new Date()) } });
+  const toggleDone = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
+  const openNew = (status: Task['status'] = 'todo') => editor.open({ kind: 'new', defaults: { projectId: project.id, status, date: dayKey(new Date()) } });
 
   return (
     <WorkShell
@@ -56,7 +56,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
       crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects', to: 'work/projects' }, { label: project.name }]}
       title={project.name}
       actions={<>
-        <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>
+        {role === 'owner' && <Button tone="outline" onClick={() => setProjectEditing({ kind: 'edit', project, client })}>Edit</Button>}
         <Button onClick={() => openNew()}><Plus size={16} />New task</Button>
       </>}
     >
@@ -64,7 +64,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
         <div className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-5">
           <Property label="Status"><ProjectStatusChip status={project.status} /></Property>
           <Property label="Priority">{project.priority ? <PriorityChip priority={project.priority} /> : '—'}</Property>
-          <Property label="Client"><span dir="auto">{client ?? '—'}</span></Property>
+          {role === 'owner' && <Property label="Client"><span dir="auto">{client ?? '—'}</span></Property>}
           <Property label="Lead"><span dir="auto">{project.lead ?? '—'}</span></Property>
           <Property label="Date">{shortDate(project.date) || '—'}</Property>
         </div>
@@ -81,28 +81,19 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
           tasks={mine}
           projectName={() => null}
           showDropped={mine.some((t) => t.status === 'dropped')}
-          onOpen={(task) => setEditing({ kind: 'edit', task })}
-          onMove={(task, status) => updateTask(task.id, moveToStatus(task, status))}
+          onOpen={(task) => editor.open({ kind: 'edit', task })}
+          canEdit={canEditTask}
+          onMove={(task, status) => canEditTask(task) && updateTask(task.id, moveToStatus(task, status))}
           onToggleDone={toggleDone}
           onAdd={openNew}
         />
       )}
 
-      <TaskModal
-        editing={editing}
-        projects={projects}
-        author={author}
-        onClose={() => setEditing(null)}
-        onCreate={async (draft) => { await addTask({ ...draft, doneAt: draft.status === 'done' ? new Date().toISOString() : null }); }}
-        onUpdate={async (taskId, draft) => {
-          const current = tasks.find((t) => t.id === taskId);
-          await updateTask(taskId, { ...draft, ...(current ? moveToStatus(current, draft.status) : {}) });
-        }}
-        onDelete={removeTask}
-      />
+      {editor.modal}
       <ProjectModal
         editing={projectEditing}
         clients={clients}
+        guests={guests}
         onClose={() => setProjectEditing(null)}
         onSave={save}
         onDelete={async (p) => { await remove(p); navigate('work/projects'); }}

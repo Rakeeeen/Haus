@@ -4,6 +4,7 @@ import { Button } from '@/ui/Button';
 import { Field, TextInput } from '@/ui/Form';
 import { PROJECT_STATUSES } from '@/domain/work/projects';
 import { PRIORITIES } from '@/domain/work/tasks';
+import type { Invitation } from '@/domain/access';
 import type { Priority, Project, ProjectStatus } from '@/domain/work/types';
 
 export type ProjectEditing = { kind: 'edit'; project: Project; client: string | null } | { kind: 'new'; client: string | null };
@@ -15,6 +16,9 @@ export interface ProjectDraft {
   lead: string | null;
   date: string | null;
   client: string | null;
+  /** The guests on the project, and whether they see everyone's tasks in it. */
+  memberUids: string[];
+  guestsSeeAll: boolean;
 }
 
 function Choose<T extends string>({ options, value, onChange }: {
@@ -33,10 +37,12 @@ function Choose<T extends string>({ options, value, onChange }: {
 export const ProjectModal: React.FC<{
   editing: ProjectEditing | null;
   clients: readonly string[];
+  /** The guests Hamed has invited; the ones who have signed in (so have a uid) can be put on a project. */
+  guests: readonly Invitation[];
   onClose: () => void;
   onSave: (editing: ProjectEditing, draft: ProjectDraft) => Promise<void>;
   onDelete: (project: Project) => Promise<void>;
-}> = ({ editing, clients, onClose, onSave, onDelete }) => {
+}> = ({ editing, clients, guests, onClose, onSave, onDelete }) => {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -48,6 +54,7 @@ export const ProjectModal: React.FC<{
     setDraft({
       name: p?.name ?? '', status: p?.status ?? 'active', priority: p?.priority ?? null,
       lead: p?.lead ?? 'Hamed', date: p?.date ?? null, client: editing.client,
+      memberUids: p?.memberUids ?? [], guestsSeeAll: p?.guestsSeeAll ?? false,
     });
     setSure(false);
     setError('');
@@ -88,6 +95,36 @@ export const ProjectModal: React.FC<{
             <Field label="Lead"><TextInput dir="auto" value={draft.lead ?? ''} onChange={(e) => set('lead', e.target.value || null)} /></Field>
             <Field label="Date"><TextInput type="date" value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
           </div>
+
+          <Field label="Guests on this project">
+            {guests.length === 0 ? (
+              <p className="font-mono-main text-[10px] text-ink/40">Invite someone from the Guests list on Home first.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="spring-group flex flex-wrap gap-2">
+                  {guests.map((guest) => {
+                    const on = !!guest.uid && draft.memberUids.includes(guest.uid);
+                    return (
+                      <Button
+                        key={guest.email}
+                        size="sm"
+                        tone={on ? 'ink' : 'outline'}
+                        disabled={!guest.uid}
+                        data-tip={guest.uid ? undefined : 'They appear here once they have signed in'}
+                        onClick={() => guest.uid && set('memberUids', on ? draft.memberUids.filter((u) => u !== guest.uid) : [...draft.memberUids, guest.uid])}
+                      >
+                        {guest.name || guest.email}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="spring-group flex gap-2">
+                  <Button size="sm" tone={draft.guestsSeeAll ? 'outline' : 'ink'} onClick={() => set('guestsSeeAll', false)}>Only their own tasks</Button>
+                  <Button size="sm" tone={draft.guestsSeeAll ? 'ink' : 'outline'} onClick={() => set('guestsSeeAll', true)}>Everyone's tasks</Button>
+                </div>
+              </div>
+            )}
+          </Field>
           {error && <p className="font-mono-main text-[10px] text-rust">{error}</p>}
           <div className="spring-group flex gap-3 justify-end pt-2">
             {editing.kind === 'edit' && (

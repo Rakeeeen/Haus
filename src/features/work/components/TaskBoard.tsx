@@ -24,8 +24,8 @@ export const DoneTick: React.FC<{ done: boolean; onToggle: () => void }> = ({ do
 );
 
 const TaskCard: React.FC<{
-  task: Task; projectName: string | null; onOpen: () => void; onToggleDone: () => void; overlay?: boolean;
-}> = ({ task, projectName, onOpen, onToggleDone, overlay = false }) => {
+  task: Task; projectName: string | null; editable?: boolean; onOpen: () => void; onToggleDone: () => void; overlay?: boolean;
+}> = ({ task, projectName, editable = true, onOpen, onToggleDone, overlay = false }) => {
   const overdue = isOverdue(task, dayKey(new Date()));
   return (
     <div
@@ -33,7 +33,7 @@ const TaskCard: React.FC<{
       className={`rounded-box border border-ink/12 bg-paper-dark p-3 text-left select-none ${overlay ? 'shadow-none rotate-1' : 'hover:border-ink/35'} transition-colors`}
     >
       <div className="flex items-start gap-2.5">
-        <DoneTick done={task.status === 'done'} onToggle={onToggleDone} />
+        {editable ? <DoneTick done={task.status === 'done'} onToggle={onToggleDone} /> : <span className="shrink-0 w-5 h-5" />}
         <p dir="auto" className={`font-sans-main text-[13px] font-semibold leading-snug ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>
           {task.title || 'Untitled'}
         </p>
@@ -50,7 +50,7 @@ const TaskCard: React.FC<{
 };
 
 const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard>> = (props) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id, disabled: props.editable === false });
   return (
     <div
       ref={setNodeRef}
@@ -64,9 +64,9 @@ const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard>> = (props) =
 };
 
 const Column: React.FC<{
-  status: TaskStatus; label: string; tasks: Task[]; projectName: (id: string | null) => string | null;
+  status: TaskStatus; label: string; tasks: Task[]; projectName: (id: string | null) => string | null; canEdit: (task: Task) => boolean;
   onOpen: (task: Task) => void; onToggleDone: (task: Task) => void; onAdd?: (status: TaskStatus) => void;
-}> = ({ status, label, tasks, projectName, onOpen, onToggleDone, onAdd }) => {
+}> = ({ status, label, tasks, projectName, canEdit, onOpen, onToggleDone, onAdd }) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <div
@@ -78,7 +78,7 @@ const Column: React.FC<{
         <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{tasks.length}</span>
       </div>
       {tasks.map((task) => (
-        <DraggableCard key={task.id} task={task} projectName={projectName(task.projectId)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
+        <DraggableCard key={task.id} task={task} projectName={projectName(task.projectId)} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
       ))}
       {onAdd && (
         <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
@@ -97,11 +97,13 @@ export const TaskBoard: React.FC<{
   tasks: readonly Task[];
   projectName: (id: string | null) => string | null;
   showDropped?: boolean;
+  /** Which tasks this person may move and finish (a guest's own); defaults to all. */
+  canEdit?: (task: Task) => boolean;
   onOpen: (task: Task) => void;
   onMove: (task: Task, status: TaskStatus) => void;
   onToggleDone: (task: Task) => void;
   onAdd?: (status: TaskStatus) => void;
-}> = ({ tasks, projectName, showDropped = false, onOpen, onMove, onToggleDone, onAdd }) => {
+}> = ({ tasks, projectName, showDropped = false, canEdit = () => true, onOpen, onMove, onToggleDone, onAdd }) => {
   const [dragging, setDragging] = useState<Task | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -122,7 +124,7 @@ export const TaskBoard: React.FC<{
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className={`grid grid-cols-1 gap-4 ${columns.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         {columns.map((c) => (
-          <Column key={c.value} status={c.value} label={c.label} tasks={groups[c.value]} projectName={projectName}
+          <Column key={c.value} status={c.value} label={c.label} tasks={groups[c.value]} projectName={projectName} canEdit={canEdit}
             onOpen={onOpen} onToggleDone={onToggleDone} onAdd={onAdd} />
         ))}
       </div>

@@ -16,17 +16,20 @@ interface ViewProps {
 }
 
 /** The projects as cards, a column for each client (what the Notion "Plan" board did). */
-export const ProjectCards: React.FC<ViewProps & { onNew: (client: string | null) => void }> = ({ projects, tasksOf, clientOf, onOpen, onNew }) => {
+export const ProjectCards: React.FC<ViewProps & { onNew?: (client: string | null) => void }> = ({ projects, tasksOf, clientOf, onOpen, onNew }) => {
   const groups = groupProjects(projects, 'client', clientOf);
   if (groups.length === 0) return <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">No projects here.</p>;
   return (
     <div className="flex gap-4 overflow-x-auto pb-3 items-start">
       {groups.map((group) => (
         <div key={group.key} className="w-[270px] shrink-0 rounded-card bg-ink/4 p-3 flex flex-col gap-2.5">
-          <div className="flex items-center justify-between px-1 pb-1">
-            <Chip tone={group.key ? 'ink' : 'neutral'}>{group.label}</Chip>
-            <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
-          </div>
+          {/* A guest sees no clients, so their one group needs no heading. */}
+          {!(groups.length === 1 && group.key === '' && !onNew) && (
+            <div className="flex items-center justify-between px-1 pb-1">
+              <Chip tone={group.key ? 'ink' : 'neutral'}>{group.label}</Chip>
+              <span className="font-mono-main text-[10px] text-ink/35 tabular-nums">{group.projects.length}</span>
+            </div>
+          )}
           {group.projects.map((project) => {
             const tasks = tasksOf(project.id);
             return (
@@ -38,7 +41,7 @@ export const ProjectCards: React.FC<ViewProps & { onNew: (client: string | null)
               </div>
             );
           })}
-          <Button tone="ghost" size="sm" onClick={() => onNew(group.key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>
+          {onNew && <Button tone="ghost" size="sm" onClick={() => onNew(group.key || null)} className="justify-start !px-2"><Plus size={12} /> New project</Button>}
         </div>
       ))}
     </div>

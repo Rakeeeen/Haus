@@ -32,12 +32,13 @@ export function useGuests(enabled = true) {
   const invite = useCallback(async (email: string, name?: string) => {
     if (!isValidEmail(email)) throw new Error('That is not an email address');
     const id = normalizeEmail(email);
+    // Merged, so inviting someone again keeps what is already known about them (their uid and photo).
     await setDoc(doc(db, COL, id), {
       email: id,
       active: true,
       addedAt: new Date().toISOString(),
       ...(name?.trim() ? { name: name.trim() } : {}),
-    });
+    }, { merge: true });
   }, []);
 
   const setActive = useCallback(async (guest: Invitation, active: boolean) => {

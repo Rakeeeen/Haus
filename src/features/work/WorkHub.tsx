@@ -24,7 +24,7 @@ const Tile: React.FC<{ title: string; note: string; onClick?: () => void }> = ({
 
 /** The way into the work side: Projects, Tasks, Notes; what is being worked on, and what is due today. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
-  const { projects, tasks, privates, ready, updateTask } = useWork();
+  const { role, projects, tasks, privates, ready, canEditTask, updateTask } = useWork();
 
   useEffect(() => { document.title = `${NAME} — Work`; }, []);
 
@@ -32,15 +32,15 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate
   const working = projects.filter(isWorkedOn);
   const today = sortTasks(filterTasks(tasks, { day: { kind: 'today' } }));
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
-  const toggle = (task: Task) => updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
+  const toggle = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
   const open = tasks.filter((t) => t.status === 'todo' || t.status === 'doing').length;
 
   return (
     <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work' }]} title="Work">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${role === 'owner' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Tile title="Projects" note={`${working.length} working on · ${projects.length} in all`} onClick={() => navigate('work/projects')} />
         <Tile title="Tasks" note={`${open} open · ${today.length} today`} onClick={() => navigate('work/tasks')} />
-        <Tile title="Notes" note="Soon" />
+        {role === 'owner' && <Tile title="Notes" note="Soon" />}
       </div>
 
       {!ready ? (
@@ -73,7 +73,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate
             {today.length === 0 && <p className="font-mono-main text-[11px] text-ink/40">No tasks dated today.</p>}
             {today.map((task) => (
               <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
-                <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} />
+                {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggle(task)} /> : <span className="w-5 h-5 shrink-0" />}
                 <div className="min-w-0 flex-1 cursor-pointer" onClick={() => navigate('work/tasks')}>
                   <p dir="auto" className={`font-sans-main text-[13px] font-semibold truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
                   <p dir="auto" className="font-mono-main text-[9px] uppercase tracking-wider text-ink/40 truncate">{projectName(task.projectId) ?? 'No project'} · {shortDate(task.date)}</p>

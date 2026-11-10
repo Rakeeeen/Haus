@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NAME } from '@/constants/brand';
+import { useGuests } from '@/data/useMembers';
 import { useWork } from '@/data/useWork';
 import { isWorkedOn, tasksByProject } from '@/domain/work/projects';
 import type { Project, Task } from '@/domain/work/types';
@@ -30,26 +31,32 @@ const matches = (project: Project, show: Show) => (show === 'all' ? true : show 
 
 /** Shared by the Projects page and a project's page: how to make or change one. */
 export function useProjectEditing() {
-  const { projects, privates, addProject, updateProject, setClient, removeProject } = useWork();
+  const { role, projects, privates, addProject, updateProject, setSharing, setClient, removeProject } = useWork();
+  const { guests } = useGuests(role === 'owner');
   const [editing, setEditing] = useState<ProjectEditing | null>(null);
   const clients = useMemo(() => [...new Set(Object.values(privates).map((p) => p.client).filter((c): c is string => !!c))].sort(), [privates]);
 
   const save = async (target: ProjectEditing, draft: ProjectDraft) => {
-    const { client, ...fields } = draft;
+    const { client, memberUids, guestsSeeAll, ...fields } = draft;
+    let id: string;
     if (target.kind === 'edit') {
-      await updateProject(target.project.id, fields);
-      await setClient(target.project.id, client);
+      id = target.project.id;
+      await updateProject(id, fields);
+      await setClient(id, client);
     } else {
-      await addProject(fields, client);
+      id = await addProject(fields, client);
     }
+    // Sharing changes who may see the project's tasks, so it is written on its own, with the tasks' viewers.
+    const before = target.kind === 'edit' ? target.project : null;
+    if (memberUids.length || before?.memberUids.length || guestsSeeAll !== (before?.guestsSeeAll ?? false)) await setSharing(id, memberUids, guestsSeeAll);
   };
 
-  return { projects, clients, editing, setEditing, save, remove: (p: Project) => removeProject(p.id) };
+  return { role, projects, clients, guests, editing, setEditing, save, remove: (p: Project) => removeProject(p.id) };
 }
 
 export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
   const { tasks, privates, ready } = useWork();
-  const { projects, clients, editing, setEditing, save, remove } = useProjectEditing();
+  const { role, projects, clients, guests, editing, setEditing, save, remove } = useProjectEditing();
   const [view, setView] = useState<View>(readView);
   const [show, setShow] = useState<Show>('working');
 
@@ -67,7 +74,7 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       navigate={navigate}
       crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work', to: 'work' }, { label: 'Projects' }]}
       title="Projects"
-      actions={<Button onClick={() => setEditing({ kind: 'new', client: null })}><Plus size={16} />New project</Button>}
+      actions={role === 'owner' ? <Button onClick={() => setEditing({ kind: 'new', client: null })}><Plus size={16} />New project</Button> : undefined}
     >
       <Tabs options={VIEWS} value={view} onChange={setView} layoutId="work-projects-view" ruled />
       <div className="flex flex-wrap items-center gap-3">
@@ -77,14 +84,14 @@ export const Projects: React.FC<{ navigate: (to: string) => void }> = ({ navigat
       {!ready ? (
         <p className="font-mono-main text-[11px] text-ink/40 py-10 text-center">Loading…</p>
       ) : view === 'cards' ? (
-        <ProjectCards {...common} onNew={(client) => setEditing({ kind: 'new', client })} />
+        <ProjectCards {...common} onNew={role === 'owner' ? (client) => setEditing({ kind: 'new', client }) : undefined} />
       ) : view === 'table' ? (
         <ProjectTable {...common} />
       ) : (
         <ProjectTimeline {...common} />
       )}
 
-      <ProjectModal editing={editing} clients={clients} onClose={() => setEditing(null)} onSave={save} onDelete={remove} />
+      <ProjectModal editing={editing} clients={clients} guests={guests} onClose={() => setEditing(null)} onSave={save} onDelete={remove} />
     </WorkShell>
   );
 };

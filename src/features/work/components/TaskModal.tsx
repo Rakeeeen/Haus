@@ -10,41 +10,50 @@ import { shortDate } from '@/features/work/components/chips';
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
 
-type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'projectId' | 'assignee' | 'description'> & { tags: string };
+type Draft = Pick<Task, 'title' | 'status' | 'priority' | 'date' | 'projectId' | 'assignee' | 'assigneeUid' | 'description'> & { tags: string };
 
 const toDraft = (editing: TaskEditing): Draft => {
   const t: Partial<Task> = editing.kind === 'edit' ? editing.task : editing.defaults;
   return {
     title: t.title ?? '', status: t.status ?? 'todo', priority: t.priority ?? null, date: t.date ?? null,
-    projectId: t.projectId ?? null, assignee: t.assignee ?? null, description: t.description ?? '', tags: (t.tags ?? []).join(', '),
+    projectId: t.projectId ?? null, assignee: t.assignee ?? null, assigneeUid: t.assigneeUid ?? null, description: t.description ?? '', tags: (t.tags ?? []).join(', '),
   };
 };
 
 const splitTags = (tags: string) => tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
 
 /** A row of buttons to pick one value from; they share space like every button row. */
-function Choose<T extends string>({ options, value, onChange }: {
-  options: ReadonlyArray<{ value: T; label: string }>; value: T; onChange: (value: T) => void;
+function Choose<T extends string>({ options, value, onChange, disabled = false }: {
+  options: ReadonlyArray<{ value: T; label: string }>; value: T; onChange: (value: T) => void; disabled?: boolean;
 }) {
   return (
     <div className="spring-group flex flex-wrap gap-2">
       {options.map((o) => (
-        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} onClick={() => onChange(o.value)}>{o.label}</Button>
+        <Button key={o.value} size="sm" tone={o.value === value ? 'ink' : 'outline'} disabled={disabled} onClick={() => onChange(o.value)}>{o.label}</Button>
       ))}
     </div>
   );
 }
+
+export interface Assignee { uid: string | null; name: string }
 
 export const TaskModal: React.FC<{
   editing: TaskEditing | null;
   projects: readonly Project[];
   /** Who is commenting. */
   author: string;
+  /** A guest's own uid: it goes on their comments, and the fields they may not change are locked. */
+  guestUid?: string;
+  /** May this person change the task (a guest, only their own)? A task they can't change is read, and commented on. */
+  canEdit: boolean;
+  canDelete: boolean;
+  /** Who a task can be for: Hamed first, then guests (empty or one: the field is not shown). */
+  assignees: readonly Assignee[];
   onClose: () => void;
   onCreate: (draft: Omit<Draft, 'tags'> & { tags: string[] }) => Promise<void>;
   onUpdate: (id: string, draft: Omit<Draft, 'tags'> & { tags: string[] }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-}> = ({ editing, projects, author, onClose, onCreate, onUpdate, onDelete }) => {
+}> = ({ editing, projects, author, guestUid, canEdit, canDelete, assignees, onClose, onCreate, onUpdate, onDelete }) => {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -79,40 +88,59 @@ export const TaskModal: React.FC<{
     });
   };
 
-  const sendComment = () => run(async () => { await add(author, comment); setComment(''); });
+  const sendComment = () => run(async () => { await add(author, comment, guestUid); setComment(''); });
+
+  // For a task in a project, who it can be for is that project's members; otherwise any guest.
+  const memberUids = projects.find((p) => p.id === draft?.projectId)?.memberUids;
+  const choices = assignees.filter((a) => a.uid === null || !draft?.projectId || (memberUids ?? []).includes(a.uid));
+  const locked = !canEdit;
 
   return (
     <AppModal isOpen={editing !== null} onClose={onClose} title={editing?.kind === 'edit' ? `Task #${editing.task.no}` : 'New task'} maxWidth="max-w-2xl">
       {draft && editing && (
         <div className="flex flex-col gap-5 max-h-[72vh] overflow-y-auto pr-1">
           <Field label="Title">
-            <TextInput dir="auto" autoFocus={editing.kind === 'new'} value={draft.title} onChange={(e) => set('title', e.target.value)}
+            <TextInput dir="auto" disabled={locked} autoFocus={editing.kind === 'new'} value={draft.title} onChange={(e) => set('title', e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} placeholder="What needs doing?" />
           </Field>
 
-          <Field label="Status"><Choose<TaskStatus> options={TASK_STATUSES} value={draft.status} onChange={(v) => set('status', v)} /></Field>
+          <Field label="Status"><Choose<TaskStatus> options={TASK_STATUSES} value={draft.status} disabled={locked} onChange={(v) => set('status', v)} /></Field>
 
           <Field label="Priority">
             <Choose<Priority | 'none'>
               options={[...PRIORITIES, { value: 'none', label: 'None' }]}
               value={draft.priority ?? 'none'}
+              disabled={locked}
               onChange={(v) => set('priority', v === 'none' ? null : v)}
             />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Date"><TextInput type="date" value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
+            <Field label="Date"><TextInput type="date" disabled={locked} value={draft.date ?? ''} onChange={(e) => set('date', e.target.value || null)} /></Field>
             <Field label="Project">
-              <SelectInput value={draft.projectId ?? ''} onChange={(e) => set('projectId', e.target.value || null)}>
+              <SelectInput value={draft.projectId ?? ''} disabled={locked || (guestUid !== undefined && editing.kind === 'edit')} onChange={(e) => set('projectId', e.target.value || null)}>
                 <option value="">No project</option>
                 {[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </SelectInput>
             </Field>
-            <Field label="For"><TextInput dir="auto" value={draft.assignee ?? ''} onChange={(e) => set('assignee', e.target.value || null)} placeholder="Who is it for?" /></Field>
-            <Field label="Tags"><TextInput dir="auto" value={draft.tags} onChange={(e) => set('tags', e.target.value)} placeholder="comma, separated" /></Field>
+            {assignees.length > 1 && guestUid === undefined && (
+              <Field label="For">
+                <SelectInput
+                  value={draft.assigneeUid ?? ''}
+                  disabled={locked}
+                  onChange={(e) => {
+                    const picked = assignees.find((a) => (a.uid ?? '') === e.target.value);
+                    setDraft((d) => (d ? { ...d, assigneeUid: picked?.uid ?? null, assignee: picked?.name ?? null } : d));
+                  }}
+                >
+                  {choices.map((a) => <option key={a.uid ?? 'owner'} value={a.uid ?? ''}>{a.name}</option>)}
+                </SelectInput>
+              </Field>
+            )}
+            <Field label="Tags"><TextInput dir="auto" disabled={locked} value={draft.tags} onChange={(e) => set('tags', e.target.value)} placeholder="comma, separated" /></Field>
           </div>
 
-          <Field label="Description"><TextArea dir="auto" value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Details, links, notes…" /></Field>
+          <Field label="Description"><TextArea dir="auto" disabled={locked} value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Details, links, notes…" /></Field>
 
           {editing.kind === 'edit' && (
             <div>
@@ -140,13 +168,13 @@ export const TaskModal: React.FC<{
           {error && <p className="font-mono-main text-[10px] text-rust">{error}</p>}
 
           <div className="spring-group flex gap-3 justify-end pt-2">
-            {editing.kind === 'edit' && (
+            {editing.kind === 'edit' && canDelete && (
               <Button tone="danger" disabled={busy}
                 onClick={() => (sure ? run(async () => { await onDelete(editing.task.id); onClose(); }) : setSure(true))}>
                 {sure ? 'Sure? Delete' : 'Delete'}
               </Button>
             )}
-            <Button tone="primary" disabled={busy} onClick={save}>{editing.kind === 'edit' ? 'Save' : 'Add task'}</Button>
+            {canEdit && <Button tone="primary" disabled={busy} onClick={save}>{editing.kind === 'edit' ? 'Save' : 'Add task'}</Button>}
           </div>
         </div>
       )}

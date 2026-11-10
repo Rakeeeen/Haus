@@ -38,6 +38,14 @@ service cloud.firestore {
       return /databases/$(database)/documents/guest_approvals/$(uid);
     }
 
+    function projectPath(id) {
+      return /databases/$(database)/documents/work_projects/$(id);
+    }
+
+    function taskPath(id) {
+      return /databases/$(database)/documents/work_tasks/$(id);
+    }
+
     function codePath(uid) {
       return /databases/$(database)/documents/guest_codes/$(uid);
     }
@@ -103,9 +111,10 @@ service cloud.firestore {
     match /guest_requests/{uid} {
       allow read, delete: if isOwner();
       allow create, update: if isGuest() && request.auth.uid == uid
-        && onlyKeys(['email', 'name', 'requestedAt'])
+        && onlyKeys(['email', 'name', 'photoUrl', 'requestedAt'])
         && request.resource.data.email == request.auth.token.email.lower()
         && request.resource.data.get('name', '') is string
+        && request.resource.data.get('photoUrl', '') is string
         && request.resource.data.requestedAt == request.time;
     }
 
@@ -127,21 +136,60 @@ service cloud.firestore {
         && (resource == null || request.time >= resource.data.approvedAt + duration.value(30, 'd'));
     }
 
-    // ── Work: projects, tasks, their comments, and notes. The owner's alone for now; a project's own members get
-    //    in with the sharing step. A project's client is kept in its own document so it can stay his.
+    // ── Work: projects, tasks, their comments, and notes ─────────────────────────────
+    // Hamed reads and writes all of it. A guest (let in by a code) sees only a project they are a member of, and a task
+    // whose `viewerUids` lists them — Hamed's app writes those lists from each project's sharing (domain/work/sharing.ts).
+    // A guest may add a task for themself (in a project they are on, or none) and change the tasks that are theirs, but
+    // never a task's project, who it is for, or who may see it. A project's client is in its own document, Hamed's alone.
     match /work_projects/{id} {
-      allow read, write: if isOwner();
+      allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in resource.data.memberUids);
+      allow write: if isOwner();
     }
 
     match /work_projects_private/{id} {
       allow read, write: if isOwner();
     }
 
+    function guestMayAddTask() {
+      let d = request.resource.data;
+      return onlyKeys(['no', 'title', 'status', 'priority', 'date', 'projectId', 'assignee', 'assigneeUid', 'createdByUid',
+                       'viewerUids', 'tags', 'description', 'createdAt', 'updatedAt', 'doneAt'])
+        && d.no == 0
+        && d.createdByUid == request.auth.uid
+        && d.assigneeUid == request.auth.uid
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 300
+        && d.status in ['todo', 'doing', 'done', 'dropped']
+        && (d.projectId == null
+            ? d.viewerUids == [request.auth.uid]
+            : request.auth.uid in get(projectPath(d.projectId)).data.memberUids
+              && d.viewerUids == (get(projectPath(d.projectId)).data.guestsSeeAll
+                                  ? get(projectPath(d.projectId)).data.memberUids
+                                  : [request.auth.uid]));
+    }
+
+    function guestMayEditTask() {
+      return (resource.data.assigneeUid == request.auth.uid || resource.data.createdByUid == request.auth.uid)
+        && request.auth.uid in resource.data.viewerUids
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['title', 'status', 'priority', 'date', 'description', 'tags', 'doneAt', 'updatedAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() <= 300;
+    }
+
     match /work_tasks/{id} {
-      allow read, write: if isOwner();
+      allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in resource.data.viewerUids);
+      allow create: if isOwner() || (isApprovedGuest() && guestMayAddTask());
+      allow update: if isOwner() || (isApprovedGuest() && guestMayEditTask());
+      allow delete: if isOwner() || (isApprovedGuest() && resource.data.createdByUid == request.auth.uid);
 
       match /comments/{commentId} {
-        allow read, write: if isOwner();
+        allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in get(taskPath(id)).data.viewerUids);
+        allow create: if isOwner() || (isApprovedGuest()
+          && request.auth.uid in get(taskPath(id)).data.viewerUids
+          && onlyKeys(['author', 'authorUid', 'text', 'at'])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 2000);
+        allow update: if isOwner();
+        allow delete: if isOwner() || (isApprovedGuest() && resource.data.authorUid == request.auth.uid);
       }
     }
 
@@ -155,7 +203,7 @@ service cloud.firestore {
       allow list: if isOwner();
       allow create, update: if isOwner()
         && email == email.lower()
-        && onlyKeys(['email', 'active', 'addedAt', 'name'])
+        && onlyKeys(['email', 'active', 'addedAt', 'name', 'uid', 'photoUrl'])
         && request.resource.data.email == email
         && request.resource.data.active is bool;
       allow delete: if isOwner();

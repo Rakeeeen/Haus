@@ -32,10 +32,11 @@ export function watchGuestApproval(uid: string, onChange: (approvedAtMs: number 
 }
 
 /** Asks Hamed for a code: his screen shows it as soon as it sees this. */
-export async function requestGuestCode(uid: string, email: string, name: string | null): Promise<void> {
+export async function requestGuestCode(uid: string, email: string, name: string | null, photoUrl: string | null = null): Promise<void> {
   await setDoc(doc(db, REQUESTS, uid), {
     email: email.toLowerCase(),
     ...(name ? { name } : {}),
+    ...(photoUrl ? { photoUrl } : {}),
     requestedAt: serverTimestamp(),
   });
 }
@@ -70,7 +71,7 @@ export function useGuestCodes(enabled: boolean) {
       for (const request of snap.docs) {
         if (answering.has(request.id)) continue;
         answering.add(request.id);
-        const { email, name } = request.data() as { email: string; name?: string };
+        const { email, name, photoUrl } = request.data() as { email: string; name?: string; photoUrl?: string };
         const code: GuestCode = {
           uid: request.id,
           email,
@@ -78,7 +79,10 @@ export function useGuestCodes(enabled: boolean) {
           code: codeFromBytes(crypto.getRandomValues(new Uint8Array(32))),
           expiresAt: Date.now() + CODE_LIFETIME_MS,
         };
+        // The ask also tells Hamed's app who this uid is, so projects can be shared with them by name.
+        const who = { uid: request.id, ...(name ? { name } : {}), ...(photoUrl ? { photoUrl } : {}) };
         setDoc(doc(db, CODES, request.id), code)
+          .then(() => setDoc(doc(db, 'members', email.toLowerCase()), who, { merge: true }))
           .then(() => deleteDoc(request.ref))
           .catch((error) => console.warn('Could not answer a guest:', error))
           .finally(() => answering.delete(request.id));

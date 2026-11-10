@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWork, csvObjects, parseCsv, parseNotionDate, parsePage, parseRelation, priorityOf, projectStatusOf, taskStatusOf } from './notionImport.js';
+import { buildWork, cleanBody, commonLines, csvObjects, parseCsv, parseNotionDate, parsePage, parseRelation, priorityOf, projectStatusOf, taskStatusOf } from './notionImport.js';
 
 describe('parseCsv', () => {
   it('reads quoted fields, doubled quotes and newlines inside quotes', () => {
@@ -80,7 +80,7 @@ describe('buildWork', () => {
     { 'اسم المهمه': 'اشتغل على الوحدة', 'Task ID': '609', 'الحاله': 'لسه', 'التاريخ': '9 نوفمبر 2026', 'الضروره': 'Medium', 'المشروع': 'ماكنزي (المشاريع/ماكنزي.md)', 'ل مين ؟': 'Hamed', 'بتاعة اي !': 'كورس, مذاكره' },
     { 'اسم المهمه': 'خلّصت', 'Task ID': '584', 'الحاله': 'خلصت', 'التاريخ': '2026-11-10', 'المشروع': 'مشروع مجهول (x.md)' },
   ];
-  const taskPages = [{ title: 'اشتغل على الوحدة', properties: { 'Task ID': '609' }, body: 'وصف المهمة' }];
+  const taskPages = [{ title: 'اشتغل على الوحدة', properties: { 'المشروع': 'ماكنزي (../المشاريع/ماكنزي%20abc.md)', 'التاريخ': '٩ نوفمبر ٢٠٢٦ ٣:٣٢ م (غرينتش+٢)' }, body: '<aside>\n<img src="x.png" />\n</aside>\n\nوصف المهمة\n\n---' }];
   const built = buildWork({ projectRows, taskRows, noteRows: [], taskPages });
 
   it('builds projects with the client kept apart', () => {
@@ -101,5 +101,32 @@ describe('buildWork', () => {
   });
   it('gives the same ids every time, so a second import only updates', () => {
     expect(buildWork({ projectRows, taskRows, noteRows: [], taskPages }).projects.map((p) => p.id)).toEqual(built.projects.map((p) => p.id));
+  });
+});
+
+describe('cleanBody / commonLines', () => {
+  it('drops the <aside> blocks, rules and images, keeping what was written', () => {
+    expect(cleanBody('<aside>\n<img src="a.png" alt="" />\n</aside>\n\nاسأل أحمد\n\n---\n')).toBe('اسأل أحمد');
+  });
+  it('finds the lines most pages share, and drops them', () => {
+    const pages = [...Array(6)].map((_, i) => ({ body: `Our products\nأمر ${i}` }));
+    const common = commonLines(pages);
+    expect([...common]).toEqual(['Our products']);
+    expect(cleanBody('Our products\nأمر 1', common)).toBe('أمر 1');
+  });
+  it('treats nothing as common when there are only a few pages', () => {
+    expect(commonLines([{ body: 'a' }, { body: 'a' }]).size).toBe(0);
+  });
+});
+
+describe('matching a page to its task', () => {
+  it('goes by title, project and date, and hands out twins in order', () => {
+    const page = (body) => ({ title: 'نفس العنوان', properties: { 'المشروع': 'ماكنزي (x.md)', 'التاريخ': '2026-11-09' }, body });
+    const rows = [
+      { 'اسم المهمه': 'نفس العنوان', 'Task ID': '1', 'الحاله': 'لسه', 'التاريخ': '2026-11-09', 'المشروع': 'ماكنزي (x.md)' },
+      { 'اسم المهمه': 'نفس العنوان', 'Task ID': '2', 'الحاله': 'لسه', 'التاريخ': '2026-11-09', 'المشروع': 'ماكنزي (x.md)' },
+    ];
+    const built = buildWork({ projectRows: [{ 'اسم المشروع': 'ماكنزي' }], taskRows: rows, noteRows: [], taskPages: [page('الأولى'), page('التانية')] });
+    expect(built.tasks.map((t) => t.description)).toEqual(['الأولى', 'التانية']);
   });
 });

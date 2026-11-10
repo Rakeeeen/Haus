@@ -3,13 +3,10 @@ import {
   addDays, blankTask, compareTasks, dayKey, filterTasks, groupByStatus, isOverdue, monthGrid, moveToStatus,
   nextTaskNo, parseDayKey, sortTasks,
 } from '@/domain/work/tasks';
+import { normalizeTask } from '@/domain/work/sharing';
 import type { Task } from '@/domain/work/types';
 
-const task = (over: Partial<Task> = {}): Task => ({
-  id: 'x', no: 1, title: 'Task', status: 'todo', priority: null, date: null, projectId: null, assignee: null,
-  tags: [], description: '', createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', doneAt: null,
-  ...over,
-});
+const task = (over: Partial<Task> = {}): Task => normalizeTask({ id: 'x', no: 1, title: 'Task', ...over });
 
 const NOW = new Date(2026, 10, 9, 15, 30); // Mon 9 Nov 2026, local
 

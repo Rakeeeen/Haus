@@ -123,7 +123,7 @@ export function blankTask(no: number, day: string | null, now: Date = new Date()
   const at = now.toISOString();
   return {
     no, title: '', status: 'todo', priority: null, date: day, projectId: null, assignee: null,
-    tags: [], description: '', createdAt: at, updatedAt: at, doneAt: null,
+    assigneeUid: null, createdByUid: null, viewerUids: [], tags: [], description: '', createdAt: at, updatedAt: at, doneAt: null,
   };
 }
 

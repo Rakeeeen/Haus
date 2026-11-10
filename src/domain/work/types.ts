@@ -14,8 +14,17 @@ export interface Task {
   /** The day it is for, "YYYY-MM-DD". */
   date: string | null;
   projectId: string | null;
-  /** Who it is for, by name (a guest's uid joins in when projects are shared). */
+  /** Who it is for, by name. */
   assignee: string | null;
+  /** The uid of who it is for, when that is a guest (Hamed's own tasks have none). */
+  assigneeUid: string | null;
+  /** The uid of the guest who made it, if a guest did. */
+  createdByUid: string | null;
+  /**
+   * The guests who may see this task (firestore.rules checks it): decided by the project's sharing, see
+   * `viewersOf` in sharing.ts. Hamed reads everything and is never listed.
+   */
+  viewerUids: string[];
   /** What kind of thing it is ("بتاعة إيه"). */
   tags: string[];
   description: string;
@@ -33,6 +42,10 @@ export interface Project {
   lead: string | null;
   /** The project's date, "YYYY-MM-DD". */
   date: string | null;
+  /** The guests on this project: they see it, and its tasks as `guestsSeeAll` says. */
+  memberUids: string[];
+  /** Whether a member sees every task of the project, or only the ones that are theirs. */
+  guestsSeeAll: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +60,8 @@ export interface ProjectPrivate {
 export interface TaskComment {
   id: string;
   author: string;
+  /** The guest's uid, if a guest wrote it. */
+  authorUid?: string;
   text: string;
   at: string;
 }

@@ -116,10 +116,34 @@ export function parsePage(markdown) {
 }
 
 /**
+ * The lines that are in a third or more of the pages — Notion's template furniture (the banner image, the rules),
+ * not what was written on a page. Pages are parsed pages ({ body }).
+ */
+export function commonLines(pages, share = 0.3) {
+  const seen = new Map();
+  for (const page of pages) {
+    for (const line of new Set(page.body.split('\n').map((l) => l.trim()).filter(Boolean))) seen.set(line, (seen.get(line) ?? 0) + 1);
+  }
+  return new Set([...seen].filter(([, n]) => pages.length >= 5 && n >= pages.length * share).map(([line]) => line));
+}
+
+/** A page's body without its template furniture: the <aside> blocks, rules, and the lines in `common`. */
+export function cleanBody(body, common = new Set()) {
+  const kept = body
+    .replace(/<aside>[\s\S]*?<\/aside>/g, '')
+    .split('\n')
+    .filter((line) => !common.has(line.trim()) && line.trim() !== '---' && !/^<img\s/.test(line.trim()));
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** What identifies a task across the CSV and its page: its title, its project's name and its date. */
+const taskKey = (title, projectName, date) => `${norm(title)}|${norm(projectName ?? '')}|${date ?? ''}`;
+
+/**
  * Projects, tasks and notes ready to write. `pages` are the parsed .md pages of each database, used for text.
  * Returns what was understood and warnings for what was not (an unknown project name, a date that didn't parse).
  */
-export function buildWork({ projectRows, taskRows, noteRows, taskPages = [], notePages = [], projectPages = [] }) {
+export function buildWork({ projectRows, taskRows, noteRows, taskPages = [], notePages = [] }) {
   const warnings = [];
   const projects = [];
   const privates = [];
@@ -139,7 +163,14 @@ export function buildWork({ projectRows, taskRows, noteRows, taskPages = [], not
     if (row.Tags) privates.push({ id, client: row.Tags.split(',')[0].trim() });
   }
 
-  const taskPageByNo = new Map(taskPages.filter((p) => p.properties['Task ID']).map((p) => [String(p.properties['Task ID']).replace(/\D/g, ''), p]));
+  // A task's page has no number, so it is found by title + project + date (and handed out in order if two match).
+  const taskCommon = commonLines(taskPages);
+  const pagesByKey = new Map();
+  for (const page of taskPages) {
+    const [name] = parseRelation(page.properties['المشروع'] ?? '');
+    const key = taskKey(page.title, name, parseNotionDate(page.properties['التاريخ'] ?? ''));
+    pagesByKey.set(key, [...(pagesByKey.get(key) ?? []), page]);
+  }
   const tasks = [];
   for (const row of taskRows) {
     const title = row['اسم المهمه'] || row.Name || row.Title || '';
@@ -153,18 +184,19 @@ export function buildWork({ projectRows, taskRows, noteRows, taskPages = [], not
     const projectId = projectName ? projectIdByName.get(norm(projectName)) ?? null : null;
     if (projectName && !projectId) warnings.push(`Task #${no}: no project named "${projectName}"`);
     const status = taskStatusOf(row['الحاله']);
-    const page = taskPageByNo.get(String(no));
+    const page = pagesByKey.get(taskKey(title, projectName, date))?.shift();
     tasks.push({
       id: `t_${no}`, no, title, status, priority: priorityOf(row['الضروره']), date, projectId,
       assignee: (row['ل مين ؟'] || '').trim() || null,
       tags: (row['بتاعة اي !'] || '').split(/[,،]/).map((t) => t.trim()).filter(Boolean),
-      description: page?.body ?? '',
+      description: page ? cleanBody(page.body, taskCommon) : '',
       createdAt: isoAt(created), updatedAt: isoAt(created), doneAt: status === 'done' ? isoAt(date ?? created) : null,
     });
   }
 
   const notes = [];
   const pageByTitle = new Map(notePages.map((p) => [norm(p.title), p]));
+  const noteCommon = commonLines(notePages);
   for (const row of noteRows) {
     const title = row.Title || row.Name || '';
     if (!title) continue;
@@ -172,17 +204,10 @@ export function buildWork({ projectRows, taskRows, noteRows, taskPages = [], not
     const [projectName] = parseRelation(row.projects || row.Projects || '');
     const page = pageByTitle.get(norm(title));
     notes.push({
-      id: `n_${hash(`${norm(title)}|${created ?? ''}`)}`, title, markdown: page?.body ?? '',
+      id: `n_${hash(`${norm(title)}|${created ?? ''}`)}`, title, markdown: page ? cleanBody(page.body, noteCommon) : '',
       projectId: projectName ? projectIdByName.get(norm(projectName)) ?? null : null,
       createdAt: isoAt(created), updatedAt: isoAt(parseNotionDate(row['Last edited time']) ?? created),
     });
-  }
-
-  // A project's own page text (a description), if it has one, goes on the project.
-  for (const page of projectPages) {
-    const id = projectIdByName.get(norm(page.title));
-    const project = id && projects.find((p) => p.id === id);
-    if (project && page.body) project.description = page.body;
   }
 
   return { projects, privates, tasks, notes, warnings };

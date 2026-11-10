@@ -10,6 +10,9 @@ export interface Invitation {
   active: boolean;
   addedAt?: string;
   name?: string;
+  /** Their Firebase uid and Google photo — known once they have signed in and asked for a code. */
+  uid?: string;
+  photoUrl?: string;
 }
 
 /** Emails are matched case-insensitively, so an invitation's id is always the lower-case form. */

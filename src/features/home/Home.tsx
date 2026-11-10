@@ -74,7 +74,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const isOwner = viewer.role === 'owner';
   const { guests, error: guestsError, invite, setActive, remove } = useGuests(isOwner);
   const [guestsOpen, setGuestsOpen] = useState(false);
-  // Today's tasks still to do (Hamed's only: the work data isn't there for anyone else).
+  // Today's tasks still to do: Hamed's, or a guest's own.
   const work = useWorkOptional();
   const todayTasks = useMemo(
     () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'] })) : []),
@@ -754,7 +754,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               metric: null, // drawn as dotted digits below instead of text
               subText: 'EGYPT',
             },
-          ] as const).filter((card) => isOwner || (card.id !== 'finance' && card.id !== 'tasks')).map((card, index, cards) => {
+          ] as const).filter((card) => isOwner || card.id !== 'finance').map((card, index, cards) => {
             const isActive = activeCardId === card.id;
             const { Vector } = card;
             const touchedId = reduceMotion ? null : pressedCardId ?? hoveredCardId;
@@ -853,7 +853,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
               className="hidden lg:block absolute -left-10 z-10 pointer-events-none"
               style={{ top: 0 }}
               animate={{
-                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'tasks', 'finance', 'time'] : ['water', 'pomodoro', 'time']).indexOf(systemCardId) * (124 + 16),
+                y: (124 - 22) / 2 + (isOwner ? ['water', 'pomodoro', 'tasks', 'finance', 'time'] : ['water', 'pomodoro', 'tasks', 'time']).indexOf(systemCardId) * (124 + 16),
                 opacity: 1,
               }}
               initial={false}

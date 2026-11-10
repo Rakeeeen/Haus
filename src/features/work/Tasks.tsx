@@ -10,7 +10,7 @@ import { IconPlus as Plus } from '@/ui/icons';
 import { Tabs } from '@/ui/Tabs';
 import { TaskBoard } from '@/features/work/components/TaskBoard';
 import { TaskCalendar } from '@/features/work/components/TaskCalendar';
-import { TaskModal, type TaskEditing } from '@/features/work/components/TaskModal';
+import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { TaskTable } from '@/features/work/components/TaskTable';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
@@ -35,14 +35,14 @@ const readView = (): View => {
 };
 
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string }> = ({ navigate, author }) => {
-  const { tasks, projects, ready, addTask, updateTask, removeTask } = useWork();
+  const { tasks, projects, ready, canEditTask, updateTask } = useWork();
   const [view, setView] = useState<View>(readView);
   const [dayChoice, setDayChoice] = useState<DayChoice>('today');
   const [picked, setPicked] = useState(() => dayKey(new Date()));
   const [statusChoice, setStatusChoice] = useState<StatusChoice>('all');
   const [projectChoice, setProjectChoice] = useState<string>('all');
   const [query, setQuery] = useState('');
-  const [editing, setEditing] = useState<TaskEditing | null>(null);
+  const editor = useTaskEditor(author);
 
   useEffect(() => { document.title = `${NAME} — Tasks`; }, []);
   useEffect(() => { try { window.localStorage.setItem(VIEW_KEY, view); } catch { /* fine */ } }, [view]);
@@ -59,8 +59,9 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string }>
   const calendarTasks = filterTasks(tasks, { ...base, day: { kind: 'all' } });
 
   const dayForNew = dayChoice === 'pick' ? picked : dayKey(new Date());
-  const openNew = (defaults: Partial<Task> = {}) => setEditing({ kind: 'new', defaults: { date: dayForNew, ...defaults } });
-  const toggleDone = (task: Task) => updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
+  const openNew = (defaults: Partial<Task> = {}) => editor.open({ kind: 'new', defaults: { date: dayForNew, ...defaults } });
+  const openTask = (task: Task) => editor.open({ kind: 'edit', task });
+  const toggleDone = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
 
   return (
     <WorkShell
@@ -91,29 +92,19 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string }>
           tasks={shown}
           projectName={projectName}
           showDropped={shown.some((t) => t.status === 'dropped')}
-          onOpen={(task) => setEditing({ kind: 'edit', task })}
-          onMove={(task, status) => updateTask(task.id, moveToStatus(task, status))}
+          onOpen={openTask}
+          canEdit={canEditTask}
+          onMove={(task, status) => canEditTask(task) && updateTask(task.id, moveToStatus(task, status))}
           onToggleDone={toggleDone}
           onAdd={(status) => openNew({ status })}
         />
       ) : view === 'table' ? (
-        <TaskTable tasks={shown} projectName={projectName} onOpen={(task) => setEditing({ kind: 'edit', task })} onToggleDone={toggleDone} />
+        <TaskTable tasks={shown} projectName={projectName} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleDone} />
       ) : (
-        <TaskCalendar tasks={calendarTasks} onOpen={(task) => setEditing({ kind: 'edit', task })} onAddOnDay={(d) => openNew({ date: d })} />
+        <TaskCalendar tasks={calendarTasks} onOpen={openTask} onAddOnDay={(d) => openNew({ date: d })} />
       )}
 
-      <TaskModal
-        editing={editing}
-        projects={projects}
-        author={author}
-        onClose={() => setEditing(null)}
-        onCreate={async (draft) => { await addTask({ ...draft, doneAt: draft.status === 'done' ? new Date().toISOString() : null }); }}
-        onUpdate={async (id, draft) => {
-          const current = tasks.find((t) => t.id === id);
-          await updateTask(id, { ...draft, ...(current ? moveToStatus(current, draft.status) : {}) });
-        }}
-        onDelete={removeTask}
-      />
+      {editor.modal}
     </WorkShell>
   );
 };
