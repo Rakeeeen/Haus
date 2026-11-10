@@ -24,7 +24,7 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
   // Don't render if timer not active or already on pomodoro page
   if ((!running && !isOvertime) || isOnPomodoro) return null;
 
-  // If we are on the Home page, we also hide the bottom corner floating widget (as requested: "وتتحط شكل الدايره بتاعة البومدورو [جوة كارت الهوم] وبالتالي تتشال من الجمب من تحت [أثناء وجودنا في الهوم]")
+  // On Home the timer is already shown in the Focus card, so the corner widget is hidden there too.
   if (isOnHome) return null;
 
   return (

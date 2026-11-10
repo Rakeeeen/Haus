@@ -1,4 +1,4 @@
-// Ported from src/lib/format.ts — pure formatting helpers, no framework dependency.
+// Pure formatting helpers for the bot's messages (formatTime mirrors src/lib/format.ts, which the web app uses for its timers).
 
 /** Seconds → `MM:SS` (minutes grow past 99, no leading zero once ≥ 100). */
 export function formatTime(sec) {
@@ -18,7 +18,7 @@ export function formatDurationText(totalMinutes) {
   return `${h}h ${m}m`;
 }
 
-/** Egyptian Pound formatting, matching the web app's `formatEGP`. */
+/** Egyptian pounds, rounded, with thousands separators: 12345.6 → "12,346 EGP". */
 export function formatEGP(value) {
   return `${Math.round(value).toLocaleString('en-EG')} EGP`;
 }

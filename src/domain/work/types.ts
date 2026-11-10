@@ -35,7 +35,7 @@ export interface Task {
    * `viewersOf` in sharing.ts. Hamed reads everything and is never listed.
    */
   viewerUids: string[];
-  /** What kind of thing it is ("بتاعة إيه"). */
+  /** Labels the Notion import brought over. The app neither shows nor edits them; they are kept so nothing imported is lost. */
   tags: string[];
   description: string;
   createdAt: string;

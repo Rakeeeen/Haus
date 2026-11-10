@@ -1,27 +1,15 @@
-export const uploadImage = async (file: File): Promise<string> => {
-  const cloudName = 'dnwi7kl3f';
-  const uploadPreset = 'rakeeen_home'; // تم التصحيح للاسم الفعلي
+const CLOUD_NAME = 'dnwi7kl3f';
+/** An unsigned upload preset: it can only add images to this account's folder, so it is safe to ship in the page. */
+const UPLOAD_PRESET = 'rakeeen_home';
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', uploadPreset);
+/** Uploads an image to Cloudinary and returns its https address. Rejects with Cloudinary's own message if it refuses. */
+export async function uploadImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', UPLOAD_PRESET);
 
-  try {
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Cloudinary API Error:', data.error?.message || 'Unknown error');
-      throw new Error(data.error?.message || 'Upload failed');
-    }
-
-    return data.secure_url;
-  } catch (error) {
-    console.error('Detailed Cloudinary Error:', error);
-    throw error;
-  }
-};
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: form });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error?.message || 'Upload failed');
+  return body.secure_url as string;
+}
