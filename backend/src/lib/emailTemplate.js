@@ -1,22 +1,32 @@
 import { NAME } from './brand.js';
 
-// The emails Haus sends — an invitation, and a task given to someone. They are drawn in the system's own
-// language: the silver page, a paper card with a hairline border and rounded corners, mono capitals for the
-// small labels, one fully round ink button, and a row of pixels at the foot (the clock's). Email clients ignore
-// most CSS, so this is plain tables with inline styles; the dark scheme is a media query for the clients that
-// honour it (Apple Mail, iOS, Outlook.com) and simply stays silver in the rest.
+// The emails Haus sends — an invitation, and a task given to someone — in Arabic and in the system's dark side: a
+// black card on a near-black page, a retro photograph with the words over it in Thmanyah (the app's own font), the
+// purple call-to-action as a fully round button, and at the foot a silver band with the black house mark, the name,
+// and one of the app's animated hand-drawn icons (a GIF of its line boil). Email clients ignore most CSS, so this is
+// plain tables with inline styles. Pictures travel inside the message (`images`, attached by the mailer under their
+// cid), so nothing depends on the website being online.
 //
-// Everything here is pure: text in, `{ subject, html, text }` out. Anything that came from a person (a name, a
-// task title) goes through `esc`, so it can never become markup.
+// Everything here is pure: text in, `{ subject, html, text, images }` out. Anything that came from a person (a name,
+// a task title) goes through `esc`, so it can never become markup.
 
-const PALETTE = {
-  page: '#D6D6D6', card: '#F2F2F2', ink: '#141413', faded: '#666666', line: '#D4D4D4', rust: '#B7410E',
+const C = {
+  page: '#0A0A0A', card: '#000000', line: '#232323', box: '#0D0D0D', ink: '#EDEDED', faded: '#9A9A9A',
+  purple: '#4D14A2', rust: '#E2583A', band: '#D6D6D6', bandInk: '#141413', bandFaded: '#5A5A5A',
 };
-const SANS = "'General Sans','Helvetica Neue',Helvetica,Arial,sans-serif";
+const FONT = "'Thmanyah','Segoe UI','SF Arabic','Geeza Pro',Tahoma,Arial,sans-serif";
+const NAME_AR = 'هاوس';
 const MONO = "'Geist Mono','SF Mono',Menlo,Consolas,monospace";
 
-/** The id the logo is attached under (`<img src="cid:…">`); the sender attaches `assets/mark.png` with it. */
-export const MARK_CID = 'haus-mark';
+// The app's own font files, for the clients that load fonts (Apple Mail, iOS). Gmail doesn't, and falls back to the
+// system's Arabic face — which is why the headline is part of the picture.
+const FONT_FACES = [[400, 'x6EBzvXf1Fi35XhsRoHxePDVo'], [700, 'oE98mOPE28KTzUeptOLRIaqW1I'], [900, 'ulQLGTktcl2Qq4AmD6RuVgELZKg']]
+  .map(([weight, id]) => `@font-face{font-family:'Thmanyah';font-weight:${weight};src:url('https://framerusercontent.com/assets/${id}.woff2') format('woff2');}`)
+  .join('');
+
+/** The pictures the emails use: file in `backend/assets/mail`, and the cid it is attached under. */
+export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
+export const cidOf = (file) => file.replace(/\.[a-z]+$/, '');
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -24,23 +34,31 @@ export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESC
 /** One line: for a subject, where a line break would be an injected header. */
 const oneLine = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
 
-const PRIORITY = { low: 'Low', medium: 'Medium', high: 'High' };
+const PRIORITY = { low: 'منخفضة', medium: 'متوسطة', high: 'عالية' };
+const PRIORITY_COLOR = { low: C.faded, medium: C.ink, high: C.rust };
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
-/** "2026-11-12" → "Thu, 12 Nov"; anything else is shown as it is. */
+/** "2026-11-12" → "الخميس 12 نوفمبر"; anything else is shown as it is. */
 export function prettyDay(day) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day ?? '');
   if (!m) return day ?? '';
   const date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  return `${DAYS[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+  return `${DAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
 }
 
-/** When a task is for: "Thu, 12 Nov", "Thu, 12 Nov → Sat, 14 Nov", or null. */
+/** When a task is for: one day, "من … إلى …", or null. */
 export function whenOf(task) {
   if (!task.date) return task.endDate ? prettyDay(task.endDate) : null;
-  return task.endDate && task.endDate !== task.date ? `${prettyDay(task.date)} → ${prettyDay(task.endDate)}` : prettyDay(task.date);
+  return task.endDate && task.endDate !== task.date ? `من ${prettyDay(task.date)} إلى ${prettyDay(task.endDate)}` : prettyDay(task.date);
+}
+
+/** "مهمة جديدة", "مهمتان جديدتان", "٣ مهام جديدة" — the count of tasks the way Arabic says it. */
+export function tasksPhrase(count) {
+  if (count === 1) return 'مهمة جديدة';
+  if (count === 2) return 'مهمتين جديدتين';
+  return count <= 10 ? `${count} مهام جديدة` : `${count} مهمة جديدة`;
 }
 
 /** The first `max` characters of some text, cut at a word where it can be, with an ellipsis. */
@@ -52,169 +70,148 @@ export function snippet(text, max = 220) {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-const label = (text) =>
-  `<span class="mute" style="font-family:${MONO};font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:${PALETTE.faded};">${esc(text)}</span>`;
+const small = (text) =>
+  `<span style="font-family:${FONT};font-size:12px;font-weight:700;color:${C.faded};letter-spacing:0.02em;">${esc(text)}</span>`;
 
-/** The silver-ink pill, as round as every button in the app. */
+/** The purple pill, as round as every button in the app. */
 const button = (href, text) => `
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td class="btn" align="center" bgcolor="${PALETTE.ink}" style="background:${PALETTE.ink};border-radius:999px;">
-    <a href="${esc(href)}" class="btn-a" style="display:inline-block;padding:14px 30px;font-family:${MONO};font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:${PALETTE.card};text-decoration:none;border-radius:999px;">${esc(text)}</a>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${C.purple}" style="background:${C.purple};border-radius:999px;">
+    <a href="${esc(href)}" style="display:block;padding:16px 28px;font-family:${FONT};font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">${esc(text)}</a>
   </td></tr></table>`;
 
-/** A row of small squares — the pixel clock's grain. */
-const pixels = () => {
-  const cell = (on) => `<td width="6" height="6" style="width:6px;height:6px;font-size:0;line-height:0;background:${on ? PALETTE.ink : '#B4B4B4'};" class="${on ? 'px-on' : 'px-off'}">&nbsp;</td><td width="4" style="width:4px;font-size:0;">&nbsp;</td>`;
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${[1, 0, 1, 1, 0, 1, 0, 0].map(cell).join('')}</tr></table>`;
-};
-
-/** A line of the details card: a small capital label over its value. */
-const detail = (name, value, first = false) => `
-  <tr><td class="rule" style="padding:14px 0 ${first ? '0' : '0'};${first ? '' : `border-top:1px solid ${PALETTE.line};`}">
-    ${label(name)}<br />
-    <span dir="auto" style="font-family:${SANS};font-size:16px;font-weight:600;color:${PALETTE.ink};line-height:1.5;" class="ink">${esc(value)}</span>
+/** A line of a details box: a small label over its value. `ltr` keeps an email address or a number the right way round. */
+const detail = (name, value, { first = false, ltr = false, color = C.ink } = {}) => `
+  <tr><td style="padding:${first ? '4px' : '14px'} 0 4px;${first ? '' : `border-top:1px solid ${C.line};`}">
+    ${small(name)}<br />
+    <span ${ltr ? 'dir="ltr" style="unicode-bidi:embed;text-align:right;display:block;' : 'dir="auto" style="'}font-family:${FONT};font-size:16px;font-weight:700;color:${color};line-height:1.7;">${esc(value)}</span>
   </td></tr>`;
 
-/** The page every email sits on. `body` is the card's content. */
-function frame({ preheader, eyebrow, title, body }) {
+const box = (inner, bottom = 24) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.box};border:1px solid ${C.line};border-radius:12px;margin:0 0 ${bottom}px;"><tr><td style="padding:18px 20px 16px;">${inner}</td></tr></table>`;
+
+const paragraph = (text) =>
+  `<p dir="rtl" style="margin:0 0 22px;font-family:${FONT};font-size:16px;line-height:1.9;color:${C.ink};">${text}</p>`;
+
+/** The page every email sits on. `hero` is the picture over the card, `icon` the animated one in the footer. */
+function frame({ title, preheader, hero, icon, body }) {
   return `<!doctype html>
-<html lang="en"><head>
+<html lang="ar" dir="rtl"><head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="color-scheme" content="light dark" />
-<meta name="supported-color-schemes" content="light dark" />
+<meta name="color-scheme" content="dark" />
+<meta name="supported-color-schemes" content="dark" />
 <title>${esc(title)}</title>
-<style>
-  @media (prefers-color-scheme: dark) {
-    .page { background:#0A0A0A !important; }
-    .card { background:#000000 !important; border-color:#2A2A2A !important; }
-    .ink, .ink a { color:#EDEDED !important; }
-    .mute { color:#9A9A9A !important; }
-    .rule { border-color:#2A2A2A !important; }
-    .box { background:#0A0A0A !important; border-color:#2A2A2A !important; }
-    .btn { background:#EDEDED !important; }
-    .btn-a { color:#0A0A0A !important; background:#EDEDED !important; }
-    .px-on { background:#EDEDED !important; }
-    .px-off { background:#2A2A2A !important; }
-  }
-  @media (max-width: 480px) { .pad { padding:28px 22px !important; } .h1 { font-size:28px !important; } }
-</style>
+<style>${FONT_FACES}@media (max-width:480px){.pad{padding:26px 22px !important;}}</style>
 </head>
-<body class="page" style="margin:0;padding:0;background:${PALETTE.page};">
+<body style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="page" style="background:${PALETTE.page};"><tr><td align="center" style="padding:40px 16px;">
-  <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;">
-    <tr><td style="padding:0 4px 18px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="vertical-align:middle;"><img src="cid:${MARK_CID}" width="36" height="36" alt="${esc(NAME)}" style="display:block;border:0;border-radius:10px;" /></td>
-        <td style="vertical-align:middle;padding-left:12px;font-family:${MONO};font-size:12px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:${PALETTE.ink};" class="ink">${esc(NAME)}</td>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page};"><tr><td align="center" style="padding:36px 16px;">
+  <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:${C.card};border:1px solid ${C.line};border-radius:18px;border-collapse:separate;overflow:hidden;">
+    <tr><td style="font-size:0;line-height:0;"><img src="cid:${cidOf(hero)}" width="560" alt="${esc(title)}" style="display:block;width:100%;height:auto;border:0;" /></td></tr>
+    <tr><td class="pad" dir="rtl" style="padding:30px 34px 8px;text-align:right;">${body}</td></tr>
+    <tr><td class="pad" dir="rtl" style="padding:0 34px 28px;text-align:right;">
+      <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.9;color:${C.faded};">وصلتك هذه الرسالة لأن أحدًا أضافك في ${NAME_AR}. إن لم تكن أنت المقصود، تجاهلها ببساطة.</p>
+    </td></tr>
+    <tr><td style="background:${C.band};padding:18px 34px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
+        <td align="right" style="vertical-align:middle;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
+            <td style="vertical-align:middle;"><img src="cid:logo-black" width="40" height="40" alt="${esc(NAME)}" style="display:block;border:0;" /></td>
+            <td style="vertical-align:middle;padding-right:12px;text-align:right;">
+              <div style="font-family:${MONO};font-size:15px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${C.bandInk};">${esc(NAME)}</div>
+              <div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.bandFaded};">هاوس</div>
+            </td>
+          </tr></table>
+        </td>
+        <td align="left" style="vertical-align:middle;"><img src="cid:${cidOf(icon)}" width="56" height="56" alt="" style="display:block;border:0;" /></td>
       </tr></table>
-    </td></tr>
-    <tr><td class="card pad" style="background:${PALETTE.card};border:1px solid ${PALETTE.line};border-radius:16px;padding:36px 34px;">
-      <div style="margin-bottom:14px;">${label(eyebrow)}</div>
-      <h1 class="h1 ink" dir="auto" style="margin:0 0 18px;font-family:${SANS};font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-0.01em;color:${PALETTE.ink};">${esc(title)}</h1>
-      ${body}
-    </td></tr>
-    <tr><td style="padding:22px 4px 0;">
-      ${pixels()}
-      <p class="mute" style="margin:14px 0 0;font-family:${MONO};font-size:11px;line-height:1.7;letter-spacing:0.04em;color:${PALETTE.faded};">
-        Sent by ${esc(NAME)} because someone you know added you. If this wasn't meant for you, just ignore it.
-      </p>
     </td></tr>
   </table>
 </td></tr></table>
 </body></html>`;
 }
 
-const paragraph = (text) =>
-  `<p class="ink" dir="auto" style="margin:0 0 22px;font-family:${SANS};font-size:16px;line-height:1.65;color:${PALETTE.ink};">${text}</p>`;
-
 /**
- * The invitation: who invited them, the Google account to sign in with, and how the code works.
- * `inviter` is who is inviting (Hamed); `name` the guest's, if known.
+ * The invitation: who invited them, the Google account to sign in with, and a button. There is no code in it — the
+ * inviter gives that in person. `inviter` is who is inviting; `name` the guest's, if known.
  */
 export function invitationEmail({ inviter, name, email, appUrl }) {
-  const who = oneLine(inviter) || 'Someone';
-  const hello = oneLine(name) ? `Hi ${esc(oneLine(name).split(' ')[0])}, ` : '';
+  const who = oneLine(inviter) || 'شخص ما';
+  const first = oneLine(name).split(' ')[0];
+  const hello = first ? `${esc(first)}، ` : '';
   const body = `
-    ${paragraph(`${hello}${esc(who)} added you to ${esc(NAME)} as a guest — a calm place for water, focus and time, with the projects and tasks shared with you.`)}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="background:#FFFFFF;border:1px solid ${PALETTE.line};border-radius:12px;margin:0 0 26px;"><tr><td style="padding:6px 20px 18px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${detail('Sign in with', email, true)}
-        ${detail('Then', `${who} gives you a one-time code to let you in`)}
-      </table>
-    </td></tr></table>
-    ${button(appUrl, `Open ${NAME}`)}`;
+    ${paragraph(`${hello}أضافك <strong>${esc(who)}</strong> كضيف في ${NAME_AR}: مساحة هادئة للمياه والتركيز والوقت، مع المشاريع والمهام التي تُشارَك معك.`)}
+    ${box(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${detail('سجّل الدخول بحساب Google', email, { first: true, ltr: true })}
+      ${detail('بعدها', `سيعطيك ${who} رمز دخول لمرة واحدة`)}
+    </table>`)}
+    ${button(appUrl, `ادخل إلى ${NAME_AR}`)}
+    <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>`;
   return {
-    subject: `${who} invited you to ${NAME}`,
-    html: frame({ preheader: `Sign in with ${email} to get started.`, eyebrow: "You're invited", title: `Welcome to ${NAME}`, body }),
-    text: [
-      `${who} invited you to ${NAME}.`,
-      '',
-      `Sign in with the Google account ${email} at ${appUrl}`,
-      `Then ${who} gives you a one-time code to let you in.`,
-    ].join('\n'),
+    subject: `${who} دعاك إلى ${NAME_AR}`,
+    html: frame({ title: `تمت دعوتك إلى ${NAME_AR}`, preheader: `سجّل الدخول بحساب ${email} للبدء.`, hero: 'hero-invitation.jpg', icon: 'icon-lock.gif', body }),
+    text: [`${who} دعاك إلى ${NAME_AR}.`, '', `سجّل الدخول بحساب Google: ${email}`, appUrl, `بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`].join('\n'),
+    images: ['hero-invitation.jpg', 'icon-lock.gif', 'logo-black.png'],
   };
 }
 
 /** The most tasks listed in one email; the rest are counted. */
 export const MAX_LISTED = 8;
 
-/** A task as the details card shows it. */
-function taskCard(task, projectName, first = true) {
+/** A task as the details box shows it. */
+function taskCard(task, projectName) {
   const rows = [];
   const when = whenOf(task);
-  if (projectName) rows.push(['Project', projectName]);
-  if (when) rows.push([task.endDate && task.date && task.endDate !== task.date ? 'When' : 'Due', when]);
-  if (task.priority && PRIORITY[task.priority]) rows.push(['Priority', PRIORITY[task.priority]]);
+  if (projectName) rows.push(['المشروع', projectName, {}]);
+  if (when) rows.push([task.endDate && task.date && task.endDate !== task.date ? 'المدة' : 'الموعد', when, {}]);
+  if (task.priority && PRIORITY[task.priority]) rows.push(['الأولوية', PRIORITY[task.priority], { color: PRIORITY_COLOR[task.priority] }]);
   const note = snippet(task.description);
-  return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="background:#FFFFFF;border:1px solid ${PALETTE.line};border-radius:12px;margin:0 0 ${first ? '26' : '12'}px;"><tr><td style="padding:18px 20px 16px;">
-      <div dir="auto" class="ink" style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.4;color:${PALETTE.ink};">${esc(task.title || 'Untitled')}</div>
-      ${note ? `<div dir="auto" class="mute" style="margin-top:8px;font-family:${SANS};font-size:14px;line-height:1.6;color:${PALETTE.faded};">${esc(note)}</div>` : ''}
-      ${rows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">${rows.map(([k, v], i) => detail(k, v, i === 0)).join('')}</table>` : ''}
-    </td></tr></table>`;
-}
-
-/**
- * Tasks given to someone: one gets its own card with the details; several (an import, a busy minute) arrive as one
- * email with a short list, so nobody's inbox fills up. `items` is `[{ task, projectName }]`.
- */
-export function tasksAssignedEmail({ giver, name, items, appUrl }) {
-  const who = oneLine(giver) || 'Someone';
-  const hello = oneLine(name) ? `Hi ${esc(oneLine(name).split(' ')[0])}, ` : '';
-  const many = items.length > 1;
-  const first = items[0];
-
-  const intro = many
-    ? `${hello}${esc(who)} gave you ${items.length} new tasks.`
-    : `${hello}${esc(who)} gave you a new task.`;
-  const shown = items.slice(0, MAX_LISTED);
-  const cards = many
-    ? shown.map((item) => taskListLine(item.task, item.projectName)).join('') + (items.length > shown.length ? `<p class="mute" style="margin:6px 0 22px;font-family:${MONO};font-size:12px;color:${PALETTE.faded};">and ${items.length - shown.length} more</p>` : '')
-    : taskCard(first.task, first.projectName);
-
-  const body = `${paragraph(intro)}${many ? `<div style="margin:0 0 22px;">${cards}</div>` : cards}${button(appUrl, many ? 'Open my tasks' : 'Open task')}`;
-  const title = many ? `${items.length} new tasks for you` : oneLine(first.task.title) || 'A new task';
-  return {
-    subject: many ? `${who} gave you ${items.length} new tasks` : `New task: ${oneLine(first.task.title) || 'Untitled'}`,
-    html: frame({ preheader: many ? `${who} gave you ${items.length} new tasks.` : `${who} gave you a task.`, eyebrow: many ? 'New tasks' : 'New task for you', title, body }),
-    text: [
-      many ? `${who} gave you ${items.length} new tasks:` : `${who} gave you a new task:`,
-      '',
-      ...shown.map(({ task, projectName }) => `• ${oneLine(task.title) || 'Untitled'}${projectName ? ` (${projectName})` : ''}${whenOf(task) ? ` — ${whenOf(task)}` : ''}`),
-      ...(items.length > shown.length ? [`… and ${items.length - shown.length} more`] : []),
-      '',
-      appUrl,
-    ].join('\n'),
-  };
+  return box(`
+    <div dir="auto" style="font-family:${FONT};font-size:19px;font-weight:700;line-height:1.6;color:${C.ink};">${esc(task.title || 'بدون عنوان')}</div>
+    ${note ? `<div dir="auto" style="margin-top:6px;font-family:${FONT};font-size:14px;line-height:1.8;color:${C.faded};">${esc(note)}</div>` : ''}
+    ${rows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">${rows.map(([k, v, o], i) => detail(k, v, { first: i === 0, ...o })).join('')}</table>` : ''}`);
 }
 
 /** One task in a list of several: its title, and what it is for / when, on a hairline row. */
-function taskListLine(task, projectName) {
+function taskLine(task, projectName) {
   const sub = [projectName, whenOf(task)].filter(Boolean).join('  ·  ');
   return `
-    <div class="rule" style="padding:12px 0;border-top:1px solid ${PALETTE.line};">
-      <div dir="auto" class="ink" style="font-family:${SANS};font-size:16px;font-weight:600;line-height:1.4;color:${PALETTE.ink};">${esc(task.title || 'Untitled')}</div>
-      ${sub ? `<div dir="auto" class="mute" style="margin-top:3px;font-family:${MONO};font-size:11px;letter-spacing:0.06em;color:${PALETTE.faded};">${esc(sub)}</div>` : ''}
+    <div style="padding:12px 0;border-top:1px solid ${C.line};">
+      <div dir="auto" style="font-family:${FONT};font-size:16px;font-weight:700;line-height:1.6;color:${C.ink};">${esc(task.title || 'بدون عنوان')}</div>
+      ${sub ? `<div dir="auto" style="margin-top:2px;font-family:${FONT};font-size:13px;color:${C.faded};">${esc(sub)}</div>` : ''}
     </div>`;
+}
+
+/**
+ * Tasks given to someone: one gets its own box with the details; several (an import, a busy minute) arrive as one email
+ * with a short list, so nobody's inbox fills up. `items` is `[{ task, projectName }]`.
+ */
+export function tasksAssignedEmail({ giver, name, items, appUrl }) {
+  const who = oneLine(giver) || 'شخص ما';
+  const first = oneLine(name).split(' ')[0];
+  const hello = first ? `${esc(first)}، ` : '';
+  const many = items.length > 1;
+  const shown = items.slice(0, MAX_LISTED);
+
+  const intro = many ? `${hello}أعطاك <strong>${esc(who)}</strong> ${tasksPhrase(items.length)}.` : `${hello}أعطاك <strong>${esc(who)}</strong> مهمة جديدة.`;
+  const listing = many
+    ? `<div style="margin:0 0 22px;">${shown.map((i) => taskLine(i.task, i.projectName)).join('')}${items.length > shown.length ? `<p style="margin:8px 0 0;font-family:${FONT};font-size:13px;color:${C.faded};">و${items.length - shown.length} أخرى</p>` : ''}</div>`
+    : taskCard(items[0].task, items[0].projectName);
+
+  const body = `${paragraph(intro)}${listing}${button(appUrl, many ? 'افتح مهامي' : 'افتح المهمة')}<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>`;
+  const title = many ? tasksPhrase(items.length) : 'مهمة جديدة';
+  const hero = many ? 'hero-tasks.jpg' : 'hero-task.jpg';
+  return {
+    subject: many ? `${who} أعطاك ${tasksPhrase(items.length)}` : `مهمة جديدة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`,
+    html: frame({ title, preheader: `${who} أعطاك ${many ? tasksPhrase(items.length) : 'مهمة'}.`, hero, icon: 'icon-tasks.gif', body }),
+    text: [
+      many ? `${who} أعطاك ${tasksPhrase(items.length)}:` : `${who} أعطاك مهمة جديدة:`,
+      '',
+      ...shown.map(({ task, projectName }) => `• ${oneLine(task.title) || 'بدون عنوان'}${projectName ? ` (${projectName})` : ''}${whenOf(task) ? ` — ${whenOf(task)}` : ''}`),
+      ...(items.length > shown.length ? [`... و${items.length - shown.length} أخرى`] : []),
+      '',
+      appUrl,
+    ].join('\n'),
+    images: [hero, 'icon-tasks.gif', 'logo-black.png'],
+  };
 }

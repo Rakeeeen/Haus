@@ -275,8 +275,10 @@ Discord to say something, it writes an event to Firestore and the bot posts it: 
 through the webhook in `backend/.env`. Email works the same way: `backend/src/features/mailNotifications.js` watches
 `members` (an invitation) and `work_tasks` (a guest newly in `assigneeUids`) and sends through the SMTP account in `backend/.env`
 (`MAIL_USER`, `MAIL_PASSWORD` — a Gmail App Password; optional `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, `OWNER_NAME`, `APP_URL`).
-The messages are drawn in `lib/emailTemplate.js` in the system's own language (silver page, paper card, mono capitals, the round
-ink button, a dark scheme); `npm run mail:preview` writes them as HTML to look at. Without `MAIL_USER` nothing is sent. Tasks given to
+The messages are in Arabic and drawn in `lib/emailTemplate.js` in the system's dark side: a retro photograph with the headline over it
+in Thmanyah (baked into the picture, since Gmail ignores web fonts), the round purple button, and a silver band with the black house mark
+and an animated hand-drawn icon (a GIF of its line boil). The pictures are in `backend/assets/mail/` and travel inside each message
+(cid attachments); `npm run mail:preview` writes the emails as HTML to look at. The hero photo is from Unsplash (free licence). Without `MAIL_USER` nothing is sent. Tasks given to
 one person within 20 seconds go out as one email, and what the bot sent is kept in `mail_sent` (Admin-only, closed by the rules).
 The one key the site does still carry is the gold API's
 (`VITE_GOLD_API_KEY`), because the app is what fetches gold prices — see below.

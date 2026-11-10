@@ -2,11 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
-import { MARK_CID } from './emailTemplate.js';
+import { cidOf } from './emailTemplate.js';
 import { NAME } from './brand.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const MARK_PATH = path.join(here, '..', '..', 'assets', 'mark.png');
+const ASSETS = path.join(here, '..', '..', 'assets', 'mail');
 
 /**
  * The mail settings from the bot's .env: any SMTP account works. For Gmail, `MAIL_USER` is the address and
@@ -24,7 +24,7 @@ export function mailConfig(env = process.env) {
     secure: port === 465,
     auth: { user, pass },
     from: env.MAIL_FROM?.trim() || `${NAME} <${user}>`,
-    ownerName: env.OWNER_NAME?.trim() || 'Hamed',
+    ownerName: env.OWNER_NAME?.trim() || 'حامد',
     appUrl: env.APP_URL?.trim() || 'https://rakeeen-uxdesign.github.io/Haus/',
   };
 }
@@ -33,9 +33,10 @@ export function mailConfig(env = process.env) {
 export function createMailer(config = mailConfig()) {
   if (!config) return null;
   const transport = nodemailer.createTransport({ host: config.host, port: config.port, secure: config.secure, auth: config.auth });
-  const mark = fs.existsSync(MARK_PATH) ? [{ filename: 'haus.png', path: MARK_PATH, cid: MARK_CID }] : [];
+  // The pictures a message uses (named by `images`) travel inside it, under the cid the HTML points at.
+  const attach = (images = []) => images.filter((file) => fs.existsSync(path.join(ASSETS, file))).map((file) => ({ filename: file, path: path.join(ASSETS, file), cid: cidOf(file) }));
   return {
     config,
-    send: ({ to, subject, html, text }) => transport.sendMail({ from: config.from, to, subject, html, text, attachments: mark }),
+    send: ({ to, subject, html, text, images }) => transport.sendMail({ from: config.from, to, subject, html, text, attachments: attach(images) }),
   };
 }

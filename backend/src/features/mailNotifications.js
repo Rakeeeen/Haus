@@ -89,7 +89,7 @@ export function watchMailNotifications() {
       items.push({ task, projectName: project?.memberUids?.includes(uid) ? project.name : null });
     }
     if (!items.length) return;
-    const giver = batch.tasks[0].createdByUid ? (await getDocument('guest_profiles', batch.tasks[0].createdByUid))?.name || 'A teammate' : ownerName;
+    const giver = batch.tasks[0].createdByUid ? (await getDocument('guest_profiles', batch.tasks[0].createdByUid))?.name || 'زميل' : ownerName;
     await mailer.send({ to: profile.email, ...tasksAssignedEmail({ giver, name: profile.name, items, appUrl }) });
     console.log(`📧 Told ${profile.email} about ${items.length} task${items.length === 1 ? '' : 's'}`);
   });

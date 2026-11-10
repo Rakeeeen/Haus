@@ -52,7 +52,7 @@ describe('mailConfig', () => {
   });
   it('fills in Gmail by default, and drops the spaces Google puts in an app password', () => {
     const c = mailConfig({ MAIL_USER: 'me@gmail.com', MAIL_PASSWORD: 'abcd efgh ijkl mnop' });
-    expect(c).toMatchObject({ host: 'smtp.gmail.com', port: 465, secure: true, from: 'Haus <me@gmail.com>', ownerName: 'Hamed' });
+    expect(c).toMatchObject({ host: 'smtp.gmail.com', port: 465, secure: true, from: 'Haus <me@gmail.com>', ownerName: 'حامد' });
     expect(c.auth.pass).toBe('abcdefghijklmnop');
   });
 });
