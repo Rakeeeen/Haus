@@ -164,7 +164,7 @@ system: the Pomodoro focus ring (scales with its own size), Recharts `ReferenceL
 The work side (`features/work/`, routes `/work`, `/work/tasks`, `/work/projects`, `/work/projects/:id`) is the Notion setup
 Hamed ran his work from, now shared with guests project by project: **projects** (each for a client, with a status, priority, lead and date),
 **tasks** (a title, status To do / Doing / Done / Dropped, priority, a date, a project, who it is for, tags, a description
-and comments) and, later, notes. Notion's sprints and the git field are left out.
+and comments) and notes. Notion's sprints and the git field are left out.
 
 - **Data.** Each project and task is its own Firestore document (`work_projects`, `work_tasks`, and a task's `comments`
   subcollection), listened to once by `WorkProvider` in `data/useWork.tsx` and read through `useWork()`. A project's
@@ -177,6 +177,11 @@ and comments) and, later, notes. Notion's sprints and the git field are left out
   a table or a calendar; filters by day (Today follows the date by itself, or pick one), status, project and a search.
   Projects as cards (a column per client), a table grouped by status, or a timeline. The Home dock has a Tasks card
   (today's open tasks, with a tick to finish each).
+- **Notes** (`/work/notes`, Hamed's alone) are pages of Markdown in `work_notes`, each optionally about a project, listed by
+  recency or by project and shown on a project's page. The page (`NoteEditor`, TipTap, loaded only when a note is opened) is
+  Notion-like: "/" for blocks, the usual Markdown shortcuts, a small toolbar, and every block reads in its own direction
+  (`dir="auto"`) so Arabic and English can follow each other. Markdown is what is stored (the imported notes too); a
+  change is saved 800ms after typing stops, and when the page or tab is left. `domain/work/notes.ts` has the list rules.
 - **Importing Notion.** `node backend/scripts/import-notion.js "<export folder>"` reads a Notion Markdown & CSV export
   (`backend/src/lib/notionImport.js`, tested) and says what it found; `--write` imports it. Ids come from the export and
   anything already in Haus is left alone, so it can be run again. Notion leaves comments out of its exports, and a task's
@@ -265,6 +270,16 @@ Discord to say something, it writes an event to Firestore and the bot posts it: 
 `focus_notification` (`usePomodoro`), and `backend/src/features/focusNotifications.js` turns it into a message
 through the webhook in `backend/.env`. The one key the site does still carry is the gold API's
 (`VITE_GOLD_API_KEY`), because the app is what fetches gold prices — see below.
+
+## The focus timer's sounds
+
+`domain/focus/chimes.ts` defines the two sounds as data (a pair of notes rising when a focus session's time is up, falling
+when a break is over; `noteHz` turns note names into pitches), and `lib/audio.ts` plays them with the Web Audio API — soft
+sines with a quiet octave and twelfth, a quick attack and a long fade, through a small room reverb and a limiter; no sound
+files. `usePomodoro` plays them beside the Discord/Slack events. A browser only allows sound after the page was touched, so
+`App` wakes the audio on the first tap or key (until then a chime is skipped, never queued), and the sound button on the Focus
+card turns them off and on (remembered in localStorage) and plays both when switched on. They sound only while the page is
+open: a phone suspends a page that is not on screen.
 
 ## Gold prices
 

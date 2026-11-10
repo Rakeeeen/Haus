@@ -20,7 +20,7 @@ import {
   Sun01Icon, Moon01Icon, Camera01Icon, MoreVerticalIcon, Logout04Icon,
   Money01Icon, Delete02Icon, PencilEdit01Icon,
   PlayIcon, PauseIcon, Login03Icon,
-  ArrowDown01Icon, UserGroupIcon,
+  ArrowDown01Icon, UserGroupIcon, VolumeHighIcon, VolumeOffIcon,
 } from '@hugeicons/core-free-icons';
 
 /** Every plain icon is built from these three constants. Change one here and it changes
@@ -74,5 +74,7 @@ export const IconPencil = createIcon(PencilEdit01Icon as HugeIconData, 'Pencil')
 export const IconPlay = createIcon(PlayIcon as HugeIconData, 'Play');
 export const IconPause = createIcon(PauseIcon as HugeIconData, 'Pause');
 export const IconLogin = createIcon(Login03Icon as HugeIconData, 'Login');
+export const IconVolume = createIcon(VolumeHighIcon as HugeIconData, 'Volume');
+export const IconVolumeOff = createIcon(VolumeOffIcon as HugeIconData, 'VolumeOff');
 export const IconUsers = createIcon(UserGroupIcon as HugeIconData, 'Users');
 export const IconChevronDown = createIcon(ArrowDown01Icon as HugeIconData, 'ChevronDown');

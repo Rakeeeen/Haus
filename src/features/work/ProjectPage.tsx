@@ -9,7 +9,9 @@ import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { PriorityChip, ProjectStatusChip, shortDate } from '@/features/work/components/chips';
+import { sortNotes } from '@/domain/work/notes';
 import { ProjectModal } from '@/features/work/components/ProjectModal';
+import { NoteRow } from '@/features/work/Notes';
 import { TaskBoard } from '@/features/work/components/TaskBoard';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkShell } from '@/features/work/components/WorkShell';
@@ -25,7 +27,7 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: string }> = ({ navigate, author }) => {
   const { id } = useParams<{ id: string }>();
-  const { role, tasks, privates, ready, canEditTask, updateTask } = useWork();
+  const { role, tasks, notes, privates, ready, canEditTask, updateTask, addNote } = useWork();
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author);
 
@@ -87,6 +89,24 @@ export const ProjectPage: React.FC<{ navigate: (to: string) => void; author: str
           onToggleDone={toggleDone}
           onAdd={openNew}
         />
+      )}
+
+      {role === 'owner' && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Notes</h2>
+            <Button tone="outline" size="sm" onClick={async () => navigate(`work/notes/${await addNote(project.id)}`)}><Plus size={12} />New note</Button>
+          </div>
+          {notes.filter((n) => n.projectId === project.id).length === 0 ? (
+            <p className="font-mono-main text-[11px] text-ink/40">No notes on this project yet.</p>
+          ) : (
+            <div className="card !p-0 overflow-hidden">
+              {sortNotes(notes.filter((n) => n.projectId === project.id)).map((note) => (
+                <NoteRow key={note.id} note={note} projectName={null} onOpen={() => navigate(`work/notes/${note.id}`)} />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {editor.modal}

@@ -459,3 +459,45 @@ body.dark-theme [data-active] {
   background: linear-gradient(160deg, var(--silver-high), var(--silver-low));
   transition: left var(--spring-duration) var(--spring);
 }
+
+/* === A note's page (features/work/components/NoteEditor) === The look of a Notion page: roomy lines, big titles, plain
+   lists and ticks. Every block sets its own direction (dir="auto"), so Arabic and English sit side by side. */
+.note-editor { outline: none; min-height: 50vh; font-family: var(--font-sans); font-size: 1.02rem; line-height: 1.8; }
+.note-editor > * + * { margin-top: 0.55em; }
+.note-editor h1 { font-size: 1.95rem; font-weight: 900; letter-spacing: -0.01em; line-height: 1.25; margin-top: 1.5em; }
+.note-editor h2 { font-size: 1.5rem; font-weight: 800; line-height: 1.3; margin-top: 1.3em; }
+.note-editor h3 { font-size: 1.18rem; font-weight: 700; line-height: 1.35; margin-top: 1.1em; }
+.note-editor p.is-empty::before,
+.note-editor p.is-editor-empty::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+.note-editor ul, .note-editor ol { padding-inline-start: 1.5em; }
+.note-editor ul { list-style: disc; }
+.note-editor ol { list-style: decimal; }
+.note-editor li > p { margin: 0; }
+.note-editor ul[data-type="taskList"] { list-style: none; padding-inline-start: 0.2em; }
+.note-editor ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.65em; }
+.note-editor ul[data-type="taskList"] li > label { flex-shrink: 0; margin-top: 0.42em; user-select: none; }
+.note-editor ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+.note-editor ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1.1em; height: 1.1em; border-radius: 50%; cursor: pointer; display: block;
+  border: 1.5px solid color-mix(in srgb, var(--ink) 40%, transparent);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.note-editor ul[data-type="taskList"] input[type="checkbox"]:checked { background: var(--forest); border-color: var(--forest); }
+.note-editor ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.note-editor blockquote {
+  border-inline-start: 3px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  padding-inline-start: 1em;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+}
+.note-editor code { font-family: var(--font-mono), monospace; font-size: 0.9em; padding: 0.1em 0.38em; border-radius: 6px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.note-editor pre { padding: 1rem 1.1rem; border-radius: var(--radius-box); background: color-mix(in srgb, var(--ink) 6%, transparent); overflow-x: auto; direction: ltr; text-align: left; }
+.note-editor pre code { padding: 0; background: none; }
+.note-editor hr { border: none; border-top: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); margin: 1.6em 0; }
+.note-editor a { color: var(--sepia-mark); text-decoration: underline; text-underline-offset: 3px; }
+.note-editor strong { font-weight: 800; }

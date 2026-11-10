@@ -24,7 +24,7 @@ const Tile: React.FC<{ title: string; note: string; onClick?: () => void }> = ({
 
 /** The way into the work side: Projects, Tasks, Notes; what is being worked on, and what is due today. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
-  const { role, projects, tasks, privates, ready, canEditTask, updateTask } = useWork();
+  const { role, projects, tasks, notes, privates, ready, canEditTask, updateTask } = useWork();
 
   useEffect(() => { document.title = `${NAME} — Work`; }, []);
 
@@ -40,7 +40,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void }> = ({ navigate
       <div className={`grid grid-cols-1 gap-4 ${role === 'owner' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Tile title="Projects" note={`${working.length} working on · ${projects.length} in all`} onClick={() => navigate('work/projects')} />
         <Tile title="Tasks" note={`${open} open · ${today.length} today`} onClick={() => navigate('work/tasks')} />
-        {role === 'owner' && <Tile title="Notes" note="Soon" />}
+        {role === 'owner' && <Tile title="Notes" note={`${notes.length} in all`} onClick={() => navigate('work/notes')} />}
       </div>
 
       {!ready ? (

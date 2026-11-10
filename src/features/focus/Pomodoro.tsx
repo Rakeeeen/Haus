@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, IconButton } from '@/ui/Button';
 import { NAME } from '@/constants/brand';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
@@ -11,9 +11,11 @@ import { niceTicks } from '@/lib/charts';
 import { ChartTooltip } from '@/ui/ChartTooltip';
 import {
   IconPlay as Play, IconPause as Pause, IconRotateCcw as RotateCcw,
-  IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight,
+  IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight, IconVolume as Volume, IconVolumeOff as VolumeOff,
 } from '@/ui/icons';
 import { usePomodoro } from '@/data/usePomodoro';
+import { CHIMES } from '@/domain/focus/chimes';
+import { isSoundOn, playNotes, setSoundOn, unlockAudio } from '@/lib/audio';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { HourglassFace } from '@/ui/HourglassFace';
 import { hourglassSand } from '@/domain/focus/hourglass';
@@ -65,6 +67,20 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
     if (isOvertime) return 'var(--pomo-overtime)';
     if (mode === 'break') return 'var(--pomo-break)';
     return 'var(--ink)';
+  };
+
+  // The timer's two sounds (time up, break over). Turning it on plays both, so you hear what they are.
+  const [soundOn, setSoundOnState] = useState(isSoundOn);
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundOnState(next);
+    unlockAudio();
+    // Both sounds, one after the other: time's up, then break over.
+    if (next) {
+      window.setTimeout(() => playNotes(CHIMES.focusEnd), 60);
+      window.setTimeout(() => playNotes(CHIMES.breakEnd), 2200);
+    }
   };
 
   const focusMinsToday = Math.round(weekStats?.[todayIdx]?.minutes || 0);
@@ -177,6 +193,16 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
           {/* Focus Session Card */}
           {pomTab === 'focus' && (
           <div className="text-center card relative p-6 sm:p-10">
+            <IconButton
+              tone="ghost"
+              size="sm"
+              className="absolute top-4 right-4"
+              onClick={toggleSound}
+              data-tip={soundOn ? 'Sound on' : 'Sound off'}
+              aria-label={soundOn ? 'Turn the timer sound off' : 'Turn the timer sound on'}
+            >
+              {soundOn ? <Volume size={14} /> : <VolumeOff size={14} />}
+            </IconButton>
 
             <div className="text-[10px] uppercase tracking-[0.3em] font-black mb-10">
               <span style={{ color: getTimerColor() }}>

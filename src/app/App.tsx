@@ -18,6 +18,7 @@ import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { usePressHold } from '@/ui/usePressHold';
+import { unlockAudio } from '@/lib/audio';
 import '@/styles/global.css';
 
 // The other pages load when they are first opened, so the first screen doesn't carry the charts
@@ -28,6 +29,8 @@ const Finance = lazy(() => import('@/features/finance/Finance').then((m) => ({ d
 const WorkHub = lazy(() => import('@/features/work/WorkHub').then((m) => ({ default: m.WorkHub })));
 const Tasks = lazy(() => import('@/features/work/Tasks').then((m) => ({ default: m.Tasks })));
 const Projects = lazy(() => import('@/features/work/Projects').then((m) => ({ default: m.Projects })));
+const Notes = lazy(() => import('@/features/work/Notes').then((m) => ({ default: m.Notes })));
+const NotePage = lazy(() => import('@/features/work/NotePage').then((m) => ({ default: m.NotePage })));
 const ProjectPage = lazy(() => import('@/features/work/ProjectPage').then((m) => ({ default: m.ProjectPage })));
 
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -43,6 +46,13 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 );
 const AppRoutes: React.FC = () => {
   usePressHold();
+  // A browser only lets a page make sound once it has been touched: the first tap or key wakes the audio.
+  useEffect(() => {
+    const wake = () => unlockAudio();
+    window.addEventListener('pointerdown', wake, { once: true });
+    window.addEventListener('keydown', wake, { once: true });
+    return () => { window.removeEventListener('pointerdown', wake); window.removeEventListener('keydown', wake); };
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role, firstName, approved, accessError, biometricCleared, setBiometricCleared } = useAuth();
@@ -106,6 +116,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/work/tasks" element={<AnimatedPage><Tasks navigate={nav} author={firstName} /></AnimatedPage>} />
         <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} /></AnimatedPage>} />
         <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} /></AnimatedPage>} />
+        {role === 'owner' && <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />}
+        {role === 'owner' && <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />}
         {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

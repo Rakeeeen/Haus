@@ -3,9 +3,10 @@ import {
   collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { blankNote } from '@/domain/work/notes';
 import { blankTask, nextTaskNo } from '@/domain/work/tasks';
 import { normalizeProject, normalizeTask, staleViewers, viewersOf } from '@/domain/work/sharing';
-import type { Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/types';
+import type { Note, Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/types';
 
 /**
  * Projects, tasks and comments, kept live from Firestore. Each kind is its own collection (a task or a project is a
@@ -18,6 +19,7 @@ import type { Project, ProjectPrivate, Task, TaskComment } from '@/domain/work/t
 const PROJECTS = 'work_projects';
 const PRIVATES = 'work_projects_private';
 const TASKS = 'work_tasks';
+const NOTES = 'work_notes';
 
 /** Firestore refuses `undefined`; a field that is not there is simply left out. */
 const clean = <T extends object>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -37,6 +39,8 @@ interface WorkContextType {
   tasks: Task[];
   /** Who each project is for — Hamed's only. */
   privates: Record<string, ProjectPrivate>;
+  /** Notes — Hamed's only (a guest gets none). */
+  notes: Note[];
   /** The first answer from Firestore has arrived (before it, lists are empty rather than missing). */
   ready: boolean;
   /** May this person change this task? Hamed any; a guest the ones that are theirs. */
@@ -51,6 +55,9 @@ interface WorkContextType {
   setClient: (projectId: string, client: string | null) => Promise<void>;
   /** Removes the project and its client record; its tasks stay, with no project. */
   removeProject: (id: string) => Promise<void>;
+  addNote: (projectId?: string | null) => Promise<string>;
+  updateNote: (id: string, patch: Partial<Pick<Note, 'title' | 'markdown' | 'projectId'>>) => Promise<void>;
+  removeNote: (id: string) => Promise<void>;
 }
 
 const WorkContext = createContext<WorkContextType | null>(null);
@@ -59,6 +66,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [privates, setPrivates] = useState<Record<string, ProjectPrivate>>({});
+  const [notes, setNotes] = useState<Note[]>([]);
   const [answered, setAnswered] = useState({ projects: false, tasks: false });
   // The mutations below read the latest data without being rebuilt every time it changes.
   const tasksRef = useRef(tasks);
@@ -81,8 +89,11 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
         setAnswered((a) => ({ ...a, tasks: true }));
       }, fail(TASKS)),
     ];
-    // Who each project is for is Hamed's alone.
+    // Who each project is for, and the notes, are Hamed's alone.
     if (!uid) {
+      stops.push(onSnapshot(collection(db, NOTES), (snap) => {
+        setNotes(snap.docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
+      }, fail(NOTES)));
       stops.push(onSnapshot(collection(db, PRIVATES), (snap) => {
         setPrivates(Object.fromEntries(snap.docs.map((d) => [d.id, { ...(d.data() as Omit<ProjectPrivate, 'id'>), id: d.id }])));
       }, fail(PRIVATES)));
@@ -166,10 +177,24 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     await batch.commit();
   }, []);
 
+  const addNote = useCallback(async (projectId: string | null = null) => {
+    const ref = doc(collection(db, NOTES));
+    await setDoc(ref, blankNote(projectId));
+    return ref.id;
+  }, []);
+
+  const updateNote = useCallback(async (id: string, patch: Partial<Pick<Note, 'title' | 'markdown' | 'projectId'>>) => {
+    await setDoc(doc(db, NOTES, id), clean({ ...patch, updatedAt: new Date().toISOString() }), { merge: true });
+  }, []);
+
+  const removeNote = useCallback(async (id: string) => {
+    await deleteDoc(doc(db, NOTES, id));
+  }, []);
+
   const value = useMemo<WorkContextType>(() => ({
-    role: scope.kind, guestUid: uid, projects, tasks, privates, ready: answered.projects && answered.tasks, canEditTask,
-    addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject,
-  }), [scope.kind, uid, projects, tasks, privates, answered, canEditTask, addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject]);
+    role: scope.kind, guestUid: uid, projects, tasks, privates, notes, ready: answered.projects && answered.tasks, canEditTask,
+    addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
+  }), [scope.kind, uid, projects, tasks, privates, notes, answered, canEditTask, addTask, updateTask, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

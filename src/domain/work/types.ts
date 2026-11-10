@@ -65,3 +65,13 @@ export interface TaskComment {
   text: string;
   at: string;
 }
+
+/** A note: a page of writing, kept as Markdown, optionally about a project. Hamed's alone. */
+export interface Note {
+  id: string;
+  title: string;
+  markdown: string;
+  projectId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
