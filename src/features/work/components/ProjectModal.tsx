@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
+import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { DatePicker } from '@/ui/DatePicker';
 import { Field, SelectMenu, TextInput } from '@/ui/Form';
@@ -126,7 +127,8 @@ export const ProjectModal: React.FC<{
                         data-tip={guest.uid ? undefined : 'They appear here once they have signed in'}
                         onClick={() => guest.uid && set('memberUids', on ? draft.memberUids.filter((u) => u !== guest.uid) : [...draft.memberUids, guest.uid])}
                       >
-                        {guest.name || guest.email}
+                        <Avatar name={guest.name || guest.email} photoUrl={guest.photoUrl} size={20} />
+                        <span dir="auto">{guest.name || guest.email}</span>
                       </Button>
                     );
                   })}

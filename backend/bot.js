@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import cron from 'node-cron';
+import { Agent } from 'undici';
 import { CONTROL_CHANNEL_ID } from './src/config.js';
 import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
@@ -8,7 +9,8 @@ import { cleanChannel } from './src/features/cleanup.js';
 import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
-import { isMaghribNow } from './src/lib/prayerTimes.js';
+import { afterAttempt, readState, reportDue, writeState } from './src/features/report/schedule.js';
+import { getMaghrib } from './src/lib/prayerTimes.js';
 import { startServer } from './src/server.js';
 import { startSlack } from './src/slack/app.js';
 
@@ -18,7 +20,10 @@ const SERVER_PORT = Number(process.env.WEBHOOK_PORT || 3001);
 const TIME_ZONE = { timezone: 'Africa/Cairo' };
 const LOGIN_RETRY_MS = 30_000;
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// Discord gets its own HTTP agent. The Slack library installs its own (newer) undici as the process-wide default, and a
+// file upload built by discord.js's undici is refused by that one ("body must be a FormData created by this undici
+// package instance") — which is why the Maghrib report, the only upload, never arrived.
+const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { agent: new Agent() } });
 
 // Without a listener, an 'error' event (a dropped gateway connection, a handshake timeout) is an
 // unhandled EventEmitter error and takes the whole process down. discord.js already reconnects on
@@ -50,8 +55,15 @@ client.once('clientReady', async () => {
   }));
   cron.schedule('* * * * *', guarded('Payit reminders', () => remindDueSubscriptions(client, CHANNEL_ID)));
   // Maghrib moves every day (from the prayer API, like the water and focus locks), so the report is checked each minute.
+  // It goes out at Maghrib, or when the Mac wakes if it was asleep then; the state file keeps it to once a day.
   cron.schedule('* * * * *', guarded('Daily report', async () => {
-    if (await isMaghribNow()) await sendDailyReport(client, CHANNEL_ID);
+    const now = new Date();
+    const state = readState();
+    if (!reportDue({ now, maghrib: await getMaghrib(), state })) return;
+    // Written before trying, so a send that takes longer than a minute isn't started twice.
+    writeState(afterAttempt(state, now, false));
+    await sendDailyReport(client, CHANNEL_ID);
+    writeState(afterAttempt(readState(), now, true));
   }), TIME_ZONE);
   console.log('⏰ Scheduled: channel cleanup 02:00 · Payit reminders every minute · daily report at Maghrib');
 });
