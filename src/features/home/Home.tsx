@@ -633,9 +633,12 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             )}
           </div>
 
-          {/* Three dots dropdown */}
+          {/* Today's date: the same tile and logic as before, sized so tile + month fit the avatar's height. */}
+          <PixelDateTile date={getDateParts(now)} width="clamp(32px, 5vw, 40px)" />
+
+          {/* Three dots dropdown — a circle the size of the avatar's */}
           <div className="relative">
-            <IconButton onClick={() => setShowMenu(v => !v)} className="!w-12 !h-12 sm:!w-14 sm:!h-14" data-tip="Menu" aria-label="Menu">
+            <IconButton onClick={() => setShowMenu(v => !v)} className="!w-12 !h-12 sm:!w-14 sm:!h-14 !rounded-full" data-tip="Menu" aria-label="Menu">
               <MoreVertical size={20} />
             </IconButton>
 
@@ -963,13 +966,10 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
 
       </main>
 
-      {/* 3. FOOTER — today's date, centered in whatever room is left between the big card
-          and the bottom of the page (flex-1 fills that space, items-center centers the
-          tile within it). Fades out in zen mode along with the dock, same spring as the
-          rest of it — it doesn't need to collapse its own height for that since the stage's
-          zen height comes from measuring `main` directly, not from the footer shrinking. */}
+      {/* 3. FOOTER — only the room left at the bottom of the page (today's date moved up to the header, between the
+          avatar and the menu). Fades with the dock in zen mode, same spring as the rest of it. */}
       <motion.footer
-        className="w-full max-w-[1400px] mx-auto flex-1 flex items-center justify-center overflow-hidden pt-6 sm:pt-10"
+        className="w-full max-w-[1400px] mx-auto flex-1"
         initial={false}
         animate={{
           opacity: zenActive ? 0 : 1,
@@ -978,7 +978,6 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         }}
         transition={{ ...SPRING, opacity: { duration: 0.2 } }}
       >
-        <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
       </motion.footer>
 
       <AppModal
