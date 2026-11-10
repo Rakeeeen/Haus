@@ -4,9 +4,9 @@ import { projectStatusHint, projectStatusLabel } from '@/domain/work/projects';
 import { statusLabel } from '@/domain/work/tasks';
 import type { Priority, ProjectStatus, TaskStatus } from '@/domain/work/types';
 
-const TASK_TONE: Record<TaskStatus, ChipTone> = { todo: 'neutral', doing: 'sepia', done: 'forest', dropped: 'rust' };
-const PROJECT_TONE: Record<ProjectStatus, ChipTone> = { active: 'sepia', planning: 'neutral', maintenance: 'neutral', paused: 'neutral', done: 'forest' };
-const PRIORITY_TONE: Record<Priority, ChipTone> = { high: 'rust', medium: 'amber', low: 'sepia' };
+const TASK_TONE: Record<TaskStatus, ChipTone> = { todo: 'neutral', doing: 'sepia', done: 'neutral', dropped: 'neutral' };
+const PROJECT_TONE: Record<ProjectStatus, ChipTone> = { active: 'sepia', planning: 'neutral', maintenance: 'neutral', paused: 'neutral', done: 'neutral' };
+const PRIORITY_TONE: Record<Priority, ChipTone> = { high: 'rust', medium: 'neutral', low: 'neutral' };
 const PRIORITY_LABEL: Record<Priority, string> = { high: 'High', medium: 'Medium', low: 'Low' };
 
 export const TaskStatusChip: React.FC<{ status: TaskStatus }> = ({ status }) => <Chip tone={TASK_TONE[status]}>{statusLabel(status)}</Chip>;
@@ -14,8 +14,8 @@ export const ProjectStatusChip: React.FC<{ status: ProjectStatus }> = ({ status 
   <span data-tip={projectStatusHint(status)} className="inline-flex"><Chip tone={PROJECT_TONE[status]}>{projectStatusLabel(status)}</Chip></span>
 );
 /** The colour a priority wears wherever it is shown or chosen. */
-export const PRIORITY_COLOR: Record<Priority, string> = {
-  high: '!bg-rust !text-white', medium: '!bg-amber !text-white', low: '!bg-sepia !text-white',
+export const PRIORITY_COLOR: Partial<Record<Priority, string>> = {
+  high: '!bg-rust !text-white',
 };
 export const PriorityChip: React.FC<{ priority: Priority | null }> = ({ priority }) =>
   priority ? <Chip tone={PRIORITY_TONE[priority]}>{PRIORITY_LABEL[priority]}</Chip> : null;

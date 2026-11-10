@@ -25,11 +25,12 @@ const ProjectCard: React.FC<{ project: Project; tasks: readonly Task[]; client?:
       {...(overlay ? {} : listeners)}
       onClick={onOpen}
       style={{ opacity: isDragging ? 0 : 1, touchAction: 'manipulation' }}
-      className={`rounded-box border border-ink/12 bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:border-ink/35'}`}
+      className={`rounded-box bg-paper-dark p-3.5 cursor-pointer select-none transition-colors ${overlay ? 'rotate-1' : 'hover:bg-ink/5'}`}
     >
       <p dir="auto" className="font-sans-main text-[16px] font-bold leading-relaxed mb-2.5 text-left break-words">{project.name}</p>
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <ProjectStatusChip status={project.status} /><PriorityChip priority={project.priority} />
+        {/* The status is the heading of the block the card is in, so it is not repeated here. */}
+        <PriorityChip priority={project.priority} />
         {client && <Chip tone="ink"><span dir="auto" className="truncate max-w-[140px]">{client}</span></Chip>}
       </div>
       <ProgressBar value={progressOf(tasks)} showValue />

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
-import { projectLabel, countTasks, filterProjectsByStatus, isWorkedOn, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
+import { projectLabel, countTasks, filterProjectsByStatus, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
 import { addDays, dayKey, filterTasks, moveToStatus, sortTasks, type DayFilter } from '@/domain/work/tasks';
 import type { ProjectStatus, Task, TaskStatus } from '@/domain/work/types';
 import { Button } from '@/ui/Button';
@@ -16,18 +16,6 @@ import { shortDate, TaskStatusChip } from '@/features/work/components/chips';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
-
-const Tile: React.FC<{ title: string; note: string; onClick?: () => void }> = ({ title, note, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={!onClick}
-    className={`card !py-4 text-left flex flex-col items-start gap-1 transition-colors ${onClick ? 'cursor-pointer hover:border-ink/40' : 'opacity-50 cursor-default'}`}
-  >
-    <span className="font-sans-main text-lg font-black uppercase tracking-tight">{title}</span>
-    <span className="font-mono-main text-[12px] uppercase tracking-widest text-ink/45 truncate">{note}</span>
-  </button>
-);
 
 type DayChoice = 'all' | 'today' | 'tomorrow' | 'overdue' | 'pick';
 const DAYS = [
@@ -57,14 +45,14 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
   const toggle = (task: Task) => canEditTask(task) && updateTask(task.id, moveToStatus(task, task.status === 'done' ? 'todo' : 'done'));
   const open = tasks.filter((t) => t.status === 'todo' || t.status === 'doing').length;
-  const today = filterTasks(tasks, { day: { kind: 'today' } }).length;
 
   return (
     <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Work' }]} title="Work">
-      <div className={`grid grid-cols-1 gap-4 ${role === 'owner' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-        <Tile title="Projects" note={`${projects.filter(isWorkedOn).length} working on · ${projects.length} in all`} onClick={() => navigate('work/projects')} />
-        <Tile title="Tasks" note={`${open} open · ${today} today`} onClick={() => navigate('work/tasks')} />
-        {role === 'owner' && <Tile title="Notes" note={`${notes.length} in all`} onClick={() => navigate('work/notes')} />}
+      {/* The way into each full page: one quiet row, instead of three big tiles repeating the cards below. */}
+      <div className="spring-group flex flex-wrap gap-2">
+        <Button tone="outline" size="sm" onClick={() => navigate('work/projects')}>Projects<span className="text-ink/40">{projects.length}</span></Button>
+        <Button tone="outline" size="sm" onClick={() => navigate('work/tasks')}>Tasks<span className="text-ink/40">{open} open</span></Button>
+        {role === 'owner' && <Button tone="outline" size="sm" onClick={() => navigate('work/notes')}>Notes<span className="text-ink/40">{notes.length}</span></Button>}
       </div>
 
       {!ready ? (
@@ -73,7 +61,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section className="card flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Tasks</h2>
+              <h2 className="font-mono-main text-[13px] font-semibold uppercase tracking-[0.22em] text-ink/50">Tasks</h2>
               <div className="spring-group flex flex-wrap items-center gap-2">
                 <FilterSelect label="Day" options={DAYS} value={dayChoice} onChange={setDayChoice} />
                 {dayChoice === 'pick' && <DatePicker ariaLabel="Day" allowClear={false} value={picked} onChange={(d) => d && setPicked(d)} />}
@@ -90,7 +78,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                     {task.date && <p className="font-mono-main text-[12px] tracking-wider text-ink/45">{shortDate(task.date)}</p>}
                   </div>
                   {projectLabel(task, projectName) && <Chip tone="neutral" className="max-w-[180px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectLabel(task, projectName)}</span></Chip>}
-                  <TaskStatusChip status={task.status} />
+                  {task.status !== 'todo' && <TaskStatusChip status={task.status} />}
                 </div>
               ))}
               <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 mt-2">
@@ -100,7 +88,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
           </section>
           <section className="card flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Projects</h2>
+              <h2 className="font-mono-main text-[13px] font-semibold uppercase tracking-[0.22em] text-ink/50">Projects</h2>
               <FilterMulti label="Status" options={PROJECT_STATUSES} values={projectStatuses} onChange={setProjectStatuses} />
             </div>
             <div className="flex flex-col gap-4">

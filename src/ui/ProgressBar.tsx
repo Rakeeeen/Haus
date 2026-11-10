@@ -13,11 +13,11 @@ export const ProgressBar: React.FC<{ value: number; className?: string; showValu
         aria-valuenow={Math.round(share * 100)}
       >
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-forest"
+          className="absolute inset-y-0 left-0 rounded-full bg-ink/55"
           style={{ width: `${share * 100}%`, transition: 'width var(--spring-duration) var(--spring)' }}
         />
       </div>
-      {showValue && <span className="font-mono-main text-[10px] font-bold text-ink/60 tabular-nums w-9 text-right">{Math.round(share * 100)}%</span>}
+      {showValue && <span className="font-mono-main text-[10px] font-medium text-ink/45 tabular-nums w-9 text-right">{Math.round(share * 100)}%</span>}
     </div>
   );
 };
