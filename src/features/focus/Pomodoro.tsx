@@ -11,13 +11,13 @@ import { niceTicks } from '@/lib/charts';
 import { ChartTooltip } from '@/ui/ChartTooltip';
 import {
   IconPlay as Play, IconPause as Pause, IconRotateCcw as RotateCcw,
-  IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight,
 } from '@/ui/icons';
 import { usePomodoro } from '@/data/usePomodoro';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { HourglassFace } from '@/ui/HourglassFace';
 import { hourglassSand } from '@/domain/focus/hourglass';
 import { FocusCarousel } from '@/ui/FocusCarousel';
+import { PageHeader } from '@/ui/PageHeader';
 import { RulerTimer } from '@/ui/RulerTimer';
 import { useFridayGate } from '@/data/useFridayGate';
 import { usePrayer } from '@/data/usePrayer';
@@ -141,35 +141,12 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
     <>
       <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300">
         
-        {/* HEADER */}
-        <header className="w-full max-w-[1000px] mx-auto mb-12">
-          {/* Breadcrumb / Back */}
-          <div className="flex items-center gap-2 mb-8">
-            <button
-              onClick={() => navigate('home')}
-              className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
-            >
-              <ArrowLeft size={16} />
-              <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
-            </button>
-            <ChevronRight size={12} className="text-ink/20" />
-            <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/50">Focus</span>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">
-              FOCUS TIME
-            </h1>
-            <Tabs
-              layoutId="pomodoroTab"
-              ruled
-              value={pomTab}
-              onChange={setPomTab}
-              options={PAGE_TABS}
-              className="md:mb-1"
-            />
-          </div>
-        </header>
+        <PageHeader
+          crumbs={[{ label: 'Home', to: 'home' }, { label: 'Focus' }]}
+          title="Focus time"
+          navigate={navigate}
+          aside={<Tabs layoutId="pomodoroTab" ruled value={pomTab} onChange={setPomTab} options={PAGE_TABS} className="md:mb-1" />}
+        />
 
         {/* MAIN CONTENT */}
         <main className="w-full max-w-[1000px] mx-auto flex flex-col gap-6">

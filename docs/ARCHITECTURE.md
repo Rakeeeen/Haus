@@ -366,3 +366,25 @@ card shows, and the 30 s manual hold), `useZenMode`, `useDockTouch` (hover/press
 - **Sideways rows with a mouse.** Scrollbars are hidden everywhere, so a row that scrolls sideways (the client cards, the
   timeline) uses `ui/useWheelToSide`: a plain wheel over it scrolls it sideways (`horizontalWheel.ts` decides, and lets the page
   scroll again once the row is at its end); a trackpad and Shift + wheel work as they always did.
+
+## Tests
+
+`npm run test:run` runs everything: **domain** (pure rules, in plain node), the **bot's** pure modules (`backend/src/**`), and
+**components and hooks** in jsdom (a file opts in with `// @vitest-environment jsdom` at its top; `src/setupTests.ts` unmounts after
+each test and stands in for the `ResizeObserver` and `matchMedia` jsdom lacks). Firestore is never touched: a test replaces
+`useFirebaseSync` with an in-memory store (see `usePomodoro.test.tsx`) or mocks `@/data/useWork`. Time is controlled with
+`vi.useFakeTimers()` — and advanced a second at a time with a render between, as a browser would (one long jump runs every timer
+before React can re-render, so effects that restart on a state change never get a turn).
+
+## One copy of what many screens need
+
+- **Prayer times** (`data/usePrayer.ts`) are one shared copy fetched once (and again when the date changes), read with
+  `useSyncExternalStore`. The countdown to the next prayer is not a timer in that hook: the one screen that wants it (Home)
+  computes it from its own `now`.
+- **The top of a page** is `ui/PageHeader` (breadcrumb, silver title, tabs or action beside it); Water, Focus, Finance and every work
+  page use it.
+- **A dialog** is `ui/AppModal`: it closes on Escape, locks the page behind it, takes and returns focus, and is a labelled dialog.
+- **The Pomodoro timer** (`data/usePomodoro.tsx`) keeps its rules in `domain/focus/session.ts` (`idleTimer`, `breakTimer`,
+  `minutesSoFar`, `closeOutFocusDay` …); the provider only wires them to state and Firestore.
+- **The bot's HTTP API** (`backend/src/server.js`) listens on this machine only, answers only Haus's own origins, and accepts only a
+  valid list of Payit (`backend/src/lib/webApi.js`).

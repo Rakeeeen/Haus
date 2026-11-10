@@ -50,7 +50,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   const open = tasks.filter((t) => (t.status === 'todo' || t.status === 'doing') && (!forMe || t.assigneeUids.includes(forMe))).length;
 
   return (
-    <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks' }]} title="Tasks" tight>
+    <WorkShell navigate={navigate} crumbs={[{ label: 'Home', to: 'home' }, { label: 'Tasks' }]} title="Tasks">
       {/* The way into each full page: one quiet row, instead of three big tiles repeating the cards below. */}
       <div className="spring-group flex flex-wrap gap-2">
         <Button tone="outline" size="sm" onClick={() => navigate('work/projects')}>Projects<span className="text-ink/40">{projects.length}</span></Button>

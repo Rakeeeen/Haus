@@ -9,13 +9,13 @@ import { ChartTooltip } from '@/ui/ChartTooltip';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from 'recharts';
 import {
   IconRotateCcw as RotateCcw, IconUndo2 as Undo2, IconPlus as Plus,
-  IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight,
 } from '@/ui/icons';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
 import { isWaterClosed } from '@/domain/devotion/prayer';
 import { archivedDayKey, applyLateGlass } from '@/domain/water';
 import { buildPeriodReports, periodMultiplier, type ReportView } from '@/domain/report';
 import { DotMatrixText } from '@/ui/DotMatrixText';
+import { PageHeader } from '@/ui/PageHeader';
 
 
 interface WaterProps {
@@ -82,24 +82,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   return (
     <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300">
 
-      {/* HEADER */}
-      <header className="w-full max-w-[1000px] mx-auto mb-12">
-        <div className="flex items-center gap-2 mb-8">
-          <button
-            onClick={() => navigate('home')}
-            className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group"
-          >
-            <ArrowLeft size={16} />
-            <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
-          </button>
-          <ChevronRight size={12} className="text-ink/20" />
-          <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/50">Water</span>
-        </div>
-
-        <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">
-          WATER
-        </h1>
-      </header>
+      <PageHeader crumbs={[{ label: 'Home', to: 'home' }, { label: 'Water' }]} title="Water" navigate={navigate} />
 
       {/* MAIN CONTENT */}
       <main className="w-full max-w-[1000px] mx-auto flex flex-col gap-6">

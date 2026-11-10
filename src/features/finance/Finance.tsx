@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NAME } from '@/constants/brand';
-import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight } from '@/ui/icons';
+import { PageHeader } from '@/ui/PageHeader';
 import { Tabs } from '@/ui/Tabs';
 import { useFinance } from '@/features/finance/useFinance';
 import { useGoldPrices } from '@/data/useGoldPrices';
@@ -121,33 +121,14 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   return (
     <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main transition-colors duration-300">
 
-      {/* HEADER — the same Home › Page breadcrumb Water and Focus use; the tabs sit on the title's line */}
-      <header className="w-full max-w-[1400px] mx-auto mb-10 md:mb-12">
-        <div className="flex items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('home')}
-              className="flex items-center gap-2 text-ink/40 hover:text-ink transition-colors group cursor-pointer"
-            >
-              <ArrowLeft size={16} />
-              <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold">Home</span>
-            </button>
-            <ChevronRight size={12} className="text-ink/25" />
-            <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/60">Finance</span>
-          </div>
-
-          <PrivacyToggle
-            privateMode={privacyMode}
-            onToggle={() => setPrivacyMode((p) => !p)}
-            disabled={tab === 'thndr'}
-          />
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <h1 className="text-silver font-sans-main text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">FINANCES</h1>
-          <Tabs layoutId="financeTab" ruled value={tab} onChange={setTab} options={TAB_OPTIONS} className="md:mb-1" />
-        </div>
-      </header>
+      <PageHeader
+        crumbs={[{ label: 'Home', to: 'home' }, { label: 'Finance' }]}
+        title="Finances"
+        navigate={navigate}
+        trailing={<PrivacyToggle privateMode={privacyMode} onToggle={() => setPrivacyMode((p) => !p)} disabled={tab === 'thndr'} />}
+        aside={<Tabs layoutId="financeTab" ruled value={tab} onChange={setTab} options={TAB_OPTIONS} className="md:mb-1" />}
+        className="max-w-[1400px] mb-10 md:mb-12"
+      />
 
       <div className="w-full max-w-[1400px] mx-auto">
         {tab === 'overview' && (
