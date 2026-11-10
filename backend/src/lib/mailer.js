@@ -1,8 +1,6 @@
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
-import { cidOf } from './emailTemplate.js';
 import { NAME } from './brand.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -33,10 +31,11 @@ export function mailConfig(env = process.env) {
 export function createMailer(config = mailConfig()) {
   if (!config) return null;
   const transport = nodemailer.createTransport({ host: config.host, port: config.port, secure: config.secure, auth: config.auth });
-  // The pictures a message uses (named by `images`) travel inside it, under the cid the HTML points at.
-  const attach = (images = []) => images.filter((file) => fs.existsSync(path.join(ASSETS, file))).map((file) => ({ filename: file, path: path.join(ASSETS, file), cid: cidOf(file) }));
+  // The pictures a message uses travel inside it, under the cid the HTML points at: a ready-made file of
+  // `assets/mail`, or words drawn for this message (`content`).
+  const attach = (list = []) => list.map((a) => (a.file ? { filename: a.file, path: path.join(ASSETS, a.file), cid: a.cid } : { filename: a.filename, content: a.content, cid: a.cid, contentType: 'image/png' }));
   return {
     config,
-    send: ({ to, subject, html, text, images }) => transport.sendMail({ from: config.from, to, subject, html, text, attachments: attach(images) }),
+    send: ({ to, subject, html, text, attachments }) => transport.sendMail({ from: config.from, to, subject, html, text, attachments: attach(attachments) }),
   };
 }

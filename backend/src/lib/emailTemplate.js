@@ -1,28 +1,22 @@
 import { NAME } from './brand.js';
+import { textImage } from './textImage.js';
 
 // The emails Haus sends — an invitation, and a task given to someone — in Arabic and in the system's dark side: a
 // black card on a near-black page, a retro photograph with the words over it in Thmanyah (the app's own font), the
 // purple call-to-action as a fully round button, and at the foot a silver band with the black house mark, the name,
 // and one of the app's animated hand-drawn icons (a GIF of its line boil). Email clients ignore most CSS, so this is
-// plain tables with inline styles. Pictures travel inside the message (`images`, attached by the mailer under their
-// cid), so nothing depends on the website being online.
+// plain tables with inline styles. Gmail ignores web fonts, so every block of words is drawn in the app's own fonts
+// (`textImage`, Thmanyah for Arabic, General Sans for Latin) and sent as a picture with the words as its alt text; the
+// pictures travel inside the message (`attachments`, under their cid), so nothing depends on the website being online.
 //
-// Everything here is pure: text in, `{ subject, html, text, images }` out. Anything that came from a person (a name,
+// Everything here is pure: text in, `{ subject, html, text, attachments }` out. Anything that came from a person (a name,
 // a task title) goes through `esc`, so it can never become markup.
 
 const C = {
   page: '#0A0A0A', card: '#000000', line: '#232323', box: '#0D0D0D', ink: '#EDEDED', faded: '#9A9A9A',
   purple: '#4D14A2', rust: '#E2583A', band: '#D6D6D6', bandInk: '#141413', bandFaded: '#5A5A5A',
 };
-const FONT = "'Thmanyah','Segoe UI','SF Arabic','Geeza Pro',Tahoma,Arial,sans-serif";
 const NAME_AR = 'هاوس';
-const MONO = "'Geist Mono','SF Mono',Menlo,Consolas,monospace";
-
-// The app's own font files, for the clients that load fonts (Apple Mail, iOS). Gmail doesn't, and falls back to the
-// system's Arabic face — which is why the headline is part of the picture.
-const FONT_FACES = [[400, 'x6EBzvXf1Fi35XhsRoHxePDVo'], [700, 'oE98mOPE28KTzUeptOLRIaqW1I'], [900, 'ulQLGTktcl2Qq4AmD6RuVgELZKg']]
-  .map(([weight, id]) => `@font-face{font-family:'Thmanyah';font-weight:${weight};src:url('https://framerusercontent.com/assets/${id}.woff2') format('woff2');}`)
-  .join('');
 
 /** The pictures the emails use: file in `backend/assets/mail`, and the cid it is attached under. */
 export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
@@ -70,30 +64,46 @@ export function snippet(text, max = 220) {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-const small = (text) =>
-  `<span style="font-family:${FONT};font-size:12px;font-weight:700;color:${C.faded};letter-spacing:0.02em;">${esc(text)}</span>`;
+/** What goes into one email: collects the pictures (its drawn words, and the ready-made files) under their cids. */
+function builder() {
+  const attachments = [];
+  let n = 0;
+  const addFile = (file) => { if (!attachments.some((a) => a.file === file)) attachments.push({ cid: cidOf(file), file }); return cidOf(file); };
+  /** A block of words as a picture, `width` px wide at most; the words are its alt text. */
+  const words = (text, options = {}) => {
+    const drawn = textImage({ text, ...options });
+    const cid = `words-${String(++n).padStart(3, "0")}`;
+    attachments.push({ cid, filename: `${cid}.png`, content: drawn.png });
+    return `<img src="cid:${cid}" width="${drawn.width}" height="${drawn.height}" alt="${esc(text)}" style="display:block;width:100%;max-width:${drawn.width}px;height:auto;border:0;" />`;
+  };
+  return { attachments, addFile, words };
+}
 
-/** The purple pill, as round as every button in the app. */
-const button = (href, text) => `
+/** The purple pill, as round as every button in the app; its words are a picture too. */
+const button = (b, href, text) => `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${C.purple}" style="background:${C.purple};border-radius:999px;">
-    <a href="${esc(href)}" style="display:block;padding:16px 28px;font-family:${FONT};font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">${esc(text)}</a>
+    <a href="${esc(href)}" style="display:block;padding:15px 28px;border-radius:999px;text-decoration:none;">${b.words(text, { size: 17, weight: 700, color: '#FFFFFF', width: 300, align: 'center', lineHeight: 1.5 })}</a>
   </td></tr></table>`;
 
-/** A line of a details box: a small label over its value. `ltr` keeps an email address or a number the right way round. */
-const detail = (name, value, { first = false, ltr = false, color = C.ink } = {}) => `
+/** A line of a details box: a small label over its value. */
+const detail = (b, name, value, { first = false, color = C.ink } = {}) => `
   <tr><td style="padding:${first ? '4px' : '14px'} 0 4px;${first ? '' : `border-top:1px solid ${C.line};`}">
-    ${small(name)}<br />
-    <span ${ltr ? 'dir="ltr" style="unicode-bidi:embed;text-align:right;display:block;' : 'dir="auto" style="'}font-family:${FONT};font-size:16px;font-weight:700;color:${color};line-height:1.7;">${esc(value)}</span>
+    ${b.words(name, { size: 12, weight: 700, color: C.faded, width: 450, lineHeight: 1.7 })}
+    ${b.words(value, { size: 16, weight: 700, color, width: 450, lineHeight: 1.7 })}
   </td></tr>`;
 
 const box = (inner, bottom = 24) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.box};border:1px solid ${C.line};border-radius:12px;margin:0 0 ${bottom}px;"><tr><td style="padding:18px 20px 16px;">${inner}</td></tr></table>`;
 
-const paragraph = (text) =>
-  `<p dir="rtl" style="margin:0 0 22px;font-family:${FONT};font-size:16px;line-height:1.9;color:${C.ink};">${text}</p>`;
+const paragraph = (b, text) => `<div style="margin:0 0 22px;">${b.words(text, { size: 17, weight: 400, width: 492, lineHeight: 1.85 })}</div>`;
+
+const SPACER = '<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>';
 
 /** The page every email sits on. `hero` is the picture over the card, `icon` the animated one in the footer. */
-function frame({ title, preheader, hero, icon, body }) {
+function frame(b, { title, preheader, hero, icon, body }) {
+  const heroCid = b.addFile(hero);
+  const iconCid = b.addFile(icon);
+  const logoCid = b.addFile('logo-black.png');
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head>
 <meta charset="utf-8" />
@@ -101,29 +111,27 @@ function frame({ title, preheader, hero, icon, body }) {
 <meta name="color-scheme" content="dark" />
 <meta name="supported-color-schemes" content="dark" />
 <title>${esc(title)}</title>
-<style>${FONT_FACES}@media (max-width:480px){.pad{padding:26px 22px !important;}}</style>
+<style>@media (max-width:480px){.pad{padding:26px 22px !important;}}</style>
 </head>
 <body style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page};"><tr><td align="center" style="padding:36px 16px;">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:${C.card};border:1px solid ${C.line};border-radius:18px;border-collapse:separate;overflow:hidden;">
-    <tr><td style="font-size:0;line-height:0;"><img src="cid:${cidOf(hero)}" width="560" alt="${esc(title)}" style="display:block;width:100%;height:auto;border:0;" /></td></tr>
+    <tr><td style="font-size:0;line-height:0;"><img src="cid:${heroCid}" width="560" alt="${esc(title)}" style="display:block;width:100%;height:auto;border:0;" /></td></tr>
     <tr><td class="pad" dir="rtl" style="padding:30px 34px 8px;text-align:right;">${body}</td></tr>
-    <tr><td class="pad" dir="rtl" style="padding:0 34px 28px;text-align:right;">
-      <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.9;color:${C.faded};">وصلتك هذه الرسالة لأن أحدًا أضافك في ${NAME_AR}. إن لم تكن أنت المقصود، تجاهلها ببساطة.</p>
-    </td></tr>
+    <tr><td class="pad" dir="rtl" style="padding:0 34px 28px;text-align:right;">${b.words(`وصلتك هذه الرسالة لأن أحدًا أضافك في ${NAME_AR}. إن لم تكن أنت المقصود، تجاهلها ببساطة.`, { size: 12, weight: 400, color: C.faded, width: 492, lineHeight: 1.9 })}</td></tr>
     <tr><td style="background:${C.band};padding:18px 34px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
         <td align="right" style="vertical-align:middle;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
-            <td style="vertical-align:middle;"><img src="cid:logo-black" width="40" height="40" alt="${esc(NAME)}" style="display:block;border:0;" /></td>
-            <td style="vertical-align:middle;padding-right:12px;text-align:right;">
-              <div style="font-family:${MONO};font-size:15px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${C.bandInk};">${esc(NAME)}</div>
-              <div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.bandFaded};">هاوس</div>
+            <td style="vertical-align:middle;"><img src="cid:${logoCid}" width="40" height="40" alt="${esc(NAME)}" style="display:block;border:0;" /></td>
+            <td style="vertical-align:middle;padding-right:12px;">
+              ${b.words(NAME, { size: 22, weight: 700, color: C.bandInk, width: 80, lineHeight: 1.2 })}
+              ${b.words(NAME_AR, { size: 14, weight: 700, color: C.bandFaded, width: 80, lineHeight: 1.3 })}
             </td>
           </tr></table>
         </td>
-        <td align="left" style="vertical-align:middle;"><img src="cid:${cidOf(icon)}" width="56" height="56" alt="" style="display:block;border:0;" /></td>
+        <td align="left" style="vertical-align:middle;"><img src="cid:${iconCid}" width="56" height="56" alt="" style="display:block;border:0;" /></td>
       </tr></table>
     </td></tr>
   </table>
@@ -132,26 +140,25 @@ function frame({ title, preheader, hero, icon, body }) {
 }
 
 /**
- * The invitation: who invited them, the Google account to sign in with, and a button. There is no code in it — the
- * inviter gives that in person. `inviter` is who is inviting; `name` the guest's, if known.
+ * The invitation: who invited them and a button. There is no code in it — the inviter gives that in person — and no
+ * address to sign in with: the button goes straight to the page. `inviter` is who is inviting; `name` the guest's.
  */
-export function invitationEmail({ inviter, name, email, appUrl }) {
+export function invitationEmail({ inviter, name, appUrl }) {
+  const b = builder();
   const who = oneLine(inviter) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
-  const hello = first ? `${esc(first)}، ` : '';
+  const hello = first ? `${first}، ` : '';
   const body = `
-    ${paragraph(`${hello}أضافك <strong>${esc(who)}</strong> كضيف في ${NAME_AR}: مساحة هادئة للمياه والتركيز والوقت، مع المشاريع والمهام التي تُشارَك معك.`)}
-    ${box(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-      ${detail('سجّل الدخول بحساب Google', email, { first: true, ltr: true })}
-      ${detail('بعدها', `سيعطيك ${who} رمز دخول لمرة واحدة`)}
-    </table>`)}
-    ${button(appUrl, `ادخل إلى ${NAME_AR}`)}
-    <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>`;
+    ${paragraph(b, `${hello}أضافك ${who} كضيف في ${NAME_AR}: مساحة هادئة للمياه والتركيز والوقت، مع المشاريع والمهام التي تُشارَك معك.`)}
+    ${box(b.words(`بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`, { size: 16, weight: 700, width: 450, lineHeight: 1.7 }))}
+    ${button(b, appUrl, `ادخل إلى ${NAME_AR}`)}
+    ${SPACER}`;
+  const html = frame(b, { title: `تمت دعوتك إلى ${NAME_AR}`, preheader: `اضغط للدخول إلى ${NAME_AR}.`, hero: 'hero-invitation.jpg', icon: 'icon-lock.gif', body });
   return {
     subject: `${who} دعاك إلى ${NAME_AR}`,
-    html: frame({ title: `تمت دعوتك إلى ${NAME_AR}`, preheader: `سجّل الدخول بحساب ${email} للبدء.`, hero: 'hero-invitation.jpg', icon: 'icon-lock.gif', body }),
-    text: [`${who} دعاك إلى ${NAME_AR}.`, '', `سجّل الدخول بحساب Google: ${email}`, appUrl, `بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`].join('\n'),
-    images: ['hero-invitation.jpg', 'icon-lock.gif', 'logo-black.png'],
+    html,
+    text: [`${who} دعاك إلى ${NAME_AR}.`, '', appUrl, '', `بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`].join('\n'),
+    attachments: b.attachments,
   };
 }
 
@@ -159,7 +166,7 @@ export function invitationEmail({ inviter, name, email, appUrl }) {
 export const MAX_LISTED = 8;
 
 /** A task as the details box shows it. */
-function taskCard(task, projectName) {
+function taskCard(b, task, projectName) {
   const rows = [];
   const when = whenOf(task);
   if (projectName) rows.push(['المشروع', projectName, {}]);
@@ -167,18 +174,18 @@ function taskCard(task, projectName) {
   if (task.priority && PRIORITY[task.priority]) rows.push(['الأولوية', PRIORITY[task.priority], { color: PRIORITY_COLOR[task.priority] }]);
   const note = snippet(task.description);
   return box(`
-    <div dir="auto" style="font-family:${FONT};font-size:19px;font-weight:700;line-height:1.6;color:${C.ink};">${esc(task.title || 'بدون عنوان')}</div>
-    ${note ? `<div dir="auto" style="margin-top:6px;font-family:${FONT};font-size:14px;line-height:1.8;color:${C.faded};">${esc(note)}</div>` : ''}
-    ${rows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">${rows.map(([k, v, o], i) => detail(k, v, { first: i === 0, ...o })).join('')}</table>` : ''}`);
+    ${b.words(task.title || 'بدون عنوان', { size: 19, weight: 700, width: 450, lineHeight: 1.6 })}
+    ${note ? `<div style="margin-top:6px;">${b.words(note, { size: 14, weight: 400, color: C.faded, width: 450, lineHeight: 1.8 })}</div>` : ''}
+    ${rows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">${rows.map(([k, v, o], i) => detail(b, k, v, { first: i === 0, ...o })).join('')}</table>` : ''}`);
 }
 
 /** One task in a list of several: its title, and what it is for / when, on a hairline row. */
-function taskLine(task, projectName) {
+function taskLine(b, task, projectName) {
   const sub = [projectName, whenOf(task)].filter(Boolean).join('  ·  ');
   return `
     <div style="padding:12px 0;border-top:1px solid ${C.line};">
-      <div dir="auto" style="font-family:${FONT};font-size:16px;font-weight:700;line-height:1.6;color:${C.ink};">${esc(task.title || 'بدون عنوان')}</div>
-      ${sub ? `<div dir="auto" style="margin-top:2px;font-family:${FONT};font-size:13px;color:${C.faded};">${esc(sub)}</div>` : ''}
+      ${b.words(task.title || 'بدون عنوان', { size: 16, weight: 700, width: 492, lineHeight: 1.6 })}
+      ${sub ? `<div style="margin-top:2px;">${b.words(sub, { size: 13, weight: 400, color: C.faded, width: 492, lineHeight: 1.7 })}</div>` : ''}
     </div>`;
 }
 
@@ -187,23 +194,24 @@ function taskLine(task, projectName) {
  * with a short list, so nobody's inbox fills up. `items` is `[{ task, projectName }]`.
  */
 export function tasksAssignedEmail({ giver, name, items, appUrl }) {
+  const b = builder();
   const who = oneLine(giver) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
-  const hello = first ? `${esc(first)}، ` : '';
+  const hello = first ? `${first}، ` : '';
   const many = items.length > 1;
   const shown = items.slice(0, MAX_LISTED);
 
-  const intro = many ? `${hello}أعطاك <strong>${esc(who)}</strong> ${tasksPhrase(items.length)}.` : `${hello}أعطاك <strong>${esc(who)}</strong> مهمة جديدة.`;
+  const intro = many ? `${hello}أعطاك ${who} ${tasksPhrase(items.length)}.` : `${hello}أعطاك ${who} مهمة جديدة.`;
   const listing = many
-    ? `<div style="margin:0 0 22px;">${shown.map((i) => taskLine(i.task, i.projectName)).join('')}${items.length > shown.length ? `<p style="margin:8px 0 0;font-family:${FONT};font-size:13px;color:${C.faded};">و${items.length - shown.length} أخرى</p>` : ''}</div>`
-    : taskCard(items[0].task, items[0].projectName);
+    ? `<div style="margin:0 0 22px;">${shown.map((i) => taskLine(b, i.task, i.projectName)).join('')}${items.length > shown.length ? `<div style="margin-top:8px;">${b.words(`و${items.length - shown.length} أخرى`, { size: 13, color: C.faded, width: 492, lineHeight: 1.7 })}</div>` : ''}</div>`
+    : taskCard(b, items[0].task, items[0].projectName);
 
-  const body = `${paragraph(intro)}${listing}${button(appUrl, many ? 'افتح مهامي' : 'افتح المهمة')}<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>`;
+  const body = `${paragraph(b, intro)}${listing}${button(b, appUrl, many ? 'افتح مهامي' : 'افتح المهمة')}${SPACER}`;
   const title = many ? tasksPhrase(items.length) : 'مهمة جديدة';
-  const hero = many ? 'hero-tasks.jpg' : 'hero-task.jpg';
+  const html = frame(b, { title, preheader: `${who} أعطاك ${many ? tasksPhrase(items.length) : 'مهمة'}.`, hero: many ? 'hero-tasks.jpg' : 'hero-task.jpg', icon: 'icon-tasks.gif', body });
   return {
     subject: many ? `${who} أعطاك ${tasksPhrase(items.length)}` : `مهمة جديدة: ${oneLine(items[0].task.title) || 'بدون عنوان'}`,
-    html: frame({ title, preheader: `${who} أعطاك ${many ? tasksPhrase(items.length) : 'مهمة'}.`, hero, icon: 'icon-tasks.gif', body }),
+    html,
     text: [
       many ? `${who} أعطاك ${tasksPhrase(items.length)}:` : `${who} أعطاك مهمة جديدة:`,
       '',
@@ -212,6 +220,6 @@ export function tasksAssignedEmail({ giver, name, items, appUrl }) {
       '',
       appUrl,
     ].join('\n'),
-    images: [hero, 'icon-tasks.gif', 'logo-black.png'],
+    attachments: b.attachments,
   };
 }

@@ -50,28 +50,37 @@ describe('invitationEmail', () => {
   it('is in Arabic, right to left, and says who invited', () => {
     expect(mail.subject).toBe('حامد دعاك إلى هاوس');
     expect(mail.html).toContain('lang="ar" dir="rtl"');
-    expect(mail.html).toContain('أضافك <strong>حامد</strong>');
-    expect(mail.html).toContain('Sara،');
+    expect(mail.html).toContain('Sara، أضافك حامد');
   });
-  it('names the account to sign in with, links to the app, and carries no code', () => {
-    expect(mail.html).toContain('sara@example.com');
+  it('links to the app, keeps the next step, and carries no sign-in line and no code', () => {
     expect(mail.html).toContain(`href="${APP}"`);
+    expect(mail.html).toContain('بعدها سيعطيك حامد رمز دخول لمرة واحدة');
+    expect(mail.html).not.toContain('sara@example.com');
+    expect(mail.html).not.toContain('Google');
     expect(mail.text).not.toMatch(/\d{6,}/);
   });
-  it('uses the hero, the lock, and the black logo, all attached', () => {
+  it('uses the hero, the lock and the black logo, and every picture it points at is attached', () => {
     for (const cid of ['hero-invitation', 'icon-lock', 'logo-black']) expect(mail.html).toContain(`cid:${cid}`);
-    expect(mail.images).toEqual(['hero-invitation.jpg', 'icon-lock.gif', 'logo-black.png']);
+    const cids = mail.attachments.map((a) => a.cid);
+    for (const [, cid] of mail.html.matchAll(/cid:([\w-]+)/g)) expect(cids).toContain(cid);
+  });
+  it('draws its words as pictures, in the app fonts, with the words as alt text', () => {
+    const drawn = mail.attachments.filter((a) => a.content);
+    expect(drawn.length).toBeGreaterThan(3);
+    expect(drawn.every((a) => a.content.subarray(1, 4).toString() === 'PNG')).toBe(true);
+    expect(mail.html).toContain('alt="Haus"');
   });
   it('is dark, and has no row of dots', () => {
     expect(mail.html).toContain('color-scheme" content="dark"');
     expect(mail.html).not.toContain('px-on');
   });
   it('works without a name', () => {
-    expect(invitationEmail({ inviter: 'حامد', email: 'a@b.co', appUrl: APP }).html).toContain('أضافك <strong>حامد</strong>');
+    expect(invitationEmail({ inviter: 'حامد', email: 'a@b.co', appUrl: APP }).html).toContain('أضافك حامد');
   });
   it('never lets a name become markup', () => {
     const evil = invitationEmail({ inviter: 'حامد', name: '<script>alert(1)</script>', email: 'a@b.co', appUrl: APP });
     expect(evil.html).not.toContain('<script>alert');
+    expect(evil.html).toContain('&lt;script&gt;');
   });
 });
 
@@ -85,7 +94,7 @@ describe('tasksAssignedEmail', () => {
     expect(mail.html).toContain('عالية');
     expect(mail.html).toContain('With the new tokens.');
     expect(mail.html).toContain('cid:hero-task');
-    expect(mail.images).toContain('icon-tasks.gif');
+    expect(mail.attachments.map((a) => a.file)).toContain('icon-tasks.gif');
     expect(mail.text).toContain('• Send the guide (Brand refresh)');
   });
   it('leaves out what a task does not have', () => {
