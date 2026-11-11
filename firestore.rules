@@ -295,6 +295,33 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
+    // ── Markers of what was deleted ──────────────────────────────────────────────────
+    // Hamed's devices read his tasks and notes by their changes only (src/data/deltaSync.ts): a deleted document leaves a marker
+    // { at } here, which is how they learn it is gone. Only he reads them. Anyone working here may leave one for a task, but only
+    // once the task no longer exists — a marker can never hide a live task.
+    match /work_tasks_deleted/{id} {
+      allow read: if isOwner();
+      allow create, update: if (isOwner() || isApprovedGuest())
+        && onlyKeys(['at'])
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && !exists(taskPath(id));
+    }
+
+    match /work_notes_deleted/{id} {
+      allow read: if isOwner();
+      allow create, update: if isOwner() && onlyKeys(['at']) && request.resource.data.at is string;
+    }
+
+    match /work_projects_private_deleted/{id} {
+      allow read: if isOwner();
+      allow create, update: if isOwner() && onlyKeys(['at']) && request.resource.data.at is string;
+    }
+
+    match /work_projects_deleted/{id} {
+      allow read: if isOwner();
+      allow create, update: if isOwner() && onlyKeys(['at']) && request.resource.data.at is string;
+    }
+
     // ── Invitations: only the owner manages them; a guest can read just their own ────
     match /members/{email} {
       allow get: if isOwner() || (signedIn() && email == request.auth.token.email.lower());

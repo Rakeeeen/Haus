@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { watchQuery } from '@/data/sharedDoc';
 import { guestStatus, isValidEmail, normalizeEmail, type GuestStatus, type Invitation } from '@/domain/access';
 
 const COL = 'members';
@@ -21,8 +22,9 @@ export function useGuests(enabled = true, withStatus = false) {
 
   useEffect(() => {
     if (!enabled) return;
-    const stopInvitations = onSnapshot(
-      collection(db, COL),
+    // Shared and kept open for a while (data/sharedDoc.ts): Home, Projects, Activity and the task editor all ask for this list.
+    const stopInvitations = watchQuery(
+      COL, collection(db, COL),
       (snap) => {
         setInvitations(snap.docs.map((d) => d.data() as Invitation).sort((a, b) => (a.addedAt ?? '').localeCompare(b.addedAt ?? '')));
         setError('');
@@ -30,14 +32,14 @@ export function useGuests(enabled = true, withStatus = false) {
       (e) => setError(e.message),
     );
     // What each guest says about themself when they sign in: who their uid is, and their name and photo.
-    const stopProfiles = onSnapshot(
-      collection(db, 'guest_profiles'),
+    const stopProfiles = watchQuery(
+      'guest_profiles', collection(db, 'guest_profiles'),
       (snap) => setProfiles(snap.docs.map((d) => ({ ...(d.data() as { email: string; name?: string; photoUrl?: string }), uid: d.id }))),
       () => { /* nothing to join yet */ },
     );
     // When each guest last typed a valid code (a document per uid): that is what "in" means. Only read when the list is on screen.
-    const stopApprovals = !withStatus ? () => {} : onSnapshot(
-      collection(db, 'guest_approvals'),
+    const stopApprovals = !withStatus ? () => {} : watchQuery(
+      'guest_approvals', collection(db, 'guest_approvals'),
       (snap) => setApprovals(Object.fromEntries(snap.docs.flatMap((d) => {
         const at = d.data().approvedAt as { toMillis?: () => number } | null;
         return at?.toMillis ? [[d.id, at.toMillis()] as const] : [];

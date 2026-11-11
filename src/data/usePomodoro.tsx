@@ -5,7 +5,7 @@ import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
 import { getPomoTodayIdx } from '@/domain/day';
 import { getDayMoments } from '@/domain/devotion/prayer';
 import {
-  breakMinutesFor, breakTimer, idleTimer, minutesSoFar, minutesWithOvertime, newSessionTimer, recordSession, weekOrSeed,
+  advanceTimer, breakMinutesFor, breakTimer, CHECKPOINT_HEARTBEAT_MS, idleTimer, minutesSoFar, minutesWithOvertime, newSessionTimer, recordSession, weekOrSeed,
   type FocusCheckpoint, type FocusDayStats, type FocusLogEntry, type FocusNotification, type FocusWeekDay, type TimerState,
 } from '@/domain/focus/session';
 
@@ -39,10 +39,13 @@ const FOCUS_MINUTES = 25;
 /** How often the running timer checks the clock: often, but it counts from timestamps, so a throttled background tab loses nothing. */
 const TICK_MS = 200;
 /**
- * 3 s, not 45: this is also the heartbeat a remote actor (the Discord bot) reads to know how stale the snapshot is — the shorter
- * the interval, the less a remote Done/save can be off by. Cheap at this scale (at most ~1200 writes an hour of continuous running).
+ * The checkpoint carries the time it was taken (`at`), so whoever reads it (another tab, the Discord bot) works out what the
+ * timer shows now (`advanceTimer`) — the heartbeat is only there to say "this tab is still alive". It used to be every 3 s, about
+ * 1200 writes an hour, each one also read by every other open tab: that was most of the day's writes.
  */
-const CHECKPOINT_EVERY_MS = 3_000;
+const CHECKPOINT_EVERY_MS = CHECKPOINT_HEARTBEAT_MS;
+/** A tab that is hidden writes a checkpoint, but not more than once in this long (switching tabs back and forth isn't a write each time). */
+const HIDDEN_WRITE_GAP_MS = 5_000;
 const ISHA_CHECK_EVERY_MS = 30_000;
 
 /** The time of day as the log shows it: "9:41 AM". */
@@ -93,8 +96,10 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const liveTimer = useRef<TimerState>({ timeLeft, overtime, isOvertime, running, mode });
   useEffect(() => { liveTimer.current = { timeLeft, overtime, isOvertime, running, mode }; }, [timeLeft, overtime, isOvertime, running, mode]);
 
+  const lastWrite = useRef(0);
   const writeCheckpoint = useCallback((state: TimerState = liveTimer.current) => {
-    setCheckpoint({ ...state, writtenBy: instanceId.current });
+    lastWrite.current = Date.now();
+    setCheckpoint({ ...state, writtenBy: instanceId.current, at: lastWrite.current });
   }, [setCheckpoint]);
 
   // On first mount, adopt whatever checkpoint exists (reload/crash recovery). After that, keep adopting later changes — except
@@ -113,7 +118,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const isFirstRun = !hydratedFromCheckpoint.current;
     hydratedFromCheckpoint.current = true;
     if (!isFirstRun && checkpoint?.writtenBy === instanceId.current) return;
-    applyTimer(checkpoint ?? idleTimer(focusDuration));
+    // A running snapshot is carried forward to now: it was taken up to a heartbeat ago.
+    applyTimer(checkpoint ? advanceTimer(checkpoint, checkpoint.at, Date.now()) : idleTimer(focusDuration));
   }, [checkpoint, checkpointReady, focusDuration, applyTimer]);
 
   // ── Telling the bot ──────────────────────────────────────────────────────────────────────────────
@@ -177,11 +183,13 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearInterval(timer);
   }, [running, mode, isOvertime, notifyFocus, focusDuration, setCheckpoint, applyTimer]);
 
-  // While running: a checkpoint every few seconds, and one the moment the tab is hidden.
+  // While running: a checkpoint every minute, and one when the tab is hidden.
   useEffect(() => {
     if (!running) return;
     const intervalId = setInterval(() => writeCheckpoint(), CHECKPOINT_EVERY_MS);
-    const onVisibilityChange = () => { if (document.visibilityState === 'hidden') writeCheckpoint(); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && Date.now() - lastWrite.current > HIDDEN_WRITE_GAP_MS) writeCheckpoint();
+    };
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       clearInterval(intervalId);
@@ -190,7 +198,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [running, writeCheckpoint]);
 
   // ── What the pages can do ────────────────────────────────────────────────────────────────────────
-  // Start and pause write the checkpoint at once instead of waiting for the next tick (up to 3 s away), so a remote reader
+  // Start and pause write the checkpoint at once instead of waiting for the next heartbeat, so a remote reader
   // (the bot) sees a pause made here right away, not "eventually".
   const start = useCallback(() => {
     setRunning(true);

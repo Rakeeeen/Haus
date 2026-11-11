@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PomodoroProvider, usePomodoro } from '@/data/usePomodoro';
@@ -9,13 +9,14 @@ const store = new Map<string, unknown>();
 vi.mock('@/data/useFirebaseSync', () => ({
   useFirebaseSync: <T,>(key: string, initial: T) => {
     const [value, setValue] = useState<T>(() => (store.has(key) ? (store.get(key) as T) : initial));
-    const set = (next: T | ((v: T) => T)) => {
+    // One identity across renders, like the real hook's (the provider's heartbeat interval depends on it).
+    const set = useCallback((next: T | ((v: T) => T)) => {
       setValue((prev) => {
         const resolved = next instanceof Function ? next(prev) : next;
         store.set(key, resolved);
         return resolved;
       });
-    };
+    }, [key]);
     return [value, set, true] as const;
   },
 }));
@@ -48,6 +49,17 @@ describe('the focus timer', () => {
     expect(result.current.running).toBe(true);
     expect(result.current.timeLeft).toBe(1490);
     expect((store.get('pomodoro_checkpoint') as { running: boolean }).running).toBe(true);
+  });
+
+  it('writes the checkpoint at the start and then about once a minute, not every few seconds', () => {
+    const { result } = setup();
+    act(() => result.current.start());
+    const first = store.get('pomodoro_checkpoint') as { at: number };
+    expect(first.at).toBe(Date.now());
+    tick(30);
+    expect((store.get('pomodoro_checkpoint') as { at: number }).at).toBe(first.at);
+    tick(31);
+    expect((store.get('pomodoro_checkpoint') as { at: number }).at).toBeGreaterThan(first.at);
   });
 
   it('pauses where it is', () => {
@@ -140,6 +152,12 @@ describe('a timer changed elsewhere', () => {
     expect(result.current).toMatchObject({ timeLeft: 900, running: true, mode: 'focus' });
   });
 
+  it('is carried forward by the seconds since it was written', () => {
+    store.set('pomodoro_checkpoint', { timeLeft: 900, overtime: 0, isOvertime: false, running: true, mode: 'focus', writtenBy: 'the-bot', at: Date.now() - 40_000 });
+    const { result } = setup();
+    expect(result.current.timeLeft).toBe(860);
+  });
+
   it('a stored idle (null) checkpoint is idle, not "nothing yet"', () => {
     store.set('pomodoro_checkpoint', null);
     const { result } = setup();
@@ -166,7 +184,9 @@ describe('a session left running through Isha', () => {
     act(() => result.current.start());
     tick(11 * 60);
     expect(result.current.sessions).toBe(1);
-    expect(result.current.logs[0].duration).toBeGreaterThanOrEqual(10);
+    // Started at 18:50, saved at Isha (19:00): ten minutes, give or take the second the two timers' ticks are apart.
+    expect(result.current.logs[0].duration).toBeGreaterThanOrEqual(9);
+    expect(result.current.logs[0].duration).toBeLessThanOrEqual(10);
     expect(result.current).toMatchObject({ mode: 'focus', running: false, timeLeft: 1500 });
     expect(sent()).toMatchObject({ type: 'focus_complete' });
   });

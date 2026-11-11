@@ -1,4 +1,4 @@
-import { getDocument, setDocument, watchCollection } from '../lib/firestore.js';
+import { getDocument, listWhereIn, setDocument, watchChangesSince, watchCollection } from '../lib/firestore.js';
 import { invitationEmail, tasksAssignedEmail, tasksOverdueEmail } from '../lib/emailTemplate.js';
 import { createMailer } from '../lib/mailer.js';
 
@@ -94,7 +94,13 @@ const OVERDUE_FROM_HOUR = 9;
 /** Whether a task is still worth telling someone about. */
 export const isOpenTask = (task) => task.status !== 'done' && task.status !== 'dropped';
 
-const FIRESTORE = { getDocument, setDocument, watchCollection };
+const FIRESTORE = { getDocument, setDocument, watchCollection, watchChangesSince, listWhereIn };
+
+/**
+ * How far before the last time the bot saved what it had told it asks again for changed tasks: `updatedAt` is each device's own
+ * clock. Two hours covers a clock that is a little off (the web app's change-only reading uses the same margin).
+ */
+export const CHANGES_MARGIN_MS = 2 * 3_600_000;
 
 /** Starts the bot's email, from the account in its .env; does nothing (and says so) without one. */
 export function watchMailNotifications() {
@@ -111,7 +117,7 @@ export function watchMailNotifications() {
  * the invitations and the tasks are being watched; what it sends later goes out on its own.
  */
 export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs = SAVE_MS, overdueEveryMs = 10 * 60 * 1000 }) {
-  const { getDocument, setDocument, watchCollection } = store;
+  const { getDocument, setDocument, watchCollection, watchChangesSince, listWhereIn } = store;
   const { ownerName, ownerEmail, appUrl } = mailer.config;
   const safely = (what, job) => job().catch((error) => console.error(`❌ ${what}:`, error.message));
 
@@ -164,6 +170,9 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
   let told = null;
   /** Every task as last seen, for the overdue check. */
   const current = new Map();
+  /** Whether the tasks are read by their changes only — then the open ones are read for the overdue check once a day. */
+  let changesOnly = false;
+  let openReadOn = null;
   let saveTimer = null;
   const save = () => {
     clearTimeout(saveTimer);
@@ -226,7 +235,7 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
     let baseline = !state;
     told = new Map(Object.entries(state?.told ?? {}));
 
-    watchCollection('work_tasks', (snap) => {
+    const onTasks = (snap) => {
       snap.docChanges().forEach((change) => {
         const id = change.doc.id;
         if (change.type === 'removed') { told.delete(id); current.delete(id); save(); return; }
@@ -244,7 +253,17 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
       });
       baseline = false;
       save();
-    });
+    };
+    // The first run reads every task (what is already there counts as told). After that only the tasks changed since the bot last
+    // saved are read — when it starts, and when the Mac wakes and the listener reconnects — instead of all of them each time. What
+    // the overdue check needs (every open task) is read separately, once a day.
+    const since = state?.at && !Number.isNaN(Date.parse(state.at)) ? new Date(Date.parse(state.at) - CHANGES_MARGIN_MS).toISOString() : null;
+    if (since && watchChangesSince) {
+      changesOnly = true;
+      watchChangesSince('work_tasks', 'updatedAt', since, onTasks);
+    } else {
+      watchCollection('work_tasks', onTasks);
+    }
     console.log(!state ? '📧 First run: every task already here counts as told' : '📧 Caught up with the tasks given while the bot was off');
   });
 
@@ -263,6 +282,11 @@ export async function startMailWatch({ mailer, store, batchMs = BATCH_MS, saveMs
     overdueState ??= await getDocument('mail_state', 'overdue');
     if (!overdueState) { overdueState = { since: today }; await setDocument('mail_state', 'overdue', overdueState); }
     const state = overdueState;
+    // Reading tasks by their changes only, the bot has not seen the open tasks nobody touched lately: read them once a day.
+    if (changesOnly && openReadOn !== today && listWhereIn) {
+      for (const task of await listWhereIn('work_tasks', 'status', ['todo', 'doing'])) if (!current.has(task.id)) current.set(task.id, task);
+      openReadOn = today;
+    }
     const byPerson = new Map();
     for (const task of current.values()) {
       const late = overdueBy(task, today, state.since);

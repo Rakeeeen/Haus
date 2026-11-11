@@ -3,6 +3,7 @@ import {
   collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, Timestamp, type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { metered, meteredDoc } from '@/data/readMeter';
 import { CODE_LIFETIME_MS, codeFromBytes } from '@/domain/access';
 
 /**
@@ -23,10 +24,10 @@ const APPROVALS = 'guest_approvals';
 export function watchGuestApproval(uid: string, onChange: (approvedAtMs: number | null) => void): Unsubscribe {
   return onSnapshot(
     doc(db, APPROVALS, uid),
-    (snap) => {
+    meteredDoc(`${APPROVALS}/{uid}`, (snap) => {
       const at = snap.exists() ? (snap.data().approvedAt as Timestamp | null) : null;
       onChange(at ? at.toMillis() : null);
-    },
+    }),
     () => onChange(null),
   );
 }
@@ -78,7 +79,7 @@ export function useGuestCodes(enabled: boolean) {
     if (!enabled) return;
     const answering = new Set<string>();
 
-    const stopRequests = onSnapshot(collection(db, REQUESTS), (snap) => {
+    const stopRequests = onSnapshot(collection(db, REQUESTS), metered(REQUESTS, (snap) => {
       for (const request of snap.docs) {
         if (answering.has(request.id)) continue;
         answering.add(request.id);
@@ -95,11 +96,11 @@ export function useGuestCodes(enabled: boolean) {
           .catch((error) => console.warn('Could not answer a guest:', error))
           .finally(() => answering.delete(request.id));
       }
-    });
+    }));
 
-    const stopCodes = onSnapshot(collection(db, CODES), (snap) => {
+    const stopCodes = onSnapshot(collection(db, CODES), metered(CODES, (snap) => {
       setCodes(snap.docs.map((d) => d.data() as GuestCode));
-    });
+    }));
 
     return () => { stopRequests(); stopCodes(); setCodes([]); };
   }, [enabled]);

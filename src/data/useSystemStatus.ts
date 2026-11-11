@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { meteredDoc } from '@/data/readMeter';
 import { MAX_PAUSE_MESSAGE, pauseOf, type SystemPause } from '@/domain/pause';
 
 const STATUS = doc(db, 'system', 'status');
@@ -17,7 +18,7 @@ export function useSystemStatus(listen: boolean) {
     if (!listen) return;
     return onSnapshot(
       STATUS,
-      (snap) => setPause(pauseOf(snap.exists() ? snap.data() : null)),
+      meteredDoc('system/status', (snap) => setPause(pauseOf(snap.exists() ? snap.data() : null))),
       (error) => { console.warn('Could not read the pause switch:', error.message); setPause({ paused: false, message: '' }); },
     );
   }, [listen]);

@@ -4,6 +4,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
 import { logActivity } from '@/data/activityLog';
+import { metered } from '@/data/readMeter';
+import { markDeleted, syncCollection } from '@/data/deltaSync';
 import { commentedText, createdText, deletedText, statusChangeText, type ActivityType } from '@/domain/activity';
 import { playTaskDone } from '@/lib/sound';
 import { blankNote } from '@/domain/work/notes';
@@ -107,20 +109,27 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   useEffect(() => {
     const fail = (name: string) => (error: Error) => console.warn(`Could not listen to ${name}:`, error.message);
     const mine = (name: string, field: string): Query => (uid ? query(collection(db, name), where(field, 'array-contains', uid)) : collection(db, name));
-    const stops = [
-      onSnapshot(mine(PROJECTS, 'memberUids'), (snap) => {
-        setProjects(snap.docs.map((d) => normalizeProject({ ...(d.data() as Partial<Project>), id: d.id })));
-        setAnswered((a) => ({ ...a, projects: true }));
-      }, fail(PROJECTS)),
-      onSnapshot(mine(TASKS, 'viewerUids'), (snap) => {
-        setTasks(snap.docs.map((d) => normalizeTask({ ...(d.data() as Partial<Task>), id: d.id })));
-        setAnswered((a) => ({ ...a, tasks: true }));
-      }, fail(TASKS)),
-    ];
+    const showProjects = (docs: ReadonlyArray<{ id: string; data: () => unknown }>) => {
+      setProjects(docs.map((d) => normalizeProject({ ...(d.data() as Partial<Project>), id: d.id })));
+      setAnswered((a) => ({ ...a, projects: true }));
+    };
+    // Hamed's projects, like his tasks, are read by their changes only; a guest's are the few they are on.
+    const stops = [uid
+      ? onSnapshot(mine(PROJECTS, 'memberUids'), metered(PROJECTS, (snap) => showProjects(snap.docs)), fail(PROJECTS))
+      : syncCollection(PROJECTS, showProjects, fail(PROJECTS))];
+    const showTasks = (docs: ReadonlyArray<{ id: string; data: () => unknown }>) => {
+      setTasks(docs.map((d) => normalizeTask({ ...(d.data() as Partial<Task>), id: d.id })));
+      setAnswered((a) => ({ ...a, tasks: true }));
+    };
+    // Hamed's tasks are all of them, his biggest list: read by its changes only (data/deltaSync.ts), so a cold start costs what
+    // changed, not every task. A guest's are only those they may see, and are listened to whole.
+    stops.push(uid
+      ? onSnapshot(mine(TASKS, 'viewerUids'), metered(TASKS, (snap) => showTasks(snap.docs)), fail(TASKS))
+      : syncCollection(TASKS, showTasks, fail(TASKS)));
     // Who each project is for, and the notes, are Hamed's alone.
     if (!uid) {
-      stops.push(onSnapshot(collection(db, PRIVATES), (snap) => {
-        setPrivates(Object.fromEntries(snap.docs.map((d) => [d.id, { ...(d.data() as Omit<ProjectPrivate, 'id'>), id: d.id }])));
+      stops.push(syncCollection(PRIVATES, (docs) => {
+        setPrivates(Object.fromEntries(docs.map((d) => [d.id, { ...(d.data() as Omit<ProjectPrivate, 'id'>), id: d.id }])));
       }, fail(PRIVATES)));
     }
     return () => stops.forEach((stop) => stop());
@@ -129,8 +138,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   // Notes are the heaviest thing to read (whole pages of text), so they are listened to only after a screen that shows them asks.
   useEffect(() => {
     if (uid || !notesWanted) return;
-    return onSnapshot(collection(db, NOTES), (snap) => {
-      setNotes(snap.docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
+    // Read by their changes only, like the tasks: whole pages of text, and they rarely change.
+    return syncCollection(NOTES, (docs) => {
+      setNotes(docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
       setNotesReady(true);
     }, (error) => { console.warn(`Could not listen to ${NOTES}:`, error.message); setNotesReady(true); });
   }, [uid, notesWanted]);
@@ -233,6 +243,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const removeTask = useCallback(async (id: string) => {
     const gone = tasksRef.current.find((t) => t.id === id);
     await deleteDoc(doc(db, TASKS, id));
+    void markDeleted(TASKS, id);
     if (gone) note('task_deleted', deletedText(gone.title), id);
   }, [note]);
 
@@ -243,7 +254,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       status: 'active', priority: null, lead: null, date: null, endDate: null, memberUids: [], guestsSeeAll: false, adminUids: [], memberProfiles: {}, createdAt: at, updatedAt: at, ...input,
     };
     await setDoc(ref, clean(project));
-    if (client) await setDoc(doc(db, PRIVATES, ref.id), { client });
+    if (client) await setDoc(doc(db, PRIVATES, ref.id), { client, updatedAt: at });
     return ref.id;
   }, []);
 
@@ -263,14 +274,16 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     const inProject = tasksRef.current.filter((t) => isInProject(t, projectId));
     const sharingOf = (id: string) => projectsRef.current.find((p) => p.id === id) ?? null;
     for (const { id, viewerUids } of staleViewers(inProject, { id: projectId, memberUids, guestsSeeAll, adminUids }, sharingOf)) {
-      batch.set(doc(db, TASKS, id), { viewerUids }, { merge: true });
+      // Stamped like every other change to a task, so a device reading the tasks by their changes sees it.
+      batch.set(doc(db, TASKS, id), { viewerUids, updatedAt: new Date().toISOString() }, { merge: true });
     }
     await batch.commit();
   }, []);
 
   const setClient = useCallback(async (projectId: string, client: string | null) => {
-    if (client?.trim()) await setDoc(doc(db, PRIVATES, projectId), { client: client.trim() });
-    else await deleteDoc(doc(db, PRIVATES, projectId));
+    // Stamped, and its deletion marked, so a device reading these by their changes only (data/deltaSync.ts) sees it.
+    if (client?.trim()) await setDoc(doc(db, PRIVATES, projectId), { client: client.trim(), updatedAt: new Date().toISOString() });
+    else { await deleteDoc(doc(db, PRIVATES, projectId)); void markDeleted(PRIVATES, projectId); }
   }, []);
 
   const removeProject = useCallback(async (id: string) => {
@@ -285,6 +298,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     batch.delete(doc(db, PROJECTS, id));
     batch.delete(doc(db, PRIVATES, id));
     await batch.commit();
+    void markDeleted(PROJECTS, id);
+    void markDeleted(PRIVATES, id);
   }, []);
 
   const addNote = useCallback(async (projectId: string | null = null) => {
@@ -299,6 +314,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
 
   const removeNote = useCallback(async (id: string) => {
     await deleteDoc(doc(db, NOTES, id));
+    void markDeleted(NOTES, id);
   }, []);
 
   const value = useMemo<WorkContextType>(() => ({
@@ -328,7 +344,7 @@ export function useComments(taskId: string | null) {
     if (!taskId) { setComments([]); return; }
     return onSnapshot(
       query(collection(db, TASKS, taskId, 'comments'), orderBy('at')),
-      (snap) => setComments(snap.docs.map((d) => ({ ...(d.data() as Omit<TaskComment, 'id'>), id: d.id }))),
+      metered('work_tasks/{id}/comments', (snap) => setComments(snap.docs.map((d) => ({ ...(d.data() as Omit<TaskComment, 'id'>), id: d.id })))),
       (error) => console.warn('Could not listen to comments:', error.message),
     );
   }, [taskId]);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ICON_STROKE_LINECAP } from '@/ui/icons';
-import { CLOCK_FACE } from '@/ui/pixelClockFace';
+import { CLOCK_FACE, HAND_FRAME_MS } from '@/ui/pixelClockFace';
 
 /**
  * A pixel-art clock: a square-pixel face in a neutral tone, with one ordinary
@@ -33,7 +33,12 @@ export const PixelClock: React.FC<{
     const draw = (seconds: number) => {
       handRef.current?.style.setProperty('transform', `rotate(${seconds * 6}deg)`);
     };
+    let drawnAt = 0;
     const tick = () => {
+      frame = requestAnimationFrame(tick);
+      const nowMs = performance.now();
+      if (nowMs - drawnAt < HAND_FRAME_MS) return;
+      drawnAt = nowMs;
       const counter = counterRef.current;
       let shown = anchor.current.seconds + (performance.now() - anchor.current.at) / 1000;
       // The counter floors and its 200ms interval runs a little late, so a
@@ -46,7 +51,6 @@ export const PixelClock: React.FC<{
         anchor.current = { seconds: shown, at: performance.now() };
       }
       draw(shown);
-      frame = requestAnimationFrame(tick);
     };
     if (running) {
       anchor.current = { seconds: Math.max(anchor.current.seconds, counterRef.current), at: performance.now() };

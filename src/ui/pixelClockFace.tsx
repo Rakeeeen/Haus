@@ -32,3 +32,10 @@ export const CLOCK_FACE = (() => {
   }
   return { size, center: size / 2, step, cell, cells };
 })();
+
+/**
+ * A sweeping hand is redrawn at most this often (twelve a second). The face is hundreds of little squares and the browser paints
+ * all of them again for every move of a hand; at sixty a second, for every clock on the screen, that was the heaviest thing the
+ * page did. A second hand turns half a degree between two redraws at this rate — smooth to the eye at the size of these clocks.
+ */
+export const HAND_FRAME_MS = 1000 / 12;

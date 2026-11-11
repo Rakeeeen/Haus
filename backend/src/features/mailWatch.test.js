@@ -11,11 +11,18 @@ function pretend(docs) {
   const store = {
     getDocument: async (col, id) => docs[`${col}/${id}`] ?? null,
     setDocument: async (col, id, data) => { docs[`${col}/${id}`] = data; writes.push([col, id, data]); },
-    watchCollection: (col, callback) => { watchers[col] = callback; },
+    watchCollection: (col, callback) => { watchers[col] = callback; watched.push([col, 'all']); },
+    watchChangesSince: (col, field, since, callback) => { watchers[col] = callback; watched.push([col, `${field} > ${since}`]); },
+    listWhereIn: async (col, field, values) => {
+      lists.push([col, field, values]);
+      return Object.entries(docs).filter(([key, d]) => key.startsWith(`${col}/`) && values.includes(d[field])).map(([key, d]) => ({ id: key.slice(col.length + 1), ...d }));
+    },
   };
+  const watched = [];
+  const lists = [];
   /** One snapshot: `[type, id, data]` changes of a collection. */
   const snapshot = (col, changes) => watchers[col]({ docChanges: () => changes.map(([type, id, data]) => ({ type, doc: { id, data: () => data } })) });
-  return { store, snapshot, writes };
+  return { store, snapshot, writes, watched, lists };
 }
 
 const sent = [];
@@ -224,5 +231,33 @@ describe('overdue tasks', () => {
     await settle();
     await world.checkOverdue(MORNING);
     expect(sent).toEqual([]);
+  });
+});
+
+describe('a bot that has run before', () => {
+  const MORNING = new Date('2026-11-12T08:00:00Z'); // 10:00 in Cairo
+  const saved = { 'mail_state/tasks': { told: { t1: ['owner'] }, at: '2026-11-10T11:00:00.000Z' }, 'mail_state/overdue': { since: '2026-11-09' } };
+
+  it('reads only the tasks changed since it last saved (two hours earlier, for clocks), not every task', async () => {
+    const world = await start({ ...GUESTS, ...saved });
+    expect(world.watched).toContainEqual(['work_tasks', 'updatedAt > 2026-11-10T09:00:00.000Z']);
+    expect(world.watched).not.toContainEqual(['work_tasks', 'all']);
+  });
+
+  it('still mails what was given while it was off', async () => {
+    const world = await start({ ...GUESTS, ...saved });
+    world.snapshot('work_tasks', [['added', 'n', task({ assigneeUids: ['g1'], createdAt: '2026-11-10T11:30:00Z' })]]);
+    await settle();
+    expect(to('sara@x.co')).toHaveLength(1);
+  });
+
+  it('reads the open tasks once a day for the overdue check, and finds one nobody has touched', async () => {
+    const quiet = { 'work_tasks/old': task({ title: 'Forgotten', status: 'todo', date: '2026-11-10', assigneeUids: ['g1'], createdByUid: 'g1' }) };
+    const world = await start({ ...GUESTS, ...saved, ...quiet });
+    await world.checkOverdue(MORNING);
+    expect(world.lists).toEqual([['work_tasks', 'status', ['todo', 'doing']]]);
+    expect(to('sara@x.co')).toHaveLength(1);
+    await world.checkOverdue(new Date('2026-11-12T12:00:00Z'));
+    expect(world.lists).toHaveLength(1);
   });
 });

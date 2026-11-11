@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { boilSpeed, joinBoil } from '@/ui/boilClock';
 import type { Layers } from '@/ui/sketchIcons.data';
 
 /**
@@ -18,29 +19,26 @@ export const Sketch: React.FC<{ layers: Layers }> = ({ layers }) => (
 );
 
 /**
- * The "line boil" of a hand-drawn film: three slightly different redraws, one showing at a time
- * (global.css, .sketch-boil). `cycle` is how long all three take, in seconds; `paused` holds the
- * one showing.
+ * The "line boil" of a hand-drawn film: three slightly different redraws, one showing at a time. Which one shows is decided by
+ * one clock for the whole page (ui/boilClock.ts) through attributes on <html>, and the CSS (global.css, "Hand-drawn icons")
+ * shows it — nothing here animates. `cycle` is how long all three take, in seconds (it picks one of three speeds); `paused`
+ * holds the first drawing still.
  */
 export const Boil: React.FC<{ frames: readonly Layers[]; cycle?: number; paused?: boolean }> = ({
   frames, cycle = 0.75, paused = false,
-}) => (
-  <g className="sketch-boil-set">
-    {frames.map((layers, i) => (
-      <g
-        key={i}
-        className="sketch-boil"
-        style={{
-          animationDuration: `${cycle}s`,
-          animationDelay: `${(-i * cycle) / frames.length}s`,
-          animationPlayState: paused ? 'paused' : 'running',
-        }}
-      >
-        <Sketch layers={layers} />
-      </g>
-    ))}
-  </g>
-);
+}) => {
+  useEffect(() => (paused ? undefined : joinBoil()), [paused]);
+  const speed = paused ? undefined : boilSpeed(cycle);
+  return (
+    <g className="sketch-boil-set">
+      {frames.map((layers, i) => (
+        <g key={i} className="sketch-boil" data-f={i} data-t={speed}>
+          <Sketch layers={layers} />
+        </g>
+      ))}
+    </g>
+  );
+};
 
 /** `viewBox` crops the 1000-unit canvas to what is drawn, for an icon that is tall and thin. */
 export const SketchSvg: React.FC<{ size: number | string; viewBox?: string; className?: string; children: React.ReactNode }> = ({ size, viewBox = '0 0 1000 1000', className, children }) => (

@@ -62,6 +62,29 @@ npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must
   (`INTERNAL ASSERTION FAILED`). Don't remove the memoization.
 - `src/data/firebase.ts` forces `experimentalForceLongPolling` — that's the actual
   fix for the crash above. Don't revert it "to try WebSockets".
+- `useFirebaseSync` opens **one** Firestore listener per document (`data/sharedDoc.ts`, which also shares lists via `watchQuery`), however
+  many components use the value, and keeps it 10 minutes after the last one leaves. Every listener is a billed read when it opens (and, for a guest, the rules' `get()`s
+  too); the free plan allows 50,000 reads a day. Don't call `onSnapshot` for a `dashboard/{key}` value yourself.
+- Hamed's tasks, projects, project clients and notes are **read by their changes only** (`data/deltaSync.ts`): a new session reads what
+  changed since the newest `updatedAt` the device holds, not every document. So **every write to those collections must stamp
+  `updatedAt`**, and a deletion leaves a marker (`markDeleted`, `<collection>_deleted/{id}`, allowed by firestore.rules). A
+  write that skips either is seen only at the weekly full read. The bot reads tasks the same way (`watchChangesSince`). The Firestore
+  cache is never trimmed (`CACHE_SIZE_UNLIMITED`) because this relies on it.
+- A write of what a `useFirebaseSync` value already holds is skipped (once Firestore has shown the document): each write is a billed
+  read for every other open screen. To see where reads go, type `hausReads()` in the browser console (`data/readMeter.ts`; set
+  `localStorage.hausMeter = '1'` and reload to also count every document the server sends); the bot logs its own every hour (`📊`).
+- To measure reads or try a rules change without spending real reads: the local emulator (`npx firebase emulators:start --only firestore
+  --project demo-haus`, Java from Homebrew: `JAVA_HOME=/opt/homebrew/opt/openjdk`). `npm run test:rules` runs the rules tests there.
+- The Pomodoro checkpoint is written once a minute, not every few seconds: it carries `at` (when its numbers were true) and every
+  reader (the tab, the Discord bot — `backend/src/lib/timer.js`) carries a running timer forward with `advanceTimer`. Writes are
+  limited too (20,000 a day); don't shorten the heartbeat.
+- The hand-drawn icons' "line boil" has **no CSS animation per icon**: `ui/boilClock.ts` is one timer that sets `data-boil-a/b/c`
+  on `<html>`, and the CSS shows the matching redraw of every icon. Without a clock (reduced motion, hidden tab, `paused`) each
+  icon shows its first redraw, still. The clocks' second hands are redrawn at most 12 times a second (the minute and hour hands only
+  once they have moved a quarter of a degree). The stopwatch hand, the coin and the masked-value spinners stay smooth: stepping them
+  measured no difference and looked choppy.
+- The page's texture is `body::before` (fixed layer), not the body's `background-attachment: fixed`, and `.text-silver` has its
+  own layer (`will-change: transform`): that keeps scrolling and the icons' redraws from repainting the whole page.
 
 ## Icon system
 

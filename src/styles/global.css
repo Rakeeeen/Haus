@@ -137,15 +137,27 @@
 
   body {
     background-color: var(--paper);
-    background-image: var(--grain-page), var(--cloud-page);
-    /* A 512px tile at 256 CSS px: one grain per device pixel on a Retina screen. */
-    background-size: 256px 256px, 100% 100%, 100% 100%;
-    background-attachment: scroll, fixed, fixed;
     color: var(--ink);
     font-family: var(--font-sans);
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
     cursor: none !important;
+  }
+
+  /* The page's aluminum (grain and soft light patches), on a layer of its own that stays put behind everything.
+     It used to be the body's own background with `background-attachment: fixed`, which the browser can't keep on a
+     layer: every scroll, and every repaint of anything above it (a hand-drawn icon redrawing four times a second),
+     painted the whole thing again. Here it is painted once and the page moves over it. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--grain-page), var(--cloud-page);
+    /* A 512px tile at 256 CSS px: one grain per device pixel on a Retina screen. */
+    background-size: 256px 256px, 100% 100%, 100% 100%;
+    will-change: transform;
   }
 
   /* === TEXT SELECTION (brand highlight) === */
@@ -245,6 +257,9 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    /* Its own layer: the grain and the gradients are clipped to the letters once, and are not painted again whenever something
+       beside the title (an icon redrawing, a number ticking) repaints the page. */
+    will-change: transform;
   }
 
   /* The one card. Flat and still: no shadow, no lift, no light inside; the texture stays on
@@ -400,16 +415,32 @@ body.dark-theme [data-active] {
 
 /* === Hand-drawn icons === ui's sketch icons (home/components/visuals.tsx). Three redraws of
    each, one showing at a time at four a second: the "line boil" of a hand-drawn film, slow
-   enough to read as alive, not as flicker. */
-/* Shown and hidden with `visibility`, not `opacity`: fading a group needs the browser to draw it off to
-   the side first, which can show as a flash when the icon is drawn again. */
-.sketch-boil { visibility: hidden; animation: sketchBoil 0.75s steps(1, end) infinite; }
-@keyframes sketchBoil { 0% { visibility: visible; } 33.333% { visibility: hidden; } }
+   enough to read as alive, not as flicker.
+   Nothing here is an animation: ui/boilClock.ts keeps one timer for the whole page and sets
+   data-boil-a / -b / -c on <html> (which redraw shows, at three speeds: every tick, every 2nd, every 4th).
+   An icon says which speed it follows (data-t) and which redraw it is (data-f), so one attribute
+   change shows the right redraw of every icon at once — one repaint, not one per icon. Shown and
+   hidden with `visibility`, not `opacity`: fading a group needs the browser to draw it off to the side
+   first, which can show as a flash. With no clock running (reduced motion, a hidden tab, a paused icon)
+   the attributes are absent and the first redraw simply stays, so an icon is never empty. */
+.sketch-boil { visibility: hidden; }
+.sketch-boil[data-f="0"] { visibility: visible; }
+html[data-boil-a] .sketch-boil[data-t="a"],
+html[data-boil-b] .sketch-boil[data-t="b"],
+html[data-boil-c] .sketch-boil[data-t="c"] { visibility: hidden; }
+html[data-boil-a="0"] .sketch-boil[data-t="a"][data-f="0"],
+html[data-boil-a="1"] .sketch-boil[data-t="a"][data-f="1"],
+html[data-boil-a="2"] .sketch-boil[data-t="a"][data-f="2"],
+html[data-boil-b="0"] .sketch-boil[data-t="b"][data-f="0"],
+html[data-boil-b="1"] .sketch-boil[data-t="b"][data-f="1"],
+html[data-boil-b="2"] .sketch-boil[data-t="b"][data-f="2"],
+html[data-boil-c="0"] .sketch-boil[data-t="c"][data-f="0"],
+html[data-boil-c="1"] .sketch-boil[data-t="c"][data-f="1"],
+html[data-boil-c="2"] .sketch-boil[data-t="c"][data-f="2"] { visibility: visible; }
+
 .sketch-float { animation: sketchFloat 3.2s ease-in-out infinite; }
 @keyframes sketchFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(40px); } }
 @media (prefers-reduced-motion: reduce) {
-  .sketch-boil { animation: none; }
-  .sketch-boil-set > .sketch-boil:first-child { visibility: visible; }
   .sketch-float { animation: none; }
 }
 

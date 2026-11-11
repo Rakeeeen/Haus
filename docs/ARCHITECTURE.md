@@ -434,6 +434,29 @@ last listen); **notes** are read only once a notes screen asks (`useWork().loadN
 is open; and the bot's activity watcher asks only for lines after what it has told (`watchCollectionAfter`), its overdue check remembers what it
 has read. Before adding a listener on a whole collection, ask how many documents it will deliver on every page load.
 
+**Measured, not guessed.** These were measured on the local Firestore emulator (no real reads), with data shaped like Haus's (300
+tasks, 15 projects, 40 notes, 300 activity lines, 6 guests), counting on the network every document the server sent:
+
+| Hamed, on a device that has been here before | before | after |
+|---|---|---|
+| Opening Home in a new session | 360 | 47 |
+| Then Work, Notes, Activity, Finance, back Home | 392 | 10 |
+
+How (all in `data/`):
+- **Read by changes only** (`deltaSync.ts`, rules in `domain/sync.ts`): Hamed's tasks, projects, their clients and his notes. A new session
+  shows the copy kept on the device at once and asks only for documents whose `updatedAt` is newer than the newest one held (two hours
+  earlier, for clocks that are off). A deletion leaves a marker in `<collection>_deleted/{id}`, which is how a device reading by changes
+  learns about it (firestore.rules: a task's marker only once the task is gone). The whole list is read again the first time, once a week,
+  when the device's copy has fewer documents than the list had, and whenever the markers can't be read — never a list that might be
+  wrong. **Every write to these must stamp `updatedAt`.** A guest's tasks are still read whole: reading them by changes would need an
+  index, and a guest taken off a project would go on seeing its tasks in their copy until the weekly full read.
+- **One listener, kept open** (`sharedDoc.ts`): a document or list asked for by several screens is one listener, kept 10 minutes after the
+  last screen leaves, so going back to a page reads nothing again. The Activity page asks only for lines newer than those it holds.
+- **The bot** reads only the tasks changed since it last saved (`watchChangesSince`), when it starts and when the Mac wakes, and the open
+  tasks once a day for the overdue check — not every task each time.
+- **To see it live**: `hausReads()` in the browser console (with `localStorage.hausMeter = '1'` and a reload, it also counts every document
+  the server sends, by collection); the bot logs its own every hour (`📊`).
+
 ## Pausing Haus for guests
 
 Hamed's header menu has a pause button (`HomeHeader`, with `PauseModal` asking for an optional line). It writes `system/status`

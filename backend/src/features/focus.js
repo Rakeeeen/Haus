@@ -5,6 +5,7 @@ import { isFocusLocked } from '../lib/prayerTimes.js';
 import { formatDurationText, formatTime } from '../lib/format.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
 import { NAME } from '../lib/brand.js';
+import { advanceTimer } from '../lib/timer.js';
 
 // Hardcoded in usePomodoro.tsx too (`focusDuration` is a fixed 25m, never user-set).
 const FOCUS_MINUTES = 25;
@@ -53,12 +54,15 @@ async function isStartBlocked() {
   return null;
 }
 
+// The checkpoint is a snapshot the web app refreshes about once a minute, stamped with when it was true (`at`): what is read here
+// is carried forward to now, so Discord shows — and a Pause or Done from here keeps — the time as it is, not as it was.
 async function readCheckpoint() {
-  return getDashboardValue('pomodoro_checkpoint', null);
+  const checkpoint = await getDashboardValue('pomodoro_checkpoint', null);
+  return checkpoint ? advanceTimer(checkpoint, checkpoint.at, Date.now()) : null;
 }
 
 function writeCheckpoint(state) {
-  return setDashboardValue('pomodoro_checkpoint', state === null ? null : { ...state, writtenBy: WRITER });
+  return setDashboardValue('pomodoro_checkpoint', state === null ? null : { ...state, writtenBy: WRITER, at: Date.now() });
 }
 
 /** What the Focus card shows, independent of how a chat platform draws it. */
@@ -99,9 +103,8 @@ export async function readFocusState() {
 export async function buildFocusView() {
   const { status, liveBig, minutesToday, sessions, idle, checkpoint, blockedReason } = await readFocusState();
 
-  // "Live" means current as of this snapshot — an open tab heartbeats its
-  // state here every ~3s (immediately on any action), so this is seconds-
-  // fresh, not the up-to-45s-stale reading it used to be. Discord still can't
+  // "Live" means current as of this read — the snapshot an open tab keeps here (refreshed about
+  // once a minute, immediately on any action) is carried forward to now. Discord still can't
   // animate a sent message on its own, so hit Refresh to re-pull the number.
   const rows = [['Sessions today', String(sessions), true]];
   if (!liveBig) rows.push(['Focused today', formatDurationText(minutesToday), true]);

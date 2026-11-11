@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  breakMinutesFor, breakTimer, closeOutFocusDay, idleTimer, minutesSoFar, minutesWithOvertime, newSessionTimer, recordSession, weekOrSeed,
+  advanceTimer, CHECKPOINT_MAX_ADVANCE_S, breakMinutesFor, breakTimer, closeOutFocusDay, idleTimer, minutesSoFar, minutesWithOvertime, newSessionTimer, recordSession, weekOrSeed,
 } from '@/domain/focus/session';
 
 describe('breakMinutesFor — 20% of focus, min 1', () => {
@@ -77,5 +77,33 @@ describe('closeOutFocusDay', () => {
   });
   it('starts the week over after Friday', () => {
     expect(closeOutFocusDay(week, 4, seed).nextWeek).toBe(seed);
+  });
+});
+
+describe('advanceTimer — a snapshot carried forward to now', () => {
+  const at = 1_000_000;
+  const running = { timeLeft: 600, overtime: 0, isOvertime: false, running: true, mode: 'focus' as const };
+
+  it('takes the seconds since the snapshot off a running countdown', () => {
+    expect(advanceTimer(running, at, at + 42_900).timeLeft).toBe(558);
+  });
+
+  it('adds them to the overtime of a session that has run over', () => {
+    expect(advanceTimer({ ...running, timeLeft: 0, isOvertime: true, overtime: 30 }, at, at + 20_000).overtime).toBe(50);
+  });
+
+  it('never goes below zero, and never counts a clock that is behind the snapshot', () => {
+    expect(advanceTimer({ ...running, timeLeft: 5 }, at, at + 20_000).timeLeft).toBe(0);
+    expect(advanceTimer(running, at, at - 5_000)).toBe(running);
+  });
+
+  it('leaves a paused timer, and a snapshot with no time on it, as written', () => {
+    const paused = { ...running, running: false };
+    expect(advanceTimer(paused, at, at + 30_000)).toBe(paused);
+    expect(advanceTimer(running, undefined, at + 30_000)).toBe(running);
+  });
+
+  it('stops carrying a snapshot forward once its tab has clearly gone', () => {
+    expect(advanceTimer(running, at, at + 3 * 3_600_000).timeLeft).toBe(600 - CHECKPOINT_MAX_ADVANCE_S);
   });
 });

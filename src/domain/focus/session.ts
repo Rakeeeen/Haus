@@ -67,6 +67,32 @@ export interface TimerState {
 export interface FocusCheckpoint extends TimerState {
   /** Which tab (or the bot) wrote it, so a tab can tell its own echo from a change made elsewhere. */
   writtenBy?: string;
+  /** When (ms since 1970) the numbers above were true. A reader adds the seconds since then to a running timer (`advanceTimer`),
+   *  which is what lets the heartbeat be slow: nobody has to wait for the next write to know what the timer shows now. */
+  at?: number;
+}
+
+/**
+ * The longest stretch a running snapshot is carried forward. A live tab writes a checkpoint every `CHECKPOINT_HEARTBEAT_MS`, so a
+ * snapshot older than this comes from a tab that is gone (closed, crashed, asleep): its timer stops where that tab last saw it
+ * instead of counting through hours nobody was there.
+ */
+export const CHECKPOINT_MAX_ADVANCE_S = 150;
+
+/** How often a running timer's tab refreshes the checkpoint (it is also written on every start/pause/save and when the tab is hidden). */
+export const CHECKPOINT_HEARTBEAT_MS = 60_000;
+
+/**
+ * The timer as it is `now`, from a snapshot taken at `at`: a running one is carried forward by the seconds since (at most
+ * `CHECKPOINT_MAX_ADVANCE_S`); a paused one, or a snapshot with no `at` (written before this existed), is as it was written.
+ */
+export function advanceTimer(state: TimerState, at: number | undefined, now: number): TimerState {
+  if (!state.running || typeof at !== 'number') return state;
+  const elapsed = Math.min(CHECKPOINT_MAX_ADVANCE_S, Math.max(0, Math.floor((now - at) / 1000)));
+  if (elapsed === 0) return state;
+  return state.isOvertime
+    ? { ...state, overtime: state.overtime + elapsed }
+    : { ...state, timeLeft: Math.max(0, state.timeLeft - elapsed) };
 }
 
 /** Nothing running: a fresh focus session waiting to start. */

@@ -1,7 +1,10 @@
 import React from 'react';
 import { zoneOffsetMs } from '@/domain/clock';
 import { ICON_STROKE_LINECAP } from '@/ui/icons';
-import { CLOCK_FACE, GRID } from '@/ui/pixelClockFace';
+import { CLOCK_FACE, GRID, HAND_FRAME_MS } from '@/ui/pixelClockFace';
+
+/** How far the minute and hour hands move before they are drawn again. */
+const HAND_STEP_DEG = 0.25;
 
 // One muted dark tone for every emblem — a step above the face, so the hands stay the focus.
 const EMBLEM_COLOR = 'color-mix(in srgb, var(--ink) 30%, var(--paper))';
@@ -47,16 +50,25 @@ export const PixelWallClock = React.memo<{
     let frame = 0;
     let offset = zoneOffsetMs(timeZone, Date.now());
     let offsetAt = Date.now();
+    let drawnAt = 0;
+    let shownMinute = -1;
+    let shownHour = -1;
     const tick = () => {
+      frame = requestAnimationFrame(tick);
       const now = Date.now();
+      if (now - drawnAt < HAND_FRAME_MS) return;
+      drawnAt = now;
       if (now - offsetAt > 30_000) { offset = zoneOffsetMs(timeZone, now); offsetAt = now; }
       const t = now + offset;
       const rotate = (el: SVGGElement | null, turns: number) =>
         el?.style.setProperty('transform', `rotate(${turns * 360}deg)`);
       rotate(secondRef.current, (t % 60_000) / 60_000);
-      rotate(minuteRef.current, (t % 3_600_000) / 3_600_000);
-      rotate(hourRef.current, (t % 43_200_000) / 43_200_000);
-      frame = requestAnimationFrame(tick);
+      // The minute hand turns a tenth of a degree a second and the hour hand far less: each is set again only once it has moved
+      // a quarter of a degree, not on every redraw (that was two thirds of everything Home changed each second, for nothing).
+      const minute = (t % 3_600_000) / 3_600_000;
+      const hour = (t % 43_200_000) / 43_200_000;
+      if (Math.abs(minute - shownMinute) * 360 >= HAND_STEP_DEG) { shownMinute = minute; rotate(minuteRef.current, minute); }
+      if (Math.abs(hour - shownHour) * 360 >= HAND_STEP_DEG) { shownHour = hour; rotate(hourRef.current, hour); }
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);

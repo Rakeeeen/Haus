@@ -1,5 +1,6 @@
 import { doc, setDoc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import { meteredDoc } from '@/data/readMeter';
 import { codeFromBytes } from '@/domain/access';
 
 const COL = 'device_auth_codes';
@@ -50,11 +51,11 @@ export function onDeviceCodeRequest(
   userId: string,
   callback: (data: DeviceAuthDoc | null) => void
 ): () => void {
-  return onSnapshot(doc(db, COL, userId), (snap) => {
+  return onSnapshot(doc(db, COL, userId), meteredDoc(`${COL}/{uid}`, (snap) => {
     if (!snap.exists()) { callback(null); return; }
     const data = snap.data() as DeviceAuthDoc;
     // Ignore expired or already-used docs
     if (data.used || Date.now() > data.expiresAt) { callback(null); return; }
     callback(data);
-  });
+  }));
 }

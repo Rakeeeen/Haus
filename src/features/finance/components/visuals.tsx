@@ -62,7 +62,7 @@ export const MaskedValue: React.FC<{ children: React.ReactNode; className?: stri
             const anim = i === 1 ? 'mvrr' : 'mvr';
             const dur = 2 + i * 0.5;
             return (
-              <g key={i} style={{ animation: `${anim} ${dur}s linear infinite`, transformOrigin: `${cx}px ${cy}px`, opacity: 0.25 + i * 0.2 }}>
+              <g key={i} style={{ animation: `${anim} ${dur}s linear infinite`, animationPlayState: revealed ? 'paused' : 'running', transformOrigin: `${cx}px ${cy}px`, opacity: 0.25 + i * 0.2 }}>
                 <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
                 <line x1={cx - r * 0.5} y1={cy - r * 0.866} x2={cx + r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
                 <line x1={cx + r * 0.5} y1={cy - r * 0.866} x2={cx - r * 0.5} y2={cy + r * 0.866} stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />

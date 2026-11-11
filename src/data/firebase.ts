@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { CACHE_SIZE_UNLIMITED, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
@@ -26,7 +26,9 @@ const app = initializeApp(firebaseConfig);
 // what the last one had. useFirebaseSync still mirrors every value to localStorage for instant paint.
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  // Never trimmed by size: the tasks and notes are read by their changes only (data/deltaSync.ts), which trusts this copy to
+  // still hold every document it was given. (It is small — a few MB — and signing out wipes it.)
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED }),
 });
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
