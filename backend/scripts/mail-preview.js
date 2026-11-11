@@ -12,7 +12,7 @@ const inline = (mail) => mail.attachments.reduce((html, a) => {
   const bytes = a.file ? fs.readFileSync(path.join(here, '..', 'assets', 'mail', a.file)) : a.content;
   return html.replaceAll(`cid:${a.cid}"`, `data:${MIME[(a.file || a.filename).split('.').pop()]};base64,${bytes.toString("base64")}"`);
 }, mail.html);
-const appUrl = 'https://rakeeen-uxdesign.github.io/Haus/';
+const appUrl = 'https://rakeeeen.github.io/Haus/';
 
 const task = { title: 'إرسال دليل الهوية البصرية المعدّل', description: 'مع ألوان الهوية الجديدة وقواعد الأيقونات التي اتفقنا عليها، ثم مشاركة الرابط في المشروع.', date: '2026-11-12', endDate: '2026-11-14', priority: 'high' };
 const samples = {

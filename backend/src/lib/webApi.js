@@ -6,9 +6,9 @@
  * browser is only told to allow Haus's own pages, and a body that isn't a list of Payit is refused.
  */
 
-/** The pages the web app is served from: its public site, and the local dev server. */
+/** The pages the web app is served from: its site, and the local dev server. */
 const ALLOWED_ORIGINS = [
-  'https://rakeeen-uxdesign.github.io',
+  'https://rakeeeen.github.io',
   /^http:\/\/localhost:\d+$/,
   /^http:\/\/127\.0\.0\.1:\d+$/,
 ];
