@@ -1,18 +1,18 @@
-// Writes the emails to HTML files you can open in a browser, with the logo inlined: `npm run mail:preview [folder]`.
+// Writes the emails to HTML files you can open in a browser, with the pictures inlined: `npm run mail:preview [folder]`.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { invitationEmail, tasksAssignedEmail, tasksOverdueEmail } from '../src/lib/emailTemplate.js';
+import { IMAGE_FILES, assetsOf, invitationEmail, tasksAssignedEmail, tasksOverdueEmail } from '../src/lib/emailTemplate.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = path.resolve(process.argv[2] || path.join(here, '..', 'mail-preview'));
 const MIME = { jpg: 'image/jpeg', gif: 'image/gif', png: 'image/png' };
-/** The email's HTML with its pictures inlined, so a browser can show it. */
-const inline = (mail) => mail.attachments.reduce((html, a) => {
-  const bytes = a.file ? fs.readFileSync(path.join(here, '..', 'assets', 'mail', a.file)) : a.content;
-  return html.replaceAll(`cid:${a.cid}"`, `data:${MIME[(a.file || a.filename).split('.').pop()]};base64,${bytes.toString("base64")}"`);
-}, mail.html);
 const appUrl = 'https://rakeeeen.github.io/Haus/';
+/** The email's HTML with its pictures inlined (from `public/mail`), so a browser can show it before the site has them. */
+const inline = (mail) => IMAGE_FILES.reduce((html, file) => {
+  const bytes = fs.readFileSync(path.join(here, '..', '..', 'public', 'mail', file));
+  return html.replaceAll(`${assetsOf(appUrl)}/${file}"`, `data:${MIME[file.split('.').pop()]};base64,${bytes.toString('base64')}"`);
+}, mail.html);
 
 const task = { title: 'إرسال دليل الهوية البصرية المعدّل', description: 'مع ألوان الهوية الجديدة وقواعد الأيقونات التي اتفقنا عليها، ثم مشاركة الرابط في المشروع.', date: '2026-11-12', endDate: '2026-11-14', priority: 'high' };
 const samples = {

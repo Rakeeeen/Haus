@@ -1,16 +1,19 @@
 import { NAME } from './brand.js';
-import { textImage } from './textImage.js';
 
 // The emails Haus sends — an invitation, and a task given to someone — in Arabic and in the system's dark side: a
 // black card on a near-black page, a retro photograph with the words over it in Thmanyah (the app's own font), the
 // purple call-to-action as a fully round button, and at the foot a silver band with the black house mark, the name,
 // and one of the app's animated hand-drawn icons (a GIF of its line boil). Email clients ignore most CSS, so this is
-// plain tables with inline styles. Gmail ignores web fonts, so every block of words is drawn in the app's own fonts
-// (`textImage`, Thmanyah for Arabic, General Sans for Latin) and sent as a picture with the words as its alt text; the
-// pictures travel inside the message (`attachments`, under their cid), so nothing depends on the website being online.
+// plain tables with inline styles.
 //
-// Everything here is pure: text in, `{ subject, html, text, attachments }` out. Anything that came from a person (a name,
-// a task title) goes through `esc`, so it can never become markup.
+// Every block of words is real text (selectable, never blocked), in the app's fonts where the mail app loads web fonts
+// (Thmanyah for Arabic, General Sans for Latin: Apple Mail, iOS) and in the reader's own face where it does not (Gmail; a
+// reader who has the fonts installed sees them there too). The pictures (the photographs, the icons, the mark) and the
+// fonts are loaded from the app's own site, `<appUrl>mail/…` (the files are in `public/mail`), so nothing is attached to
+// the message: Gmail used to list every picture as a file under it.
+//
+// Everything here is pure: text in, `{ subject, html, text }` out. Anything that came from a person (a name, a task
+// title) goes through `esc`, so it can never become markup.
 
 const C = {
   page: '#0A0A0A', card: '#000000', line: '#232323', box: '#0D0D0D', ink: '#EDEDED', faded: '#9A9A9A',
@@ -18,9 +21,17 @@ const C = {
 };
 const NAME_AR = 'هاوس';
 
-/** The pictures the emails use: file in `backend/assets/mail`, and the cid it is attached under. */
+/** The pictures the emails use: files in `public/mail`, which the app's site serves at `<appUrl>mail/<file>`. */
 export const IMAGE_FILES = ['hero-invitation.jpg', 'hero-task.jpg', 'hero-tasks.jpg', 'hero-notice.jpg', 'hero-overdue.jpg', 'icon-lock.gif', 'icon-tasks.gif', 'logo-black.png'];
-export const cidOf = (file) => file.replace(/\.[a-z]+$/, '');
+/** Where the pictures and fonts are served from, for an app at `appUrl`. */
+export const assetsOf = (appUrl) => `${String(appUrl).replace(/\/+$/, '')}/mail`;
+
+// The app's faces first; a system Arabic face for a mail app that won't load them.
+const FONT = "'General Sans','Thmanyah','Geeza Pro','Segoe UI',Tahoma,Arial,sans-serif";
+const fontFaces = (base) => [
+  ['General Sans', 500, 'GeneralSans-500.ttf', 'truetype'], ['General Sans', 700, 'GeneralSans-700.ttf', 'truetype'],
+  ['Thmanyah', 400, 'Thmanyah-400.woff2', 'woff2'], ['Thmanyah', 700, 'Thmanyah-700.woff2', 'woff2'], ['Thmanyah', 900, 'Thmanyah-900.woff2', 'woff2'],
+].map(([family, weight, file, format]) => `@font-face{font-family:'${family}';font-weight:${weight};src:url('${base}/fonts/${file}') format('${format}')}`).join('');
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -90,19 +101,14 @@ export function snippet(text, max = 220) {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-/** What goes into one email: collects the pictures (its drawn words, and the ready-made files) under their cids. */
-function builder() {
-  const attachments = [];
-  let n = 0;
-  const addFile = (file) => { if (!attachments.some((a) => a.file === file)) attachments.push({ cid: cidOf(file), file }); return cidOf(file); };
-  /** A block of words as a picture, `width` px wide at most; the words are its alt text. */
-  const words = (text, options = {}) => {
-    const drawn = textImage({ text, ...options });
-    const cid = `words-${String(++n).padStart(3, "0")}`;
-    attachments.push({ cid, filename: `${cid}.png`, content: drawn.png });
-    return `<img src="cid:${cid}" width="${drawn.width}" height="${drawn.height}" alt="${esc(text)}" style="display:block;width:100%;max-width:${drawn.width}px;height:auto;border:0;" />`;
-  };
-  return { attachments, addFile, words };
+/** What goes into one email: the address of a picture, and a block of words as real text. */
+function builder(appUrl) {
+  const base = assetsOf(appUrl);
+  const url = (file) => `${base}/${file}`;
+  /** A block of words, `width` px wide at most (a line break in the text is kept). */
+  const words = (text, { size = 16, weight = 400, color = C.ink, width = 492, lineHeight = 1.8, align = 'right' } = {}) =>
+    `<div dir="rtl" style="font-family:${FONT};font-size:${size}px;font-weight:${weight};line-height:${lineHeight};color:${color};text-align:${align};max-width:${width}px;${align === 'center' ? 'margin:0 auto;' : ''}">${esc(text).replace(/\n/g, '<br />')}</div>`;
+  return { base, url, words };
 }
 
 /** The purple pill, as round as every button in the app; its words are a picture too. */
@@ -130,9 +136,6 @@ const SPACER = '<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</d
 
 /** The page every email sits on. `hero` is the picture over the card, `icon` the animated one in the footer. */
 function frame(b, { title, preheader, hero, icon, body }) {
-  const heroCid = b.addFile(hero);
-  const iconCid = b.addFile(icon);
-  const logoCid = b.addFile('logo-black.png');
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head>
 <meta charset="utf-8" />
@@ -140,27 +143,27 @@ function frame(b, { title, preheader, hero, icon, body }) {
 <meta name="color-scheme" content="dark" />
 <meta name="supported-color-schemes" content="dark" />
 <title>${esc(title)}</title>
-<style>@media (max-width:480px){.pad{padding:26px 22px !important;}}</style>
+<style>${fontFaces(b.base)}@media (max-width:480px){.pad{padding:26px 22px !important;}}</style>
 </head>
 <body style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page};"><tr><td align="center" style="padding:36px 16px;">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:${C.card};border:1px solid ${C.line};border-radius:18px;border-collapse:separate;overflow:hidden;">
-    <tr><td style="font-size:0;line-height:0;"><img src="cid:${heroCid}" width="560" alt="${esc(title)}" style="display:block;width:100%;height:auto;border:0;" /></td></tr>
+    <tr><td style="font-size:0;line-height:0;"><img src="${b.url(hero)}" width="560" alt="${esc(title)}" style="display:block;width:100%;height:auto;border:0;" /></td></tr>
     <tr><td class="pad" dir="rtl" style="padding:30px 34px 8px;text-align:right;">${body}</td></tr>
     <tr><td class="pad" dir="rtl" style="padding:0 34px 28px;text-align:right;">${b.words(`وصلتك هذه الرسالة لأن أحدًا أضافك في ${NAME_AR}. إن لم تكن أنت المقصود، تجاهلها ببساطة.`, { size: 12, weight: 400, color: C.faded, width: 492, lineHeight: 1.9 })}</td></tr>
     <tr><td style="background:${C.band};padding:18px 34px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
         <td align="right" style="vertical-align:middle;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl"><tr>
-            <td style="vertical-align:middle;"><img src="cid:${logoCid}" width="40" height="40" alt="${esc(NAME)}" style="display:block;border:0;" /></td>
+            <td style="vertical-align:middle;"><img src="${b.url('logo-black.png')}" width="40" height="40" alt="${esc(NAME)}" style="display:block;border:0;" /></td>
             <td style="vertical-align:middle;padding-right:12px;">
               ${b.words(NAME, { size: 22, weight: 700, color: C.bandInk, width: 80, lineHeight: 1.2 })}
               ${b.words(NAME_AR, { size: 14, weight: 700, color: C.bandFaded, width: 80, lineHeight: 1.3 })}
             </td>
           </tr></table>
         </td>
-        <td align="left" style="vertical-align:middle;"><img src="cid:${iconCid}" width="56" height="56" alt="" style="display:block;border:0;" /></td>
+        <td align="left" style="vertical-align:middle;"><img src="${b.url(icon)}" width="56" height="56" alt="" style="display:block;border:0;" /></td>
       </tr></table>
     </td></tr>
   </table>
@@ -173,7 +176,7 @@ function frame(b, { title, preheader, hero, icon, body }) {
  * address to sign in with: the button goes straight to the page. `inviter` is who is inviting; `name` the guest's.
  */
 export function invitationEmail({ inviter, name, appUrl, at }) {
-  const b = builder();
+  const b = builder(appUrl);
   const who = oneLine(inviter) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
   const hello = first ? `${first}، ` : '';
@@ -187,7 +190,6 @@ export function invitationEmail({ inviter, name, appUrl, at }) {
     subject: `${who} دعاك إلى ${NAME_AR}`,
     html,
     text: [`${who} دعاك إلى ${NAME_AR}.`, '', appUrl, '', `بعدها سيعطيك ${who} رمز دخول لمرة واحدة.`].join('\n'),
-    attachments: b.attachments,
   };
 }
 
@@ -224,7 +226,7 @@ function taskLine(b, task, projectName, late = 0) {
  * with a short list, so nobody's inbox fills up. `items` is `[{ task, projectName }]`.
  */
 export function tasksAssignedEmail({ giver, name, items, appUrl, at, forName }) {
-  const b = builder();
+  const b = builder(appUrl);
   const who = oneLine(giver) || 'شخص ما';
   const first = oneLine(name).split(' ')[0];
   const hello = first ? `${first}، ` : '';
@@ -260,7 +262,6 @@ export function tasksAssignedEmail({ giver, name, items, appUrl, at, forName }) 
       '',
       appUrl,
     ].join('\n'),
-    attachments: b.attachments,
   };
 }
 
@@ -269,7 +270,7 @@ export function tasksAssignedEmail({ giver, name, items, appUrl, at, forName }) 
  * `[{ task, projectName, late }]` with `late` the days since the end.
  */
 export function tasksOverdueEmail({ name, items, appUrl }) {
-  const b = builder();
+  const b = builder(appUrl);
   const first = oneLine(name).split(' ')[0];
   const hello = first ? `${first}، ` : '';
   const many = items.length > 1;
@@ -291,6 +292,5 @@ export function tasksOverdueEmail({ name, items, appUrl }) {
       '',
       appUrl,
     ].join('\n'),
-    attachments: b.attachments,
   };
 }

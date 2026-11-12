@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
-import { IMAGE_FILES, MAX_LISTED, cidOf, daysPhrase, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksCount, tasksOverdueEmail, tasksPhrase, whenOf, whenSent } from './emailTemplate.js';
+import { IMAGE_FILES, MAX_LISTED, assetsOf, daysPhrase, esc, invitationEmail, prettyDay, snippet, tasksAssignedEmail, tasksCount, tasksOverdueEmail, tasksPhrase, whenOf, whenSent } from './emailTemplate.js';
 
 const APP = 'https://example.com/Haus/';
-const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets', 'mail');
+const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'public', 'mail');
+const picture = (file) => `${assetsOf(APP)}/${file}`;
 
 describe('small helpers', () => {
   it('escapes anything that could become markup', () => {
@@ -56,7 +57,7 @@ describe('tasksOverdueEmail', () => {
     expect(mail.subject).toBe('فات موعد المهمة: Send the guide');
     expect(mail.html).toContain('Sara، فات موعد هذه المهمة ولم تُنجَز بعد');
     expect(mail.html).toContain('يومان');
-    expect(mail.html).toContain('cid:hero-overdue');
+    expect(mail.html).toContain(picture('hero-overdue.jpg'));
     expect(mail.html).toContain(`href="${APP}"`);
     expect(mail.text).toContain('متأخرة يومان');
   });
@@ -69,11 +70,13 @@ describe('tasksOverdueEmail', () => {
 });
 
 describe('the pictures', () => {
-  it('are all in assets/mail', () => {
+  it('are all in public/mail, which the site serves', () => {
     for (const file of IMAGE_FILES) expect(fs.existsSync(path.join(ASSETS, file)), file).toBe(true);
+    for (const font of ['GeneralSans-500.ttf', 'GeneralSans-700.ttf', 'Thmanyah-400.woff2', 'Thmanyah-700.woff2', 'Thmanyah-900.woff2']) expect(fs.existsSync(path.join(ASSETS, 'fonts', font)), font).toBe(true);
   });
-  it('are named by cid without the extension', () => {
-    expect(cidOf('hero-invitation.jpg')).toBe('hero-invitation');
+  it('are loaded from the app by address, whatever the slashes at the end', () => {
+    expect(assetsOf('https://x.test/Haus/')).toBe('https://x.test/Haus/mail');
+    expect(assetsOf('https://x.test/Haus')).toBe('https://x.test/Haus/mail');
   });
 });
 
@@ -91,15 +94,15 @@ describe('invitationEmail', () => {
     expect(mail.html).not.toContain('Google');
     expect(mail.text).not.toMatch(/\d{6,}/);
   });
-  it('uses the hero, the lock and the black logo, and every picture it points at is attached', () => {
-    for (const cid of ['hero-invitation', 'icon-lock', 'logo-black']) expect(mail.html).toContain(`cid:${cid}`);
-    const cids = mail.attachments.map((a) => a.cid);
-    for (const [, cid] of mail.html.matchAll(/cid:([\w-]+)/g)) expect(cids).toContain(cid);
+  it('uses the hero, the lock and the black logo, loaded from the site, with nothing attached', () => {
+    for (const file of ['hero-invitation.jpg', 'icon-lock.gif', 'logo-black.png']) expect(mail.html).toContain(`src="${picture(file)}"`);
+    expect(mail.html).not.toContain('cid:');
+    expect(Object.keys(mail).sort()).toEqual(['html', 'subject', 'text']);
   });
-  it('draws its words as pictures, in the app fonts, with the words as alt text', () => {
-    const drawn = mail.attachments.filter((a) => a.content);
-    expect(drawn.length).toBeGreaterThan(3);
-    expect(drawn.every((a) => a.content.subarray(1, 4).toString() === 'PNG')).toBe(true);
+  it('sets its words as real text, in the app fonts with a system face behind them', () => {
+    expect(mail.html).not.toContain('words-');
+    expect(mail.html).toContain("font-family:'General Sans','Thmanyah','Geeza Pro'");
+    expect(mail.html).toContain(`@font-face{font-family:'Thmanyah';font-weight:900;src:url('${assetsOf(APP)}/fonts/Thmanyah-900.woff2')`);
     expect(mail.html).toContain('alt="Haus"');
   });
   it('is dark, and has no row of dots', () => {
@@ -125,8 +128,8 @@ describe('tasksAssignedEmail', () => {
     expect(mail.html).toContain('من الخميس 12 نوفمبر إلى السبت 14 نوفمبر');
     expect(mail.html).toContain('عالية');
     expect(mail.html).toContain('With the new tokens.');
-    expect(mail.html).toContain('cid:hero-task');
-    expect(mail.attachments.map((a) => a.file)).toContain('icon-tasks.gif');
+    expect(mail.html).toContain(picture('hero-task.jpg'));
+    expect(mail.html).toContain(picture('icon-tasks.gif'));
     expect(mail.text).toContain('• Send the guide (Brand refresh)');
   });
   it('leaves out what a task does not have', () => {
@@ -139,7 +142,7 @@ describe('tasksAssignedEmail', () => {
     const mail = tasksAssignedEmail({ giver: 'حامد', name: 'Sara', items, appUrl: APP });
     expect(mail.subject).toBe(`${items.length} مهمة جديدة من حامد`);
     expect(mail.html).toContain('و3 أخرى');
-    expect(mail.html).toContain('cid:hero-tasks');
+    expect(mail.html).toContain(picture('hero-tasks.jpg'));
     expect(mail.html).toContain('Task 0');
     expect(mail.html).not.toContain(`Task ${MAX_LISTED}<`);
   });
@@ -159,7 +162,6 @@ describe('tasksAssignedEmail', () => {
     const mail = tasksAssignedEmail({ giver: 'سارة', name: 'حامد', forName: 'عمر', items: [{ task, projectName: 'Brand' }], appUrl: APP, at: '2026-11-10T09:05:00Z' });
     expect(mail.subject).toBe('مهمة جديدة: Send the guide من سارة إلى عمر');
     expect(mail.html).toContain('مهمة جديدة من سارة إلى عمر');
-    expect(mail.html).toContain('cid:hero-notice');
-    expect(mail.attachments.map((a) => a.cid)).toContain('hero-notice');
+    expect(mail.html).toContain(picture('hero-notice.jpg'));
   });
 });

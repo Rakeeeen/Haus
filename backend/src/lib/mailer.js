@@ -1,10 +1,5 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
 import { NAME } from './brand.js';
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const ASSETS = path.join(here, '..', '..', 'assets', 'mail');
 
 /**
  * The mail settings from the bot's .env: any SMTP account works. For Gmail, `MAIL_USER` is the address and
@@ -33,11 +28,9 @@ export function mailConfig(env = process.env) {
 export function createMailer(config = mailConfig()) {
   if (!config) return null;
   const transport = nodemailer.createTransport({ host: config.host, port: config.port, secure: config.secure, auth: config.auth });
-  // The pictures a message uses travel inside it, under the cid the HTML points at: a ready-made file of
-  // `assets/mail`, or words drawn for this message (`content`).
-  const attach = (list = []) => list.map((a) => (a.file ? { filename: a.file, path: path.join(ASSETS, a.file), cid: a.cid } : { filename: a.filename, content: a.content, cid: a.cid, contentType: 'image/png' }));
+  // Nothing is attached: the pictures and fonts the HTML uses are loaded from the app's site (`<appUrl>mail/…`).
   return {
     config,
-    send: ({ to, subject, html, text, attachments }) => transport.sendMail({ from: config.from, to, subject, html, text, attachments: attach(attachments) }),
+    send: ({ to, subject, html, text }) => transport.sendMail({ from: config.from, to, subject, html, text }),
   };
 }
