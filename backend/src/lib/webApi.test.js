@@ -3,6 +3,7 @@ import { isAllowedOrigin, isSubscriptionList, MAX_SUBSCRIPTIONS } from './webApi
 
 describe('isAllowedOrigin', () => {
   it('allows Haus\'s own site and the local dev server', () => {
+    expect(isAllowedOrigin('https://haus.rakeeeen.com')).toBe(true);
     expect(isAllowedOrigin('https://rakeeeen.github.io')).toBe(true);
     expect(isAllowedOrigin('http://localhost:5173')).toBe(true);
     expect(isAllowedOrigin('http://127.0.0.1:5174')).toBe(true);
@@ -13,6 +14,8 @@ describe('isAllowedOrigin', () => {
   it('refuses any other site, including look-alikes', () => {
     expect(isAllowedOrigin('https://evil.example')).toBe(false);
     expect(isAllowedOrigin('https://rakeeeen.github.io.evil.example')).toBe(false);
+    expect(isAllowedOrigin('https://haus.rakeeeen.com.evil.example')).toBe(false);
+    expect(isAllowedOrigin('http://haus.rakeeeen.com')).toBe(false);
     expect(isAllowedOrigin('http://rakeeeen.github.io')).toBe(false);
     expect(isAllowedOrigin('http://localhost:5173.evil.example')).toBe(false);
   });

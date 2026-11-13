@@ -20,7 +20,7 @@ export function mailConfig(env = process.env) {
     ownerName: env.OWNER_NAME?.trim() || 'حامد',
     // Where the notices to Hamed go (a guest who runs a project gave someone a task): his own address unless told otherwise.
     ownerEmail: env.OWNER_EMAIL?.trim() || user,
-    appUrl: env.APP_URL?.trim() || 'https://rakeeeen.github.io/Haus/',
+    appUrl: env.APP_URL?.trim() || 'https://haus.rakeeeen.com/',
   };
 }
 

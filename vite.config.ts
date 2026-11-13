@@ -10,7 +10,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: '/Haus/',
+  // Served from the root of haus.rakeeeen.com (see public/CNAME).
+  base: '/',
   build: {
     rollupOptions: {
       output: {

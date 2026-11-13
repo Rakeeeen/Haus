@@ -8,6 +8,7 @@
 
 /** The pages the web app is served from: its site, and the local dev server. */
 const ALLOWED_ORIGINS = [
+  'https://haus.rakeeeen.com',
   'https://rakeeeen.github.io',
   /^http:\/\/localhost:\d+$/,
   /^http:\/\/127\.0\.0\.1:\d+$/,

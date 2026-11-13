@@ -16,7 +16,7 @@ function base64urlToBuffer(base64url: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-// Credentials are keyed by hostname — localhost and github.io register separately
+// Credentials are keyed by hostname — localhost and haus.rakeeeen.com register separately
 function hostKey(): string {
   return window.location.hostname;
 }

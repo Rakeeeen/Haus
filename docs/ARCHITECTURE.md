@@ -2,7 +2,7 @@
 
 Personal life-dashboard PWA (water, focus/Pomodoro, finance — the day's rhythm taken from the
 real prayer times) for a single user. React + TypeScript + Vite, Firebase (Firestore + Auth),
-deployed to GitHub Pages at `https://rakeeeen.github.io/Haus/` (the router is a HashRouter, so Pages needs no rewrite rules). A companion Discord bot (`backend/`) sends reminders.
+deployed to GitHub Pages at `https://haus.rakeeeen.com/` (the router is a HashRouter, so Pages needs no rewrite rules). A companion Discord bot (`backend/`) sends reminders.
 
 This document explains **how the code is organized and why**, so it stays this way
 as it grows — whether the next change is made by Hamed, by Claude, or by any other

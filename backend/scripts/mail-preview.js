@@ -7,7 +7,7 @@ import { IMAGE_FILES, assetsOf, invitationEmail, tasksAssignedEmail, tasksOverdu
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = path.resolve(process.argv[2] || path.join(here, '..', 'mail-preview'));
 const MIME = { jpg: 'image/jpeg', gif: 'image/gif', png: 'image/png' };
-const appUrl = 'https://rakeeeen.github.io/Haus/';
+const appUrl = 'https://haus.rakeeeen.com/';
 /** The email's HTML with its pictures inlined (from `public/mail`), so a browser can show it before the site has them. */
 const inline = (mail) => IMAGE_FILES.reduce((html, file) => {
   const bytes = fs.readFileSync(path.join(here, '..', '..', 'public', 'mail', file));

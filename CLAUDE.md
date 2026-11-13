@@ -1,6 +1,6 @@
 # Haus
 
-(The system's name is Haus — a house, the one place everything of Hamed's is run from. The site is served by GitHub Pages at `https://rakeeeen.github.io/Haus/` (a project site, so its path is `/Haus/` — `base` in `vite.config.ts` must stay `'/Haus/'`; Pages' Source must be "GitHub Actions", otherwise it serves the raw source and the page is blank); the Firebase project is still `rakeeen-home` — a Firebase project's ID can't be renamed.)
+(The system's name is Haus — a house, the one place everything of Hamed's is run from. The site is served by GitHub Pages at `https://haus.rakeeeen.com/` (a custom domain, so it is served from the root — `base` in `vite.config.ts` must stay `'/'` and `public/CNAME` must keep the domain; Pages' Source must be "GitHub Actions", otherwise it serves the raw source and the page is blank); the Firebase project is still `rakeeen-home` — a Firebase project's ID can't be renamed.)
 
 Personal life-dashboard for Hamed — water, focus/Pomodoro and finance, with the day's
 rhythm taken from the real prayer times. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed
@@ -14,7 +14,7 @@ short version; that one explains the layers and the reasoning.
 ## Commands
 
 ```
-npm run dev         # local dev server (http://localhost:5173/Haus/)
+npm run dev         # local dev server (http://localhost:5173/)
 npm run build         # production build — esbuild-based; this is the real smoke test
 npm run test:run       # vitest, single run
 npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must stay at 0 errors
