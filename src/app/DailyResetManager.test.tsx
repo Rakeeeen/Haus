@@ -112,16 +112,17 @@ describe('a guest\'s day closes at midnight', () => {
 
   it('archives yesterday\'s glasses and zeroes the counter just after midnight, not at Maghrib', () => {
     vi.setSystemTime(new Date('2026-11-09T00:30:00'));
+    seed('system_guest_water_closed', new Date('2026-11-07T12:00:00').toDateString());
     seed('hydration_glasses', 6);
     run('guest');
     expect(store.get('hydration_history')).toEqual({ [yesterday]: 6 });
     expect(store.get('hydration_glasses')).toBe(0);
-    expect(store.get('system_last_reset_date')).toBe(yesterday);
+    expect(store.get('system_guest_water_closed')).toBe(yesterday);
   });
 
   it('does not touch the water at Maghrib', () => {
     vi.setSystemTime(new Date('2026-11-09T18:30:00'));
-    seed('system_last_reset_date', yesterday); // the midnight close-out already ran today
+    seed('system_guest_water_closed', yesterday); // the midnight close-out already ran today
     seed('hydration_glasses', 5);
     run('guest');
     expect(store.get('hydration_glasses')).toBe(5);
@@ -129,10 +130,34 @@ describe('a guest\'s day closes at midnight', () => {
 
   it('closes yesterday\'s focus slot after midnight, not at Isha', () => {
     vi.setSystemTime(new Date('2026-11-09T00:30:00')); // Monday: the day that closed is Sunday = slot 6
+    seed('system_guest_focus_closed', new Date('2026-11-07T12:00:00').toDateString());
     seed('pomodoro_week', week([0, 0, 0, 0, 0, 0, 3]));
     seed('pomodoro_sessions', 3);
     run('guest');
     expect(store.get('pomodoro_history')).toEqual({ [yesterday]: { sessions: 3, minutes: 75 } });
     expect(store.get('pomodoro_sessions')).toBe(0);
+  });
+});
+
+describe('a guest\'s first close-out only notes the day', () => {
+  it('leaves the water and focus alone, whatever the hour', () => {
+    vi.setSystemTime(new Date('2026-11-09T14:00:00'));
+    seed('hydration_glasses', 4);
+    seed('pomodoro_week', week([0, 0, 0, 0, 0, 0, 0]));
+    seed('pomodoro_sessions', 9);
+    run('guest');
+    expect(store.get('hydration_glasses')).toBe(4);
+    expect(store.get('pomodoro_sessions')).toBe(9);
+    expect(store.get('pomodoro_history')).toBeUndefined();
+    expect(store.get('system_guest_water_closed')).toBe(new Date('2026-11-08T12:00:00').toDateString());
+    expect(store.get('system_guest_focus_closed')).toBe(new Date('2026-11-08T12:00:00').toDateString());
+  });
+
+  it('ignores the old Maghrib/Isha markers', () => {
+    vi.setSystemTime(new Date('2026-11-09T14:00:00'));
+    seed('system_last_pomo_reset_date', new Date('2026-11-06T12:00:00').toDateString());
+    seed('pomodoro_sessions', 9);
+    run('guest');
+    expect(store.get('pomodoro_sessions')).toBe(9);
   });
 });

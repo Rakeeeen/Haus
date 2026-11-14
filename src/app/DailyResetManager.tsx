@@ -40,8 +40,13 @@ export const DailyResetManager: React.FC<{ role?: DayRole }> = ({ role = current
   const [, setPomoWeek, pomoWeekReady] = useFirebaseSync<FocusWeekDay[]>('pomodoro_week', POMODORO_WEEKLY_MOCK);
   const [, setPomoHistory, pomoHistoryReady] = useFirebaseSync<Record<string, FocusDayStats>>('pomodoro_history', {});
 
-  const [lastResetDate, setLastResetDate, lastResetDateReady] = useFirebaseSync<string>('system_last_reset_date', '');
-  const [lastPomoIshaResetDate, setLastPomoIshaResetDate, lastPomoIshaResetDateReady] = useFirebaseSync<string>('system_last_pomo_reset_date', '');
+  // A guest's markers are their own keys: the old ones said "closed at Maghrib/Isha", this one says "closed at midnight", and
+  // reading one as the other closed a day that was still being lived (a guest's four hours of focus went to zero at noon).
+  const guest = role === 'guest';
+  const [lastResetDate, setLastResetDate, lastResetDateReady] = useFirebaseSync<string>(guest ? 'system_guest_water_closed' : 'system_last_reset_date', '');
+  const [lastPomoIshaResetDate, setLastPomoIshaResetDate, lastPomoIshaResetDateReady] = useFirebaseSync<string>(guest ? 'system_guest_focus_closed' : 'system_last_pomo_reset_date', '');
+  const waterMarkerKey = guest ? 'system_guest_water_closed' : 'system_last_reset_date';
+  const focusMarkerKey = guest ? 'system_guest_focus_closed' : 'system_last_pomo_reset_date';
 
   useEffect(() => {
     // Wait until ALL the synced values are ready before deciding whether to reset.
@@ -52,9 +57,11 @@ export const DailyResetManager: React.FC<{ role?: DayRole }> = ({ role = current
       const marker = closedWaterDayKey(role, prayerTimes, new Date());
       if (lastResetDate === marker || firedResetMarkerRef.current === marker) return;
       firedResetMarkerRef.current = marker;
+      // A guest's first time here: nothing says which day the counters hold, so only note the day — zeroing now could erase today.
+      if (guest && !lastResetDate) { writeStored(waterMarkerKey, marker); setLastResetDate(marker); return; }
       // The marker is written to storage at once (value + updatedAt, like useFirebaseSync's setValue), so a refresh in the
       // middle of the reset sees it, and Firestore's listener can't clobber it with the stale server value once it connects.
-      writeStored('system_last_reset_date', marker);
+      writeStored(waterMarkerKey, marker);
       // Read from localStorage, not React state: state can lag behind what Water.tsx just wrote (a Firestore listener's update
       // isn't guaranteed to have flushed), which would archive the tally as 0.
       const glasses = Number(readStored<number>('hydration_glasses', 0)) || 0;
@@ -71,7 +78,8 @@ export const DailyResetManager: React.FC<{ role?: DayRole }> = ({ role = current
       if (!close.due) return;
       if (lastPomoIshaResetDate === close.key || firedPomoIshaMarkerRef.current === close.key) return;
       firedPomoIshaMarkerRef.current = close.key;
-      writeStored('system_last_pomo_reset_date', close.key);
+      writeStored(focusMarkerKey, close.key);
+      if (guest && !lastPomoIshaResetDate) { setLastPomoIshaResetDate(close.key); return; } // first time: only note the day, as for water
 
       const { archived, nextWeek } = closeOutFocusDay(weekOrSeed(readStored<FocusWeekDay[] | null>('pomodoro_week', null), POMODORO_WEEKLY_MOCK), close.dayIndex, POMODORO_WEEKLY_MOCK);
       if (archived) setPomoHistory((prev) => ({ ...(prev || {}), [close.key]: archived }));
@@ -92,7 +100,7 @@ export const DailyResetManager: React.FC<{ role?: DayRole }> = ({ role = current
     lastResetDate, lastPomoIshaResetDate,
     setGlasses, setHistory, setLastResetDate, setLastPomoIshaResetDate, setPomoSessions, setPomoWeek, setPomoHistory,
     glassesReady, historyReady, pomoReady, pomoWeekReady, pomoHistoryReady, lastResetDateReady, lastPomoIshaResetDateReady,
-    prayerTimes, role
+    prayerTimes, role, guest, waterMarkerKey, focusMarkerKey
   ]);
 
   return null;
