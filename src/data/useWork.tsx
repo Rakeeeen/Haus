@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
+  arrayUnion, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
 } from 'firebase/firestore';
 import { db } from '@/data/firebase';
 import { logActivity } from '@/data/activityLog';
@@ -8,10 +8,13 @@ import { metered } from '@/data/readMeter';
 import { markDeleted, syncCollection } from '@/data/deltaSync';
 import { commentedText, createdText, deletedText, statusChangeText, type ActivityType } from '@/domain/activity';
 import { playTaskDone } from '@/lib/sound';
-import { blankNote } from '@/domain/work/notes';
+import {
+  blankNote, canDeleteNote as mayDeleteNote, canEditNote as mayEditNote, canRequestEdit as mayRequestEdit, detachedNote, noteAuthorKey, normalizeNote, noteTitle,
+  requestId, staleNoteViewers, viewersOfNote, type NoteViewer,
+} from '@/domain/work/notes';
 import { blankTask, moveToStatus, nextTaskNo } from '@/domain/work/tasks';
 import { adminProjectOf, assignableIn, canEditAsGuest, isAdminOf, isInProject, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
-import type { Note, Project, ProjectPrivate, Task, TaskComment, TaskStatus } from '@/domain/work/types';
+import type { Note, NoteEditRequest, Project, ProjectPrivate, Task, TaskComment, TaskStatus } from '@/domain/work/types';
 
 /**
  * Projects, tasks and comments, kept live from Firestore. Each kind is its own collection (a task or a project is a
@@ -25,6 +28,7 @@ const PROJECTS = 'work_projects';
 const PRIVATES = 'work_projects_private';
 const TASKS = 'work_tasks';
 const NOTES = 'work_notes';
+const NOTE_REQUESTS = 'note_edit_requests';
 
 /** Firestore refuses `undefined`; a field that is not there is simply left out. */
 const clean = <T extends object>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -50,7 +54,7 @@ interface WorkContextType {
   tasks: Task[];
   /** Who each project is for — Hamed's only. */
   privates: Record<string, ProjectPrivate>;
-  /** Notes — Hamed's only (a guest gets none). They are read from Firestore only once a screen asks (`loadNotes`): a page that does not show notes never pays for them. */
+  /** Notes: all of them for Hamed; for a guest those of their projects and their own. Read from Firestore only once a screen asks (`loadNotes`): a page that does not show notes never pays for them. */
   notes: Note[];
   /** The notes have arrived (always false until `loadNotes` is called). */
   notesReady: boolean;
@@ -79,8 +83,22 @@ interface WorkContextType {
   /** Removes the project and its client record; its tasks stay, with no project. */
   removeProject: (id: string) => Promise<void>;
   addNote: (projectId?: string | null) => Promise<string>;
+  /** A guest changes only the text and title (a note's project is Hamed's to move). */
   updateNote: (id: string, patch: Partial<Pick<Note, 'title' | 'markdown' | 'projectId'>>) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
+  /** Hamed any note; a guest the ones they wrote and the ones they were given permission for. */
+  canEditNote: (note: Note) => boolean;
+  /** Hamed any note; a guest only their own. */
+  canDeleteNote: (note: Note) => boolean;
+  /** A guest who can read a note but not change it may ask. */
+  canRequestEdit: (note: Note) => boolean;
+  /** Requests for permission this person can answer (all of them for Hamed). */
+  requestsToAnswer: NoteEditRequest[];
+  /** The requests this guest has made and that are still waiting. */
+  myRequests: NoteEditRequest[];
+  requestEdit: (note: Note) => Promise<void>;
+  /** Answers a request: yes puts the guest among the note's editors; either way the request is taken away. */
+  answerEdit: (request: NoteEditRequest, allow: boolean) => Promise<void>;
 }
 
 const WorkContext = createContext<WorkContextType | null>(null);
@@ -92,6 +110,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesWanted, setNotesWanted] = useState(false);
   const [notesReady, setNotesReady] = useState(false);
+  const [requestLists, setRequestLists] = useState<{ toAnswer: NoteEditRequest[]; mine: NoteEditRequest[] }>({ toAnswer: [], mine: [] });
   const loadNotes = useCallback(() => setNotesWanted(true), []);
   const [answered, setAnswered] = useState({ projects: false, tasks: false });
   // The mutations below read the latest data without being rebuilt every time it changes.
@@ -99,6 +118,8 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   tasksRef.current = tasks;
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
   const uid = scope.kind === 'guest' ? scope.uid : null;
   const guestName = scope.kind === 'guest' ? scope.name : null;
   /** A guest's own actions are written to the log Hamed reads; Hamed's are not. */
@@ -137,13 +158,43 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
 
   // Notes are the heaviest thing to read (whole pages of text), so they are listened to only after a screen that shows them asks.
   useEffect(() => {
-    if (uid || !notesWanted) return;
-    // Read by their changes only, like the tasks: whole pages of text, and they rarely change.
-    return syncCollection(NOTES, (docs) => {
-      setNotes(docs.map((d) => ({ title: '', markdown: '', projectId: null, createdAt: '', updatedAt: '', ...(d.data() as Partial<Note>), id: d.id })));
+    if (!notesWanted) return;
+    const show = (docs: ReadonlyArray<{ id: string; data: () => unknown }>) => {
+      setNotes(docs.map((d) => normalizeNote({ ...(d.data() as Partial<Note>), id: d.id })));
       setNotesReady(true);
-    }, (error) => { console.warn(`Could not listen to ${NOTES}:`, error.message); setNotesReady(true); });
+    };
+    const fail = (error: Error) => { console.warn(`Could not listen to ${NOTES}:`, error.message); setNotesReady(true); };
+    // A guest's are the notes that list them (their projects' and their own); Hamed's are all of them, read by their changes only, like the tasks.
+    return uid
+      ? onSnapshot(query(collection(db, NOTES), where('viewerUids', 'array-contains', uid)), metered(NOTES, (snap) => show(snap.docs)), fail)
+      : syncCollection(NOTES, show, fail);
   }, [uid, notesWanted]);
+
+  // The requests for permission to change a note: for Hamed all of them; for a guest those they can answer and those they made.
+  useEffect(() => {
+    if (!notesWanted) return;
+    const fail = (error: Error) => console.warn(`Could not listen to ${NOTE_REQUESTS}:`, error.message);
+    const read = (docs: ReadonlyArray<{ id: string; data: () => unknown }>) => docs.map((d) => ({ ...(d.data() as Omit<NoteEditRequest, 'id'>), id: d.id }));
+    if (!uid) return onSnapshot(collection(db, NOTE_REQUESTS), metered(NOTE_REQUESTS, (snap) => setRequestLists({ toAnswer: read(snap.docs), mine: [] })), fail);
+    const stops = [
+      onSnapshot(query(collection(db, NOTE_REQUESTS), where('authorKey', '==', uid)), metered(NOTE_REQUESTS, (snap) => setRequestLists((l) => ({ ...l, toAnswer: read(snap.docs) }))), fail),
+      onSnapshot(query(collection(db, NOTE_REQUESTS), where('requesterUid', '==', uid)), metered(NOTE_REQUESTS, (snap) => setRequestLists((l) => ({ ...l, mine: read(snap.docs) }))), fail),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [uid, notesWanted]);
+
+  // Notes written before they were shared, or whose project's members changed, have out-of-date readers: Hamed's app brings them
+  // up to date. Not stamped with a new `updatedAt` — nothing about the page changed, so it must not jump to the top of "Recent";
+  // the readers are only ever read by the rules, never by a screen.
+  useEffect(() => {
+    if (uid || !notesReady || !answered.projects) return;
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const project of projects) {
+      for (const { id, viewerUids, editorUids } of staleNoteViewers(notes, project)) { batch.set(doc(db, NOTES, id), { viewerUids, editorUids }, { merge: true }); count += 1; }
+    }
+    if (count > 0) batch.commit().catch((error) => console.warn('Could not update who reads the notes:', error.message));
+  }, [uid, notes, notesReady, projects, answered.projects]);
 
   /** The sharing of each of the projects a task is in (the ones that exist), for working out who may see it. */
   const projectsOf = (ids: readonly string[]) => ids.map((id) => projectsRef.current.find((p) => p.id === id)).filter((p): p is Project => !!p);
@@ -277,6 +328,12 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
       // Stamped like every other change to a task, so a device reading the tasks by their changes sees it.
       batch.set(doc(db, TASKS, id), { viewerUids, updatedAt: new Date().toISOString() }, { merge: true });
     }
+    // The project's notes are read by its members, so they follow the members too.
+    const noteSnap = await getDocs(query(collection(db, NOTES), where('projectId', '==', projectId)));
+    const here = noteSnap.docs.map((d) => normalizeNote({ ...(d.data() as Partial<Note>), id: d.id }));
+    for (const { id, viewerUids, editorUids } of staleNoteViewers(here, { id: projectId, memberUids })) {
+      batch.set(doc(db, NOTES, id), { viewerUids, editorUids, updatedAt: new Date().toISOString() }, { merge: true });
+    }
     await batch.commit();
   }, []);
 
@@ -295,6 +352,9 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
         projectIds, projectId: projectIds[0] ?? null, viewerUids: viewersOf(task, projectsOf(projectIds)), updatedAt: new Date().toISOString(),
       }, { merge: true });
     }
+    // Its notes stay, with no project (and so read by their author alone).
+    const noteSnap = await getDocs(query(collection(db, NOTES), where('projectId', '==', id)));
+    for (const d of noteSnap.docs) batch.set(doc(db, NOTES, d.id), { ...detachedNote(normalizeNote({ ...(d.data() as Partial<Note>), id: d.id })), updatedAt: new Date().toISOString() }, { merge: true });
     batch.delete(doc(db, PROJECTS, id));
     batch.delete(doc(db, PRIVATES, id));
     await batch.commit();
@@ -302,25 +362,55 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     void markDeleted(PRIVATES, id);
   }, []);
 
+  const noteViewer = useMemo<NoteViewer>(() => (uid ? { role: 'guest', uid } : { role: 'owner' }), [uid]);
+  const canEditNote = useCallback((n: Note) => mayEditNote(n, noteViewer), [noteViewer]);
+  const canDeleteNote = useCallback((n: Note) => mayDeleteNote(n, noteViewer), [noteViewer]);
+  const canRequestEdit = useCallback((n: Note) => mayRequestEdit(n, noteViewer), [noteViewer]);
+
   const addNote = useCallback(async (projectId: string | null = null) => {
     const ref = doc(collection(db, NOTES));
-    await setDoc(ref, blankNote(projectId));
+    // Whoever makes it is its author; the project's members (or the author alone, with no project) are who can read it.
+    await setDoc(ref, clean(blankNote(projectId, uid ? { uid, name: guestName ?? 'Guest' } : null, viewersOfNote(projectId, uid ?? undefined, projectsRef.current))));
     return ref.id;
-  }, []);
+  }, [uid, guestName]);
 
   const updateNote = useCallback(async (id: string, patch: Partial<Pick<Note, 'title' | 'markdown' | 'projectId'>>) => {
-    await setDoc(doc(db, NOTES, id), clean({ ...patch, updatedAt: new Date().toISOString() }), { merge: true });
-  }, []);
+    const body: Record<string, unknown> = { ...patch, updatedAt: new Date().toISOString() };
+    if (uid) delete body.projectId;
+    else if ('projectId' in patch) {
+      // Moving a note changes who reads it, and nobody but its author may keep permission to change it.
+      const now = notesRef.current.find((n) => n.id === id);
+      body.viewerUids = viewersOfNote(patch.projectId ?? null, now?.authorUid, projectsRef.current);
+      body.editorUids = (now?.editorUids ?? []).filter((who) => (body.viewerUids as string[]).includes(who));
+    }
+    await setDoc(doc(db, NOTES, id), clean(body), { merge: true });
+  }, [uid]);
 
   const removeNote = useCallback(async (id: string) => {
     await deleteDoc(doc(db, NOTES, id));
     void markDeleted(NOTES, id);
   }, []);
 
+  const requestEdit = useCallback(async (target: Note) => {
+    if (!uid) return;
+    await setDoc(doc(db, NOTE_REQUESTS, requestId(target.id, uid)), {
+      noteId: target.id, noteTitle: noteTitle(target).slice(0, 300), requesterUid: uid, requesterName: guestName ?? 'Guest',
+      authorKey: noteAuthorKey(target), at: new Date().toISOString(),
+    });
+  }, [uid, guestName]);
+
+  const answerEdit = useCallback(async (request: NoteEditRequest, allow: boolean) => {
+    const batch = writeBatch(db);
+    if (allow) batch.set(doc(db, NOTES, request.noteId), { editorUids: arrayUnion(request.requesterUid), updatedAt: new Date().toISOString() }, { merge: true });
+    batch.delete(doc(db, NOTE_REQUESTS, request.id));
+    await batch.commit();
+  }, []);
+
   const value = useMemo<WorkContextType>(() => ({
     role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, notesReady, loadNotes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
     addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
-  }), [scope.kind, uid, projects, tasks, privates, notes, notesReady, loadNotes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote]);
+    canEditNote, canDeleteNote, canRequestEdit, requestsToAnswer: requestLists.toAnswer, myRequests: requestLists.mine, requestEdit, answerEdit,
+  }), [scope.kind, uid, projects, tasks, privates, notes, notesReady, loadNotes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote, canEditNote, canDeleteNote, canRequestEdit, requestLists, requestEdit, answerEdit]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

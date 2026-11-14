@@ -60,7 +60,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
       <div className="spring-group flex flex-wrap gap-2">
         <Button tone="outline" size="sm" onClick={() => navigate('work/projects')}>Projects<span className="text-ink/40">{projects.length}</span></Button>
         <Button tone="outline" size="sm" onClick={() => navigate('work/tasks')}>All tasks<span className="text-ink/40">{open} open</span></Button>
-        {role === 'owner' && <Button tone="outline" size="sm" onClick={() => navigate('work/notes')}>Notes</Button>}
+        <Button tone="outline" size="sm" onClick={() => navigate('work/notes')}>Notes</Button>
         {role === 'owner' && <Button tone="outline" size="sm" onClick={() => navigate('work/activity')}>Logs</Button>}
       </div>
       <hr className="border-0 border-t border-ink/10 w-full my-2" />

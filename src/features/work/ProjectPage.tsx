@@ -29,7 +29,7 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
   const { role, tasks, notes, privates, ready, loadNotes, canEditTask, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
-  useEffect(() => { if (role === 'owner') loadNotes?.(); }, [role, loadNotes]);
+  useEffect(() => { loadNotes?.(); }, [loadNotes]);
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author, authorPhoto);
 
@@ -95,7 +95,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
         />
       )}
 
-      {role === 'owner' && (
+      {(
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="font-sans-main text-lg font-black uppercase tracking-tight">Notes</h2>

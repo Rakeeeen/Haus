@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Extension, type Editor, type Range } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -42,7 +42,8 @@ const SLASH_ITEMS: readonly SlashItem[] = [
 
 interface Menu { items: SlashItem[]; selected: number; left: number; top: number; command: (item: SlashItem) => void }
 
-export const NoteEditor: React.FC<{ markdown: string; onChange: (markdown: string) => void }> = ({ markdown, onChange }) => {
+/** `editable` false shows the page as plain reading: no toolbar, no cursor, no "/" menu. */
+export const NoteEditor: React.FC<{ markdown: string; onChange: (markdown: string) => void; editable?: boolean }> = ({ markdown, onChange, editable = true }) => {
   const [menu, setMenu] = useState<Menu | null>(null);
   // The suggestion plugin calls back from outside React; it reads the latest menu through this.
   const menuRef = useRef<Menu | null>(null);
@@ -96,11 +97,15 @@ export const NoteEditor: React.FC<{ markdown: string; onChange: (markdown: strin
       AutoDirection,
       SlashCommand,
     ],
+    editable,
     content: markdown,
     contentType: 'markdown',
     editorProps: { attributes: { class: 'note-editor', spellcheck: 'false' } },
     onUpdate: ({ editor: e }) => onChange(e.getMarkdown()),
   });
+
+  // Permission can arrive while the page is open.
+  useEffect(() => { editor?.setEditable(editable); }, [editor, editable]);
 
   const tool = (label: string, active: boolean, run: () => void, tip: string) => (
     <Button key={label} size="sm" tone={active ? 'ink' : 'ghost'} data-tip={tip} onMouseDown={(e) => e.preventDefault()} onClick={run}>{label}</Button>
@@ -108,7 +113,7 @@ export const NoteEditor: React.FC<{ markdown: string; onChange: (markdown: strin
 
   return (
     <div>
-      {editor && (
+      {editor && editable && (
         <div className="spring-group flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-ink/10">
           {tool('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
           {tool('I', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}

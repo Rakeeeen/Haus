@@ -127,8 +127,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/work/projects" element={<AnimatedPage><Projects navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         <Route path="/work/projects/:id" element={<AnimatedPage><ProjectPage navigate={nav} author={firstName} authorPhoto={user.photoURL} /></AnimatedPage>} />
         {role === 'owner' && <Route path="/work/activity" element={<AnimatedPage><Activity navigate={nav} /></AnimatedPage>} />}
-        {role === 'owner' && <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />}
-        {role === 'owner' && <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />}
+        <Route path="/work/notes" element={<AnimatedPage><Notes navigate={nav} /></AnimatedPage>} />
+        <Route path="/work/notes/:id" element={<AnimatedPage><NotePage navigate={nav} /></AnimatedPage>} />
         {role === 'owner' && <Route path="/finance" element={<AnimatedPage><Finance navigate={nav} /></AnimatedPage>} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

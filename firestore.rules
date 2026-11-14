@@ -46,6 +46,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/work_tasks/$(id);
     }
 
+    function notePath(id) {
+      return /databases/$(database)/documents/work_notes/$(id);
+    }
+
     function codePath(uid) {
       return /databases/$(database)/documents/guest_codes/$(uid);
     }
@@ -291,8 +295,61 @@ service cloud.firestore {
       }
     }
 
+    // Notes. Hamed reads and writes all of them. A guest reads the notes whose `viewerUids` lists them — written from the note's
+    // project (its members) or, for a note with no project, its author alone (domain/work/notes.ts, viewersOfNote). A guest
+    // writes a note as its author, in a project they are on (or none); changes the ones they wrote; and may change another's
+    // only once its author (or Hamed) put them in `editorUids` (see note_edit_requests below). Only the author deletes.
+    // A note Hamed wrote has no `authorUid`; notes from before sharing have no `viewerUids` yet, so no guest reads them.
+    function guestMayAddNote() {
+      let d = request.resource.data;
+      return onlyKeys(['title', 'markdown', 'projectId', 'authorUid', 'authorName', 'viewerUids', 'editorUids', 'createdAt', 'updatedAt'])
+        && d.authorUid == request.auth.uid
+        && d.authorName is string && d.authorName.size() <= 100
+        && d.editorUids == []
+        && d.title is string && d.title.size() <= 300
+        && d.markdown is string && d.markdown.size() <= 300000
+        && (d.projectId == null
+            ? d.viewerUids == [request.auth.uid]
+            : request.auth.uid in get(projectPath(d.projectId)).data.memberUids
+              && d.viewerUids.toSet() == get(projectPath(d.projectId)).data.memberUids.toSet());
+    }
+
+    function guestMayEditNote() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let isAuthor = before.get('authorUid', null) == request.auth.uid;
+      return request.auth.uid in before.get('viewerUids', [])
+        && (isAuthor || request.auth.uid in before.get('editorUids', []))
+        // The author may also hand out permission to change the note, but only to someone who can read it.
+        && after.diff(before).affectedKeys().hasOnly(isAuthor ? ['title', 'markdown', 'updatedAt', 'editorUids'] : ['title', 'markdown', 'updatedAt'])
+        && after.title is string && after.title.size() <= 300
+        && after.markdown is string && after.markdown.size() <= 300000
+        && after.get('editorUids', []).toSet().difference(before.get('viewerUids', []).toSet()).size() == 0;
+    }
+
     match /work_notes/{id} {
-      allow read, write: if isOwner();
+      allow read: if isOwner() || (isApprovedGuest() && request.auth.uid in resource.data.get('viewerUids', []));
+      allow create: if isOwner() || (isApprovedGuest() && guestMayAddNote());
+      allow update: if isOwner() || (isApprovedGuest() && guestMayEditNote());
+      allow delete: if isOwner() || (isApprovedGuest() && resource.data.get('authorUid', null) == request.auth.uid);
+    }
+
+    // A guest who can read a note but not change it asks for permission here (one request per note and person, id
+    // `<noteId>_<uid>`). The note's author (`authorKey` is their uid, or 'owner' for Hamed's notes) or Hamed answers: yes
+    // adds the guest to the note's `editorUids`, either way the request is deleted.
+    match /note_edit_requests/{id} {
+      allow read: if isOwner() || (isApprovedGuest() && (resource.data.requesterUid == request.auth.uid || resource.data.authorKey == request.auth.uid));
+      allow create: if isApprovedGuest()
+        && onlyKeys(['noteId', 'noteTitle', 'requesterUid', 'requesterName', 'authorKey', 'at'])
+        && request.resource.data.requesterUid == request.auth.uid
+        && id == request.resource.data.noteId + '_' + request.auth.uid
+        && request.resource.data.requesterName is string && request.resource.data.requesterName.size() <= 100
+        && request.resource.data.noteTitle is string && request.resource.data.noteTitle.size() <= 300
+        && request.auth.uid in get(notePath(request.resource.data.noteId)).data.get('viewerUids', [])
+        && !(request.auth.uid in get(notePath(request.resource.data.noteId)).data.get('editorUids', []))
+        && request.resource.data.authorKey == get(notePath(request.resource.data.noteId)).data.get('authorUid', 'owner')
+        && request.resource.data.authorKey != request.auth.uid;
+      allow delete: if isOwner() || (isApprovedGuest() && (resource.data.requesterUid == request.auth.uid || resource.data.authorKey == request.auth.uid));
     }
 
     // ── Markers of what was deleted ──────────────────────────────────────────────────
@@ -309,7 +366,10 @@ service cloud.firestore {
 
     match /work_notes_deleted/{id} {
       allow read: if isOwner();
-      allow create, update: if isOwner() && onlyKeys(['at']) && request.resource.data.at is string;
+      // A guest who deleted a note of theirs leaves one too, so Hamed's devices learn it is gone; only once it no longer exists.
+      allow create, update: if (isOwner() || isApprovedGuest()) && onlyKeys(['at'])
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && !exists(notePath(id));
     }
 
     match /work_projects_private_deleted/{id} {

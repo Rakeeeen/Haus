@@ -13,7 +13,7 @@ const SAVE_AFTER_MS = 800;
 /** One note: a title, the project it is about, and the page. Every change is saved a moment after it stops. */
 export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => void }> = ({ navigate }) => {
   const { id } = useParams<{ id: string }>();
-  const { notes, projects, ready, notesReady, loadNotes, updateNote, removeNote } = useWork();
+  const { role, notes, projects, ready, notesReady, loadNotes, updateNote, removeNote, canEditNote, canDeleteNote, canRequestEdit, myRequests, requestEdit } = useWork();
   useEffect(() => { loadNotes?.(); }, [loadNotes]);
   const note = notes.find((n) => n.id === id) ?? null;
 
@@ -21,6 +21,7 @@ export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => v
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<'saved' | 'saving'>('saved');
   const [sure, setSure] = useState(false);
+  const [asking, setAsking] = useState(false);
   const loaded = useRef<string | null>(null);
   const pending = useRef<{ title?: string; markdown?: string } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +54,10 @@ export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => v
     return () => { document.removeEventListener('visibilitychange', onHide); flush(); };
   }, [id]);
 
+  const editable = note ? canEditNote(note) : false;
+  const asked = !!note && myRequests.some((r) => r.noteId === note.id);
+  const author = note?.authorName ?? 'Hamed';
+
   const crumbs = [{ label: 'Home', to: 'home' }, { label: 'Tasks', to: 'work' }, { label: 'Notes', to: 'work/notes' }];
 
   if (ready && notesReady && !note) {
@@ -65,31 +70,48 @@ export const NotePage: React.FC<{ navigate: (to: string, replace?: boolean) => v
       navigate={navigate}
       crumbs={[...crumbs, { label: noteTitle({ title }) }]}
       title="Note"
-      actions={<span className="font-mono-main text-[12px] uppercase tracking-widest text-ink/35">{status === 'saving' ? 'Saving…' : 'Saved'}</span>}
+      actions={editable ? <span className="font-mono-main text-[12px] uppercase tracking-widest text-ink/35">{status === 'saving' ? 'Saving…' : 'Saved'}</span> : undefined}
     >
       <div className="card flex flex-col gap-6 max-w-[820px] w-full mx-auto !p-6 sm:!p-10">
         <input
           dir="auto"
           value={title}
-          onChange={(e) => { setTitle(e.target.value); queue({ title: e.target.value }); }}
+          readOnly={!editable}
+          onChange={(e) => { if (!editable) return; setTitle(e.target.value); queue({ title: e.target.value }); }}
           placeholder="Untitled"
           aria-label="Title"
           className="w-full bg-transparent outline-none font-sans-main text-3xl sm:text-4xl font-black leading-[1.5] py-1 placeholder:text-ink/20"
         />
-        <div className="max-w-[320px]">
-          <SelectMenu
-            ariaLabel="Project"
-            value={note.projectId ?? ''}
-            onChange={(v) => updateNote(note.id, { projectId: v || null })}
-            options={[{ value: '', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
-          />
-        </div>
-        <NoteEditor key={note.id} markdown={note.markdown} onChange={(markdown) => queue({ markdown })} />
-        <div className="flex justify-end pt-4 border-t border-ink/8">
-          <Button tone="danger" size="sm" onClick={() => (sure ? removeNote(note.id).then(() => navigate('work/notes', true)) : setSure(true))}>
-            {sure ? 'Sure? Delete' : 'Delete note'}
-          </Button>
-        </div>
+        {role === 'owner' ? (
+          <div className="max-w-[320px]">
+            <SelectMenu
+              ariaLabel="Project"
+              value={note.projectId ?? ''}
+              onChange={(v) => updateNote(note.id, { projectId: v || null })}
+              options={[{ value: '', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
+            />
+          </div>
+        ) : (
+          <p dir="auto" className="font-mono-main text-[12px] uppercase tracking-wider text-ink/40">{projects.find((p) => p.id === note.projectId)?.name ?? 'No project'}</p>
+        )}
+        {!editable && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-box bg-ink/5 px-4 py-3">
+            <p dir="auto" className="font-mono-main text-[13px] text-ink/60">
+              {asked ? `Waiting for ${author} to let you edit this note.` : `You can read this note. ${author} wrote it, so changing it needs their permission.`}
+            </p>
+            {canRequestEdit(note) && !asked && (
+              <Button size="sm" disabled={asking} onClick={() => { setAsking(true); requestEdit(note).finally(() => setAsking(false)); }}>Ask to edit</Button>
+            )}
+          </div>
+        )}
+        <NoteEditor key={note.id} markdown={note.markdown} editable={editable} onChange={(markdown) => queue({ markdown })} />
+        {canDeleteNote(note) && (
+          <div className="flex justify-end pt-4 border-t border-ink/8">
+            <Button tone="danger" size="sm" onClick={() => (sure ? removeNote(note.id).then(() => navigate('work/notes', true)) : setSure(true))}>
+              {sure ? 'Sure? Delete' : 'Delete note'}
+            </Button>
+          </div>
+        )}
       </div>
     </WorkShell>
   );

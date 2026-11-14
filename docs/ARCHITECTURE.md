@@ -181,7 +181,16 @@ and comments) and notes. Notion's sprints and the git field are left out.
   a table or a calendar; filters by day (Today follows the date by itself, or pick one), status, project and a search.
   Projects as cards (a column per client), a table grouped by status, or a timeline. The Home dock has a Tasks card
   (today's open tasks, with a tick to finish each).
-- **Notes** (`/work/notes`, Hamed's alone) are pages of Markdown in `work_notes`, each optionally about a project, listed by
+- **Who sees and changes a note.** A note with a project is read by that project's members; one with no project, by its author alone
+  (Hamed reads all). The readers are `viewerUids`, written onto the note from the project (`viewersOfNote`), kept right by Hamed's app
+  when the members change (`staleNoteViewers`, in `setSharing` and by a heal pass on his notes screen) — notes from before sharing
+  have none, so no guest reads them until then. A guest adds notes (`authorUid`, `authorName`), changes and deletes the ones they
+  wrote, and changes someone else's only once its author (or Hamed) put them in `editorUids`; who may is `canEditNote` /
+  `canDeleteNote` in `domain/work/notes.ts`, and `firestore.rules` enforces the same. A guest who can only read a note asks
+  (`note_edit_requests/<noteId>_<uid>`, `authorKey` = the author's uid or `owner`); allowing adds them to `editorUids` and deletes
+  the request (`NoteRequests` on the notes page). A guest reads the notes by `viewerUids array-contains` their uid (whole list,
+  once a notes screen asks); Hamed's are read by their changes only. Tests: `rules-tests/notes.rules.test.ts`.
+- **Notes** (`/work/notes`) are pages of Markdown in `work_notes`, each optionally about a project, listed by
   recency or by project and shown on a project's page. The page (`NoteEditor`, TipTap, loaded only when a note is opened) is
   Notion-like: "/" for blocks, the usual Markdown shortcuts, a small toolbar, and every block reads in its own direction
   (`dir="auto"`) so Arabic and English can follow each other. Markdown is what is stored (the imported notes too); a

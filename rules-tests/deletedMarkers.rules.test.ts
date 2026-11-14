@@ -52,9 +52,9 @@ describe('a deleted task\'s marker', () => {
   });
 });
 
-describe('a deleted note\'s or project\'s marker', () => {
+describe('a deleted project\'s marker', () => {
   it('is Hamed\'s alone', async () => {
-    for (const markers of ['work_notes_deleted', 'work_projects_deleted', 'work_projects_private_deleted']) {
+    for (const markers of ['work_projects_deleted', 'work_projects_private_deleted']) {
       await assertSucceeds(setDoc(doc(owner(), markers, 'n1'), at));
       await assertSucceeds(getDoc(doc(owner(), markers, 'n1')));
       await assertFails(setDoc(doc(guest(), markers, 'n2'), at));

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
-import { groupNotesByProject, noteTitle, notePreview, searchNotes, sortNotes } from '@/domain/work/notes';
+import { groupNotesByProject, noteAuthorKey, noteTitle, notePreview, searchNotes, sortNotes } from '@/domain/work/notes';
 import type { Note } from '@/domain/work/types';
 import { AutoHeight } from '@/ui/AutoHeight';
 import { Button } from '@/ui/Button';
@@ -11,20 +11,30 @@ import { Tabs } from '@/ui/Tabs';
 import { shortDate } from '@/features/work/components/chips';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
+import { NoteRequests } from '@/features/work/components/NoteRequests';
 
 type View = 'recent' | 'projects';
 
 /** A note as a row of a list: its title, the start of its text, and when it was last edited. */
-export const NoteRow: React.FC<{ note: Note; projectName: string | null; onOpen: () => void }> = ({ note, projectName, onOpen }) => (
+export const NoteRow: React.FC<{ note: Note; projectName: string | null; onOpen: () => void }> = ({ note, projectName, onOpen }) => {
+  const { me, canEditNote } = useWork();
+  // Whose it is, when it is not yours; and that you can only read it.
+  const byOther = noteAuthorKey(note) !== me;
+  return (
   <div onClick={onOpen} className="px-5 py-4 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors">
     <div className="flex items-baseline justify-between gap-4">
       <span dir="auto" className="font-sans-main text-[16px] font-bold leading-relaxed text-left truncate">{noteTitle(note)}</span>
       <span className="font-mono-main text-[11px] uppercase tracking-wider text-ink/35 shrink-0">{shortDate(note.updatedAt.slice(0, 10))}</span>
     </div>
     <p dir="auto" className="font-mono-main text-[13px] text-ink/45 mt-1 line-clamp-2">{notePreview(note.markdown) || 'Empty'}</p>
-    {projectName && <p dir="auto" className="font-mono-main text-[11px] uppercase tracking-wider text-ink/35 mt-1.5">{projectName}</p>}
+    {(projectName || byOther || !canEditNote(note)) && (
+      <p dir="auto" className="font-mono-main text-[11px] uppercase tracking-wider text-ink/35 mt-1.5">
+        {[projectName, byOther ? `by ${note.authorName ?? 'Hamed'}` : null, canEditNote(note) ? null : 'view only'].filter(Boolean).join(' · ')}
+      </p>
+    )}
   </div>
-);
+  );
+};
 
 export const Notes: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {
   const { notes, projects, ready, notesReady, loadNotes, addNote } = useWork();
@@ -50,6 +60,7 @@ export const Notes: React.FC<{ navigate: (to: string) => void }> = ({ navigate }
       <Tabs options={[{ value: 'recent', label: 'Recent' }, { value: 'projects', label: 'By project' }]} value={view} onChange={setView} layoutId="work-notes-view" ruled />
       <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes" className="!w-64 !py-2 !text-[14px]" aria-label="Search notes" />
       <hr className="border-0 border-t border-ink/10 w-full my-2" />
+      <NoteRequests />
 
       {!(ready && notesReady) ? (
         <WorkLoading />

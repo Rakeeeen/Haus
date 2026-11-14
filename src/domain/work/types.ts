@@ -87,12 +87,35 @@ export interface TaskComment {
   at: string;
 }
 
-/** A note: a page of writing, kept as Markdown, optionally about a project. Hamed's alone. */
+/**
+ * A note: a page of writing, kept as Markdown, optionally about a project. Its project's members see it; a note with no project
+ * is its author's alone. Its author (and Hamed) change it; anyone else only with permission (`editorUids`, see `NoteEditRequest`).
+ */
 export interface Note {
   id: string;
   title: string;
   markdown: string;
   projectId: string | null;
+  /** The guest who wrote it; absent when Hamed did (so Hamed's notes carry no author key, and the rules read them as 'owner'). */
+  authorUid?: string;
+  /** The author's first name, for the list (a guest can't read the guest list). */
+  authorName?: string;
+  /** The guests who may read it, written from the project's members (firestore.rules checks it). Hamed reads everything. */
+  viewerUids: string[];
+  /** The guests, besides its author, who were given permission to change it. */
+  editorUids: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** A guest asking the author of a note (or Hamed, for his) for permission to change it. Its id is `<noteId>_<requesterUid>`. */
+export interface NoteEditRequest {
+  id: string;
+  noteId: string;
+  noteTitle: string;
+  requesterUid: string;
+  requesterName: string;
+  /** Who can answer: the author's uid, or `OWNER_KEY` for a note Hamed wrote. */
+  authorKey: string;
+  at: string;
 }
