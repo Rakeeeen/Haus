@@ -1,18 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
-import { readStored, writeStored } from '@/data/dataScope';
+import { currentDayRole, readStored, writeStored } from '@/data/dataScope';
 import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
-import { getDayMoments } from '@/domain/devotion/prayer';
 import { closeOutFocusDay, weekOrSeed, type FocusDayStats, type FocusWeekDay } from '@/domain/focus/session';
-import { archivedDayKey } from '@/domain/water';
+import { closedWaterDayKey, focusCloseOut, type DayRole } from '@/domain/dayRules';
 
 /** How often it checks whether a close-out is due. */
 const CHECK_EVERY_MS = 2 * 60 * 1000;
 
 /**
  * Rolls the day over: archives water into history and zeroes today's count at the
- * real Maghrib time, and archives/zeroes focus sessions at the real Isha time.
+ * real Maghrib time, and archives/zeroes focus sessions at the real Isha time — Hamed's day.
+ * A guest's day is the calendar day: both close at midnight (`domain/dayRules.ts`).
  * Both are single close-out actions now — Water is locked Maghrib→Fajr and Focus is
  * locked Isha→Fajr (see Water.tsx / Pomodoro.tsx), so nothing can accumulate after
  * either lock kicks in and there's no separate "merge the leftover" step needed.
@@ -20,7 +20,7 @@ const CHECK_EVERY_MS = 2 * 60 * 1000;
  * Not calendar-related — it used to also cache "next sleep time" from a Google
  * Calendar feed for a since-removed Calendar page; that fetch is gone.
  */
-export const DailyResetManager: React.FC = () => {
+export const DailyResetManager: React.FC<{ role?: DayRole }> = ({ role = currentDayRole() }) => {
   // Guards against double-firing when Firebase hasn't confirmed lastResetDate yet
   const firedResetMarkerRef = useRef<string>('');
   const firedPomoIshaMarkerRef = useRef<string>('');
@@ -49,7 +49,7 @@ export const DailyResetManager: React.FC = () => {
 
     // Water: at Maghrib the day's glasses are archived under that day and the counter is zeroed.
     const checkWaterReset = () => {
-      const marker = archivedDayKey(prayerTimes, new Date());
+      const marker = closedWaterDayKey(role, prayerTimes, new Date());
       if (lastResetDate === marker || firedResetMarkerRef.current === marker) return;
       firedResetMarkerRef.current = marker;
       // The marker is written to storage at once (value + updatedAt, like useFirebaseSync's setValue), so a refresh in the
@@ -67,19 +67,17 @@ export const DailyResetManager: React.FC = () => {
     // locked Isha→Fajr (Pomodoro.tsx), so nothing can accumulate afterwards and there is no "merge the leftover" step.
     // Without loaded prayer times it uses the same fallbacks as the lock itself.
     const checkFocusReset = () => {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toDateString();
-      if (now.getTime() < getDayMoments(prayerTimes, now).isha) return;
-      if (lastPomoIshaResetDate === today || firedPomoIshaMarkerRef.current === today) return;
-      firedPomoIshaMarkerRef.current = today;
-      writeStored('system_last_pomo_reset_date', today);
+      const close = focusCloseOut(role, prayerTimes, new Date());
+      if (!close.due) return;
+      if (lastPomoIshaResetDate === close.key || firedPomoIshaMarkerRef.current === close.key) return;
+      firedPomoIshaMarkerRef.current = close.key;
+      writeStored('system_last_pomo_reset_date', close.key);
 
-      const dayIndex = (now.getDay() + 6) % 7; // Mon = 0 … Sun = 6
-      const { archived, nextWeek } = closeOutFocusDay(weekOrSeed(readStored<FocusWeekDay[] | null>('pomodoro_week', null), POMODORO_WEEKLY_MOCK), dayIndex, POMODORO_WEEKLY_MOCK);
-      if (archived) setPomoHistory((prev) => ({ ...(prev || {}), [today]: archived }));
+      const { archived, nextWeek } = closeOutFocusDay(weekOrSeed(readStored<FocusWeekDay[] | null>('pomodoro_week', null), POMODORO_WEEKLY_MOCK), close.dayIndex, POMODORO_WEEKLY_MOCK);
+      if (archived) setPomoHistory((prev) => ({ ...(prev || {}), [close.key]: archived }));
       setPomoSessions(0);
       setPomoWeek(nextWeek);
-      setLastPomoIshaResetDate(today);
+      setLastPomoIshaResetDate(close.key);
     };
 
     const runChecks = () => {
@@ -94,7 +92,7 @@ export const DailyResetManager: React.FC = () => {
     lastResetDate, lastPomoIshaResetDate,
     setGlasses, setHistory, setLastResetDate, setLastPomoIshaResetDate, setPomoSessions, setPomoWeek, setPomoHistory,
     glassesReady, historyReady, pomoReady, pomoWeekReady, pomoHistoryReady, lastResetDateReady, lastPomoIshaResetDateReady,
-    prayerTimes
+    prayerTimes, role
   ]);
 
   return null;

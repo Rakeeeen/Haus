@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button, IconButton } from '@/ui/Button';
 import { IconPause as Pause, IconPlay as Play, IconRotateCcw as RotateCcw } from '@/ui/icons';
-import { isFocusNightLocked } from '@/domain/devotion/prayer';
+import { isFocusNightLockedFor } from '@/domain/dayRules';
+import { currentDayRole } from '@/data/dataScope';
 import { useFridayGate } from '@/data/useFridayGate';
 import { usePomodoro } from '@/data/usePomodoro';
 import { usePrayer } from '@/data/usePrayer';
@@ -16,7 +17,7 @@ export const FocusControls: React.FC = () => {
   const { friday, includedToday } = useFridayGate();
   const fridayLocked = friday && !includedToday;
   const { times } = usePrayer();
-  const nightLocked = isFocusNightLocked(times);
+  const nightLocked = isFocusNightLockedFor(currentDayRole(), times);
 
   const atTheEnd = isOvertime || (mode === 'break' && timeLeft === 0);
 

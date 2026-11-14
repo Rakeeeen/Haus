@@ -3,6 +3,7 @@ import { Button } from '@/ui/Button';
 import { NAME } from '@/constants/brand';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { usePrayer } from '@/data/usePrayer';
+import { currentDayRole } from '@/data/dataScope';
 import { useFridayGate } from '@/data/useFridayGate';
 import { niceTicks } from '@/lib/charts';
 import { ChartTooltip } from '@/ui/ChartTooltip';
@@ -11,8 +12,8 @@ import {
   IconRotateCcw as RotateCcw, IconUndo2 as Undo2, IconPlus as Plus,
 } from '@/ui/icons';
 import { FilterSelect, PERIOD_OPTIONS } from '@/ui/FilterSelect';
-import { isWaterClosed } from '@/domain/devotion/prayer';
-import { archivedDayKey, applyLateGlass } from '@/domain/water';
+import { isWaterClosedFor, closedWaterDayKey } from '@/domain/dayRules';
+import { applyLateGlass } from '@/domain/water';
 import { buildPeriodReports, periodMultiplier, type ReportView } from '@/domain/report';
 import { DotMatrixText } from '@/ui/DotMatrixText';
 import { PageHeader } from '@/ui/PageHeader';
@@ -42,7 +43,8 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const isLocked = isWaterClosed(times, now);
+  const role = currentDayRole();
+  const isLocked = isWaterClosedFor(role, times, now);
   const { friday, includedToday, includeToday } = useFridayGate(now);
   const fridayLocked = friday && !includedToday;
 
@@ -52,7 +54,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   };
 
   // A glass drunk while water is closed still belongs to the day that just closed out.
-  const closedDayKey = archivedDayKey(times, now);
+  const closedDayKey = closedWaterDayKey(role, times, now);
   // While water is closed the live counter is zeroed and the day's tally sits in history.
   const shownGlasses = isLocked ? glasses + (history[closedDayKey] || 0) : glasses;
   const addLateGlass = () => {

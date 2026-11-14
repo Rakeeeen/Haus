@@ -18,9 +18,12 @@ import { useWhoseTasks } from '@/data/useWhoseTasks';
 import { useWorkOptional } from '@/data/useWork';
 import type { Viewer } from '@/domain/access';
 import { getClockParts, HOME_TIME_ZONE } from '@/domain/clock';
-import { computeNextPrayer, getDayMoments, isFocusNightLocked, isWaterClosed } from '@/domain/devotion/prayer';
+import { computeNextPrayer, getDayMoments } from '@/domain/devotion/prayer';
+import { isFocusNightLockedFor, isWaterClosedFor } from '@/domain/dayRules';
 import { getDateParts } from '@/domain/month';
 import { filterTasks, sortTasks } from '@/domain/work/tasks';
+import { lookerKey, peopleOf } from '@/domain/work/people';
+import type { Task } from '@/domain/work/types';
 import { BigCard } from '@/features/home/BigCard';
 import { buildDockCards } from '@/features/home/dockCards';
 import { Dock } from '@/features/home/Dock';
@@ -95,8 +98,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
 
   // Water closes at the real Maghrib and reopens at the real Fajr; a new focus session can't start between Isha and Fajr
   // (the Pomodoro page enforces the same, and the card's Start button is a second way in).
-  const waterLocked = isWaterClosed(times, now);
-  const focusNightLocked = isFocusNightLocked(times, now);
+  const waterLocked = isWaterClosedFor(isOwner ? 'owner' : 'guest', times, now);
+  const focusNightLocked = isFocusNightLockedFor(isOwner ? 'owner' : 'guest', times, now);
   const { friday, includedToday } = useFridayGate(now);
   const focusFridayLocked = friday && !includedToday;
   const beforeFajr = now.getTime() < getDayMoments(times, now).fajr;
@@ -119,6 +122,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
     journalEntry,
   });
   const avatar = useAvatar();
+  const lookerPhoto = isOwner ? avatar.avatarUrl ?? viewer.photoUrl : viewer.photoUrl;
+  const peopleOfTask = (task: Task) => peopleOf(task, work?.projects ?? [], { key: lookerKey(isOwner, work?.guestUid ?? null), name: viewer.firstName, photoUrl: lookerPhoto });
   const [isDark, setIsDark] = useState(isDarkTheme);
   const toggleTheme = () => { setTheme(!isDark); setIsDark(!isDark); };
   const [showFingerprint, setShowFingerprint] = useState(false);
@@ -239,7 +244,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             />
           )}
           {displayedCardId === 'tasks' && (
-            <TasksCardBody today={dueToday} projectName={projectName} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
+            <TasksCardBody today={dueToday} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
           )}
           {displayedCardId === 'finance' && <FinanceCardBody totalPhysical={totalPhysical} />}
           {displayedCardId === 'time' && <TimeCardBody clock={clock} />}

@@ -1,5 +1,6 @@
 import { doc, type DocumentReference } from 'firebase/firestore';
 import { db } from '@/data/firebase';
+import type { DayRole } from '@/domain/dayRules';
 
 /**
  * Where the signed-in person's dashboard values live. The owner's stay exactly where they always were
@@ -16,6 +17,11 @@ let scope: DataScope = { kind: 'none' };
 
 export function setDataScope(next: DataScope) {
   scope = next;
+}
+
+/** Whose day rules apply: a guest's day closes at midnight, Hamed's follows the prayer times (domain/dayRules.ts). */
+export function currentDayRole(): DayRole {
+  return scope.kind === 'guest' ? 'guest' : 'owner';
 }
 
 /** The Firestore document holding `key`, or null when this scope has no Firestore access. */

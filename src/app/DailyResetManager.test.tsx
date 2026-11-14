@@ -25,7 +25,7 @@ vi.mock('@/data/usePrayer', () => ({ usePrayer: () => ({ times: undefined }) }))
 
 const seed = (key: string, value: unknown) => { store.set(key, value); window.localStorage.setItem(key, JSON.stringify(value)); };
 const week = (sessions: number[]) => sessions.map((s, i) => ({ day: POMODORO_WEEKLY_MOCK[i].day, sessions: s, minutes: s * 25 }));
-const run = () => { render(<DailyResetManager />); };
+const run = (role?: 'owner' | 'guest') => { render(<DailyResetManager role={role} />); };
 
 beforeEach(() => {
   store.clear();
@@ -104,5 +104,35 @@ describe('the Isha focus close-out', () => {
     seed('pomodoro_week', week([4, 0, 0, 0, 0, 0, 0]));
     act(() => { vi.advanceTimersByTime(10 * 60 * 1000); });
     expect((store.get('pomodoro_week') as Array<{ sessions: number }>)[0].sessions).toBe(4);
+  });
+});
+
+describe('a guest\'s day closes at midnight', () => {
+  const yesterday = new Date('2026-11-08T12:00:00').toDateString();
+
+  it('archives yesterday\'s glasses and zeroes the counter just after midnight, not at Maghrib', () => {
+    vi.setSystemTime(new Date('2026-11-09T00:30:00'));
+    seed('hydration_glasses', 6);
+    run('guest');
+    expect(store.get('hydration_history')).toEqual({ [yesterday]: 6 });
+    expect(store.get('hydration_glasses')).toBe(0);
+    expect(store.get('system_last_reset_date')).toBe(yesterday);
+  });
+
+  it('does not touch the water at Maghrib', () => {
+    vi.setSystemTime(new Date('2026-11-09T18:30:00'));
+    seed('system_last_reset_date', yesterday); // the midnight close-out already ran today
+    seed('hydration_glasses', 5);
+    run('guest');
+    expect(store.get('hydration_glasses')).toBe(5);
+  });
+
+  it('closes yesterday\'s focus slot after midnight, not at Isha', () => {
+    vi.setSystemTime(new Date('2026-11-09T00:30:00')); // Monday: the day that closed is Sunday = slot 6
+    seed('pomodoro_week', week([0, 0, 0, 0, 0, 0, 3]));
+    seed('pomodoro_sessions', 3);
+    run('guest');
+    expect(store.get('pomodoro_history')).toEqual({ [yesterday]: { sessions: 3, minutes: 75 } });
+    expect(store.get('pomodoro_sessions')).toBe(0);
   });
 });
