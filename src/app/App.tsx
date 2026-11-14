@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Home } from '@/features/home/Home';
 import { Login } from '@/features/auth/Login';
@@ -22,26 +22,16 @@ import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { usePressHold } from '@/ui/usePressHold';
+import { Water, Pomodoro, Finance, WorkHub, Tasks, Projects, Notes, NotePage, Activity, ProjectPage, preloadPages } from '@/app/pages';
 import '@/styles/global.css';
-
-// The other pages load when they are first opened, so the first screen doesn't carry the charts
-// (Recharts) and everything Finance needs.
-const Water = lazy(() => import('@/features/water/Water').then((m) => ({ default: m.Water })));
-const Pomodoro = lazy(() => import('@/features/focus/Pomodoro').then((m) => ({ default: m.Pomodoro })));
-const Finance = lazy(() => import('@/features/finance/Finance').then((m) => ({ default: m.Finance })));
-const WorkHub = lazy(() => import('@/features/work/WorkHub').then((m) => ({ default: m.WorkHub })));
-const Tasks = lazy(() => import('@/features/work/Tasks').then((m) => ({ default: m.Tasks })));
-const Projects = lazy(() => import('@/features/work/Projects').then((m) => ({ default: m.Projects })));
-const Notes = lazy(() => import('@/features/work/Notes').then((m) => ({ default: m.Notes })));
-const NotePage = lazy(() => import('@/features/work/NotePage').then((m) => ({ default: m.NotePage })));
-const Activity = lazy(() => import('@/features/work/Activity').then((m) => ({ default: m.Activity })));
-const ProjectPage = lazy(() => import('@/features/work/ProjectPage').then((m) => ({ default: m.ProjectPage })));
 
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <motion.div
     initial={{ opacity: 0, y: 15 }}
     animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -15 }}
+    // The old page only fades (and quickly): AnimatePresence waits for every exit animation, and a spring to y: -15 took about half
+    // a second to settle before the next page could even start. The new page still arrives on the system's spring.
+    exit={{ opacity: 0, transition: { duration: 0.12, ease: 'easeOut' } }}
     transition={{ ...SPRING, opacity: { duration: 0.2 } }}
     className="w-full"
   >
@@ -60,11 +50,14 @@ const AppRoutes: React.FC = () => {
   const nav = (to: string, replace = false) => {
     const path = to === 'home' ? '/' : `/${to}`;
     navigate(path, { replace });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Derive current page from location
   const currentPage = location.pathname.replace('/', '') || 'home';
+
+  // Once someone is in and the first screen is up, the other pages' code is fetched in the background.
+  const signedInAs = user ? role : 'none';
+  useEffect(() => { if (signedInAs === 'owner' || signedInAs === 'guest') preloadPages(signedInAs === 'owner'); }, [signedInAs]);
 
   if (!user) {
     return (
@@ -116,7 +109,8 @@ const AppRoutes: React.FC = () => {
   }
 
   const routes = (
-    <AnimatePresence mode="wait">
+    // The page goes back to the top once the old one has gone — not in a long smooth scroll beside the swap.
+    <AnimatePresence mode="wait" onExitComplete={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior })}>
       <Routes>
         <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
         <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />

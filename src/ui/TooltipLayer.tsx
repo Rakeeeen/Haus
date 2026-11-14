@@ -20,18 +20,24 @@ export const TooltipLayer = () => {
   useEffect(() => {
     let current: Element | null = null;
     let timer = 0;
+    let frame = 0;
+    let last: { x: number; y: number } | null = null;
 
     const hide = () => {
+      window.cancelAnimationFrame(frame);
+      frame = 0;
       window.clearTimeout(timer);
       current = null;
       setTip(null);
       setPos(null);
     };
 
-    // elementFromPoint is cheap, and nothing happens unless the element under the pointer changes.
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') return;
-      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-tip]') ?? null;
+    // The element under the pointer is looked up once a frame, not on every move event: `elementFromPoint` makes the browser
+    // bring layout up to date, and a mouse reports many moves per frame.
+    const look = () => {
+      frame = 0;
+      if (!last) return;
+      const el = document.elementFromPoint(last.x, last.y)?.closest('[data-tip]') ?? null;
       if (el === current) return;
       window.clearTimeout(timer);
       current = el;
@@ -39,6 +45,11 @@ export const TooltipLayer = () => {
       setPos(null);
       const text = el?.getAttribute('data-tip');
       if (el && text) timer = window.setTimeout(() => setTip({ text, rect: el.getBoundingClientRect() }), SHOW_AFTER_MS);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return;
+      last = { x: e.clientX, y: e.clientY };
+      if (!frame) frame = window.requestAnimationFrame(look);
     };
 
     window.addEventListener('pointermove', onMove, { passive: true });
@@ -52,6 +63,7 @@ export const TooltipLayer = () => {
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('blur', hide);
       document.removeEventListener('keydown', hide);
+      window.cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };
   }, []);
