@@ -67,7 +67,7 @@ class Pen:
             trem=ln(l)*2.6*s.wob
             cx,cy=p[0]+nx*trem,p[1]+ny*trem
             ends=1 if closed else min(1,taper+(1-taper)*min(l,tot-l)/60)
-            hw=w/2*ends*(1+.15*wn(l))
+            hw=w/2*ends*(1+.05*wn(l))
             Lf.append((cx+nx*(hw+en(l)*.45*s.wob),cy+ny*(hw+en(l)*.45*s.wob)))
             Rt.append((cx-nx*(hw+en2(l)*.45*s.wob),cy-ny*(hw+en2(l)*.45*s.wob)))
         if closed:

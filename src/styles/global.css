@@ -435,6 +435,8 @@ body.dark-theme [data-active] {
    hidden with `visibility`, not `opacity`: fading a group needs the browser to draw it off to the side
    first, which can show as a flash. With no clock running (reduced motion, a hidden tab, a paused icon)
    the attributes are absent and the first redraw simply stays, so an icon is never empty. */
+/* Edges drawn exactly, not snapped or softened — the icons are thin lines at small sizes. */
+.sketch-boil path { shape-rendering: geometricPrecision; }
 .sketch-boil { visibility: hidden; }
 .sketch-boil[data-f="0"] { visibility: visible; }
 html[data-boil-a] .sketch-boil[data-t="a"],

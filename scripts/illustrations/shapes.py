@@ -12,7 +12,7 @@ def disc(c,r,n=10,sq=1):
 # The same hand at icon size (20 and 36 px): a thick line, no hands, no small detail. Each
 # returns its still parts per seed, so the build can make a few slightly different redraws
 # for the line boil, and the parts that move are drawn on their own, at rest.
-ICON_W = 74
+ICON_W = 84
 
 def water_icon(seed):
     p = Pen(seed, w=ICON_W, wob=1.6)
@@ -219,4 +219,22 @@ def tasks_icon(seed):
 
 ICONS.update({
     'tasks': {'still': tasks_icon, 'parts': {}},
+})
+
+
+# An apple for good news (the Tasks card when everything is done): an apple a day.
+APPLE = [(500, 290), (640, 235), (790, 290), (860, 440), (840, 630), (740, 820), (620, 900),
+         (500, 872), (380, 900), (260, 820), (160, 630), (140, 440), (210, 290), (360, 235)]
+
+def cheer_icon(seed):
+    p = Pen(seed, w=ICON_W, wob=1.6)
+    p.blob([(x + 50, y + 50) for x, y in APPLE], rough=10, corner=.2)
+    _poly(p, APPLE)
+    p.line([(500, 270), (520, 170), (566, 92)], w=64)          # stem
+    _poly(p, [(590, 200), (690, 110), (810, 96), (800, 186), (700, 232)], w=58)  # leaf
+    p.line([(262, 450), (268, 540), (306, 622)], w=50)          # shine
+    return p
+
+ICONS.update({
+    'cheer': {'still': cheer_icon, 'parts': {}},
 })

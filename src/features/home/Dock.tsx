@@ -6,6 +6,8 @@ import { dockPose, SPRING } from '@/ui/springPose';
 import { MaskedValue, SidebarActiveVector } from '@/features/home/components/visuals';
 import type { CardId } from '@/features/home/useCardSelection';
 import type { DockTouch } from '@/features/home/useDockTouch';
+import type { TaskProgress } from '@/domain/work/progress';
+import { TaskDots } from '@/features/home/components/TaskDots';
 
 /** One small card of the dock. */
 export interface DockCard {
@@ -17,6 +19,8 @@ export interface DockCard {
   /** The big number; null for Time, which draws its own dotted digits. */
   metric: string | null;
   subText: string;
+  /** Tasks only: the dots under the counter. */
+  dots?: TaskProgress;
 }
 
 const CARD_HEIGHT = 124;
@@ -120,6 +124,8 @@ export const Dock: React.FC<{
                         <PixelDigits mm={clock.hour} ss={clock.minute} color="var(--ink)" height="14px" flush />
                         <span className="font-mono-main text-[9px] font-bold leading-none">{clock.period}</span>
                       </span>
+                    ) : card.dots ? (
+                      <TaskDots progress={card.dots} />
                     ) : (
                       <span className="font-mono-main text-[16px] lg:text-[18px] font-black block truncate">
                         {card.id === 'finance' && totalPhysical > 0 ? <MaskedValue>{card.metric}</MaskedValue> : card.metric}

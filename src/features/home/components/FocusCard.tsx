@@ -100,7 +100,7 @@ export const FocusCardBody: React.FC<{
         <div>
           <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">{`YOUR FOCUS`}</h2>
         </div>
-        <div className="text-ink opacity-60">
+        <div className="text-ink">
           <FocusVector size={36} paused={false} />
         </div>
       </div>

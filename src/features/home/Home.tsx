@@ -21,7 +21,9 @@ import { getClockParts, HOME_TIME_ZONE } from '@/domain/clock';
 import { computeNextPrayer, getDayMoments } from '@/domain/devotion/prayer';
 import { isFocusNightLockedFor, isWaterClosedFor } from '@/domain/dayRules';
 import { getDateParts } from '@/domain/month';
-import { filterTasks, sortTasks } from '@/domain/work/tasks';
+import { dayKey, filterTasks, sortTasks } from '@/domain/work/tasks';
+import { oldestCarried, taskProgress } from '@/domain/work/progress';
+import { useCheer } from '@/features/home/useCheer';
 import { lookerKey, peopleOf } from '@/domain/work/people';
 import type { Task } from '@/domain/work/types';
 import { BigCard } from '@/features/home/BigCard';
@@ -73,10 +75,21 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const work = useWorkOptional();
   // Whose tasks the card lists is chosen on the Tasks pages (one remembered choice); the card just follows it.
   const [whose] = useWhoseTasks();
+  // "Today" is the device's calendar day. The list is worked out again when the data or the choice changes — and when the day
+  // turns (a tab left open overnight, or a phone resuming the next morning), which it used to miss: it kept yesterday's list
+  // until Home was opened afresh.
+  const today = dayKey(now);
   const dueToday = useMemo(
-    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: forMeOf(whose, work.me) })) : []),
-    [work, whose],
+    () => (work ? sortTasks(filterTasks(work.tasks, { day: { kind: 'today' }, statuses: ['todo', 'doing'], forMe: forMeOf(whose, work.me) }, now)) : []),
+    // `now` itself changes every minute; only the day matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [work, whose, today],
   );
+  // The dots under the counter, the old task shown when today is clear, and the line said when nothing at all is left.
+  const forMe = work ? forMeOf(whose, work.me) : undefined;
+  const progress = useMemo(() => taskProgress(work?.tasks ?? [], forMe, now), [work, forMe, today]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const oldTask = useMemo(() => (dueToday.length === 0 ? oldestCarried(work?.tasks ?? [], forMe, now) : null), [work, forMe, dueToday, today]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const cheer = useCheer(work?.ready ? dueToday.length === 0 && oldTask === null : null);
   const projectName = (id: string | null) => work?.projects.find((p) => p.id === id)?.name ?? null;
 
   const [glasses, setGlasses] = useFirebaseSync<number>('hydration_glasses', 0);
@@ -157,6 +170,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
     isOwner,
     glasses,
     dueToday,
+    taskProgress: progress,
     totalPhysical,
     focus: { running: pomodoro.running, overtime: pomodoro.isOvertime, paused: focusPaused, mode: pomodoro.mode, timeLeft: pomodoro.timeLeft, overtimeSeconds: pomodoro.overtime, minutes: focusMinutes, hours: focusHours },
   });
@@ -244,7 +258,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             />
           )}
           {displayedCardId === 'tasks' && (
-            <TasksCardBody today={dueToday} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
+            <TasksCardBody today={dueToday} oldTask={oldTask} ready={!!work?.ready} cheer={cheer} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
           )}
           {displayedCardId === 'finance' && <FinanceCardBody totalPhysical={totalPhysical} />}
           {displayedCardId === 'time' && <TimeCardBody clock={clock} />}

@@ -1,4 +1,5 @@
 import type { Task } from '@/domain/work/types';
+import type { TaskProgress } from '@/domain/work/progress';
 import { FinanceVector, FocusVector, TasksVector, TimeVector, WaterVector } from '@/features/home/components/visuals';
 import type { DockCard } from '@/features/home/Dock';
 
@@ -17,8 +18,8 @@ export interface FocusState {
 }
 
 /** The small cards, in the order they are stacked — Water, Tasks, Focus, Finance, Time. A guest has no Finance. */
-export function buildDockCards(input: { isOwner: boolean; glasses: number; dueToday: readonly Task[]; focus: FocusState; totalPhysical: number }): DockCard[] {
-  const { isOwner, glasses, dueToday, focus, totalPhysical } = input;
+export function buildDockCards(input: { isOwner: boolean; glasses: number; dueToday: readonly Task[]; taskProgress: TaskProgress; focus: FocusState; totalPhysical: number }): DockCard[] {
+  const { isOwner, glasses, dueToday, taskProgress, focus, totalPhysical } = input;
   const focusMetric = focus.running || focus.overtime || focus.paused
     ? (focus.overtime
         ? `+${Math.floor(focus.overtimeSeconds / 60)}m`
@@ -26,7 +27,7 @@ export function buildDockCards(input: { isOwner: boolean; glasses: number; dueTo
     : `${focus.minutes > 0 ? focus.hours : '0'}h`;
   const cards: DockCard[] = [
     { id: 'water', title: 'Water', Vector: WaterVector, route: 'water', metric: `${glasses} / 12`, subText: 'GLASSES TODAY' },
-    { id: 'tasks', title: 'Tasks', Vector: TasksVector, route: 'work', metric: String(dueToday.length), subText: 'DUE TODAY' },
+    { id: 'tasks', title: 'Tasks', Vector: TasksVector, route: 'work', metric: String(dueToday.length), subText: 'DUE TODAY', dots: taskProgress },
     {
       id: 'pomodoro', title: 'Your Focus', Vector: FocusVector, route: 'pomodoro', metric: focusMetric,
       subText: focus.overtime ? 'OVERTIME' : focus.paused ? 'PAUSED' : focus.running ? focus.mode.toUpperCase() : 'FOCUSED TODAY',

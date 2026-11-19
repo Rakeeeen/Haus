@@ -5,8 +5,8 @@ sys.path.insert(0, HERE)
 import draw
 from draw import path_from
 
-# At 20-36 px a canvas unit is 0.02-0.04 px, so 2.5 units of simplification can't be seen.
-draw.EPS = 4
+# Fine enough that curves keep their shape at the largest size an icon is drawn (96 px: a unit is 0.2 px).
+draw.EPS = 2
 from shapes import ICONS, BOIL_SEEDS, WATER_INSIDE, HOURGLASS_TOP, HOURGLASS_BOTTOM
 
 def layers(pen):
