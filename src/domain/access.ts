@@ -41,6 +41,8 @@ export interface Viewer {
   firstName: string;
   /** Their Google photo, if they have one. */
   photoUrl: string | null;
+  /** Their Google email (what a person-specific setting, like an extra clock, is matched on). */
+  email?: string | null;
 }
 
 // ── Letting a guest in with a code ──────────────────────────────────────────────────────────────

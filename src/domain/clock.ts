@@ -19,8 +19,17 @@ export function getClockParts(timeZone: string, now: Date = new Date()): ClockPa
   return { hour: part('hour'), minute: part('minute'), period: part('dayPeriod') };
 }
 
-/** The five other zones, as the Home Time card lays them out. */
-export type WorldClockId = 'london' | 'dubai' | 'australia' | 'saudi' | 'oman';
+/** The other zones, as the Home Time card lays them out: five for everyone, and `germany` for those it is given to (`extraClocksFor`). */
+export type WorldClockId = 'london' | 'dubai' | 'australia' | 'saudi' | 'oman' | 'germany';
+
+/**
+ * Who sees Germany's clock: Mohamed Wael alone, found by the SHA-256 of his email (see lib/hashText.ts) — the page's code is public, and
+ * his address doesn't belong in it. Everyone else, Hamed included, keeps the usual five.
+ */
+const GERMANY_CLOCK_FOR: readonly string[] = ['867347ff7c0e2b29a868f540c4ced646a915339788a7ff5fdd2bad8847e74c38'];
+
+/** Clocks beyond the usual five, for the viewer whose email hashes to `hash` (null while it isn't known yet). */
+export const extraClocksFor = (hash: string | null): WorldClockId[] => (hash && GERMANY_CLOCK_FOR.includes(hash) ? ['germany'] : []);
 
 export interface ClockCell { id: WorldClockId; col: number; row: number }
 
@@ -42,12 +51,13 @@ export function clockRowsThatFit(available: number, rowHeight: number, gap: numb
  * and Oman running left along the bottom row. A shorter card keeps all five: the top of the stack moves down into the
  * bottom row, London first and then Dubai, so with `rows` rows the stack has `rows - 1` clocks above the bottom row
  * and the bottom row grows to the left. Columns are counted from the left, so the stack stays at the right edge.
+ * `extra` are clocks for this viewer alone: they join the left end of the bottom row, so the stack and the usual order don't move.
  */
-export function clockLayout(rows: number): { columns: number; cells: ClockCell[] } {
+export function clockLayout(rows: number, extra: readonly WorldClockId[] = []): { columns: number; cells: ClockCell[] } {
   const count = Math.max(1, Math.min(MAX_CLOCK_ROWS, Math.round(rows)));
   const stacked: WorldClockId[] = ['london', 'dubai'].slice(MAX_CLOCK_ROWS - count) as WorldClockId[];
   const moved: WorldClockId[] = ['london', 'dubai'].slice(0, MAX_CLOCK_ROWS - count) as WorldClockId[];
-  const bottom: WorldClockId[] = [...moved, 'oman', 'saudi', 'australia'];
+  const bottom: WorldClockId[] = [...extra, ...moved, 'oman', 'saudi', 'australia'];
   const columns = bottom.length;
   return {
     columns,

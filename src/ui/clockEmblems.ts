@@ -57,6 +57,16 @@ export const CLOCK_EMBLEMS = {
     '...###.',
     '....##.',
   ],
+  // Brandenburg Gate — the chariot over the beam, and its columns
+  germany: [
+    '....####....',
+    '.....##.....',
+    '############',
+    '#.#.#..#.#.#',
+    '#.#.#..#.#.#',
+    '#.#.#..#.#.#',
+    '############',
+  ],
   // Southern Cross
   australia: [
     '.....#.....',

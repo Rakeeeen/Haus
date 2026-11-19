@@ -3,9 +3,9 @@ import { CLOCK_EMBLEMS } from '@/ui/clockEmblems';
 import { PixelDigits } from '@/ui/PixelDigits';
 import { PixelWallClock } from '@/ui/PixelWallClock';
 import { TimeVector } from '@/features/home/components/visuals';
-import { clockLayout, clockRowsThatFit, HOME_TIME_ZONE, MAX_CLOCK_ROWS, type ClockParts } from '@/domain/clock';
+import { clockLayout, clockRowsThatFit, HOME_TIME_ZONE, MAX_CLOCK_ROWS, type ClockParts, type WorldClockId } from '@/domain/clock';
 
-// Six zones, all the same size. Every clock keeps the same hands; what sets one apart is
+// Seven zones (Germany only for whoever it is given to), all the same size. Every clock keeps the same hands; what sets one apart is
 // the pixel landmark on its face plus its name.
 const WORLD_CLOCKS = {
   egypt:     { label: 'Egypt',     timeZone: HOME_TIME_ZONE },
@@ -14,6 +14,7 @@ const WORLD_CLOCKS = {
   saudi:     { label: 'Saudi',     timeZone: 'Asia/Riyadh' },
   oman:      { label: 'Oman',      timeZone: 'Asia/Muscat' },
   australia: { label: 'Australia', timeZone: 'Australia/Sydney' },
+  germany:   { label: 'Germany',   timeZone: 'Europe/Berlin' },
 } as const;
 
 type ClockId = keyof typeof WORLD_CLOCKS;
@@ -72,9 +73,9 @@ function useClockRows() {
  * (Egypt's clock and its dotted digits) bottom-left, the rest bottom-right where Add Glass
  * sits. Wraps and right-aligns when the card is too narrow for both.
  */
-export const TimeCardBody: React.FC<{ clock: ClockParts }> = ({ clock }) => {
+export const TimeCardBody: React.FC<{ clock: ClockParts; /** Clocks for this viewer alone, beyond the usual five. */ extraClocks?: readonly WorldClockId[] }> = ({ clock, extraClocks = [] }) => {
   const { rows, body, header, probe } = useClockRows();
-  const layout = clockLayout(rows);
+  const layout = clockLayout(rows, extraClocks);
   // min-h-0: the body must be able to be shorter than its content, or it could never tell that it doesn't fit.
   return (
     <div ref={body} className="flex-1 min-h-0 flex flex-col justify-between">

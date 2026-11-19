@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { clockLayout, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS, to12Hour, zoneOffsetMs } from '@/domain/clock';
+import { emailHash } from '@/lib/hashText';
+import { clockLayout, extraClocksFor, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS, to12Hour, zoneOffsetMs } from '@/domain/clock';
 
 describe('getClockParts', () => {
   // 2026-10-07 12:00 UTC
@@ -53,6 +54,11 @@ describe('clockLayout', () => {
       expect(clockLayout(rows).cells.map((c) => c.id).sort()).toEqual(['australia', 'dubai', 'london', 'oman', 'saudi']);
     }
   });
+  it('puts a clock given to one viewer at the left end of the bottom row, leaving the rest where they were', () => {
+    const cells = clockLayout(3, ['germany']).cells.map((c) => `${c.id}@${c.row},${c.col}`);
+    expect(clockLayout(3, ['germany']).columns).toBe(4);
+    expect(cells).toEqual(['london@1,4', 'dubai@2,4', 'germany@3,1', 'oman@3,2', 'saudi@3,3', 'australia@3,4']);
+  });
   it('treats out-of-range rows as the nearest valid number', () => {
     expect(at(0)).toEqual(at(1));
     expect(at(9)).toEqual(at(3));
@@ -79,4 +85,13 @@ describe('to12Hour', () => {
     expect(to12Hour(input)).toBe(expected);
   });
   it('leaves what is not a time alone', () => expect(to12Hour('soon')).toBe('soon'));
+});
+
+describe('extraClocksFor', () => {
+  it("gives Germany to the one hash it is meant for, and to nobody else", async () => {
+    expect(extraClocksFor('867347ff7c0e2b29a868f540c4ced646a915339788a7ff5fdd2bad8847e74c38')).toEqual(['germany']);
+    expect(extraClocksFor(await emailHash('someone@example.com'))).toEqual([]);
+    expect(extraClocksFor(await emailHash(null))).toEqual([]);
+    expect(extraClocksFor(null)).toEqual([]);
+  });
 });

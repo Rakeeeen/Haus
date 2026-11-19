@@ -17,7 +17,8 @@ import { forMeOf } from '@/domain/work/whose';
 import { useWhoseTasks } from '@/data/useWhoseTasks';
 import { useWorkOptional } from '@/data/useWork';
 import type { Viewer } from '@/domain/access';
-import { getClockParts, HOME_TIME_ZONE } from '@/domain/clock';
+import { extraClocksFor, getClockParts, HOME_TIME_ZONE, type WorldClockId } from '@/domain/clock';
+import { emailHash } from '@/lib/hashText';
 import { computeNextPrayer, getDayMoments } from '@/domain/devotion/prayer';
 import { isFocusNightLockedFor, isWaterClosedFor } from '@/domain/dayRules';
 import { getDateParts } from '@/domain/month';
@@ -65,6 +66,13 @@ const GLASSES_PER_DAY = 12;
  */
 export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const isOwner = viewer.role === 'owner';
+  // Clocks given to one person: matched on the hash of their email, worked out once.
+  const [extraClocks, setExtraClocks] = useState<WorldClockId[]>([]);
+  useEffect(() => {
+    let current = true;
+    void emailHash(viewer.email).then((hash) => { if (current) setExtraClocks(extraClocksFor(hash)); });
+    return () => { current = false; };
+  }, [viewer.email]);
   const reduceMotion = useReducedMotion();
   const now = useNow();
   useEffect(() => { document.title = NAME; }, []);
@@ -268,7 +276,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             <TasksCardBody today={dueToday} oldTask={oldTask} ready={!!work?.ready} cheer={cheer} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} onDelete={work?.deleteTaskWithUndo} canDelete={work?.canDeleteTask} onContextMenu={onTaskMenu} />
           )}
           {displayedCardId === 'finance' && <FinanceCardBody totalPhysical={totalPhysical} />}
-          {displayedCardId === 'time' && <TimeCardBody clock={clock} />}
+          {displayedCardId === 'time' && <TimeCardBody clock={clock} extraClocks={extraClocks} />}
         </BigCard>
       </main>
 

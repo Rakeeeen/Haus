@@ -114,7 +114,7 @@ const AppRoutes: React.FC = () => {
     // The page goes back to the top once the old one has gone — not in a long smooth scroll beside the swap.
     <AnimatePresence mode="wait" onExitComplete={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior })}>
       <Routes>
-        <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL }} /></AnimatedPage>} />
+        <Route path="/" element={<AnimatedPage><Home navigate={nav} viewer={{ role, firstName, photoUrl: user.photoURL, email: user.email }} /></AnimatedPage>} />
         <Route path="/water" element={<AnimatedPage><Water navigate={nav} /></AnimatedPage>} />
         <Route path="/pomodoro" element={<AnimatedPage><Pomodoro navigate={nav} /></AnimatedPage>} />
         {/* The work side is for everyone let in (a guest sees what is shared with them); finance is Hamed's alone. */}
