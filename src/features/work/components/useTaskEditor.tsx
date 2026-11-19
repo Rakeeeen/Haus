@@ -13,7 +13,7 @@ import { TaskModal, type Assignee, type TaskEditing } from '@/features/work/comp
  * Returns the opener and the modal to put on the page.
  */
 export function useTaskEditor(author: string, authorPhoto: string | null = null) {
-  const { role, guestUid, projects, tasks, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, removeTask } = useWork();
+  const { role, guestUid, projects, tasks, canEditTask, canDeleteTask, deleteTaskWithUndo, isProjectAdmin, addTask, updateTask, removeTask } = useWork();
   const [editing, setEditing] = useState<TaskEditing | null>(null);
   const { guests } = useGuests(role === 'owner');
 
@@ -74,6 +74,7 @@ export function useTaskEditor(author: string, authorPhoto: string | null = null)
         await updateTask(id, { ...draft, ...who(draft.assigneeUids, draft.projectIds[0]), ...(current ? moveToStatus(current, draft.status) : {}) });
       }}
       onDelete={removeTask}
+      onSwipeDelete={(task) => { setEditing(null); deleteTaskWithUndo(task); }}
     />
   );
 

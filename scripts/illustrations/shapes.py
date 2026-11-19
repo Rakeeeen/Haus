@@ -238,3 +238,48 @@ def cheer_icon(seed):
 ICONS.update({
     'cheer': {'still': cheer_icon, 'parts': {}},
 })
+
+
+# Undo and redo: a circular arrow (a turn back, and its mirror) for the little notice that says what ⌘Z just did. The arc is a true
+# circle, and the head sits exactly on its tangent, so it reads as one clean gesture.
+def _undo_parts(flip=False):
+    cx, cy, r = 572, 557, 270
+    # From just below the right side, over the top, down the left: counter-clockwise on screen (the angle runs back from 25° to -205°).
+    start, end = math.radians(35), math.radians(-195)
+    n = 14
+    arc = []
+    for i in range(n + 1):
+        a = start + (end - start) * i / n
+        arc.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    # The way the arc is heading at its end: along decreasing angle.
+    dx, dy = math.sin(end), -math.cos(end)
+    tip = arc[-1]
+    # The head's wings lie behind the tip, 50° either side of the line it travels along.
+    wing, spread = 200, math.radians(42)
+    def back(sign):
+        ang = math.atan2(-dy, -dx) + sign * spread
+        return (tip[0] + wing * math.cos(ang), tip[1] + wing * math.sin(ang))
+    head = [back(-1), tip, back(1)]
+    # The arc stops a little short of the tip, so the head's point isn't swallowed by the line.
+    arc[-1] = (tip[0] - dx * 30, tip[1] - dy * 30)
+    f = (lambda x: 1000 - x) if flip else (lambda x: x)
+    mirror = lambda pts: [(f(x), y) for x, y in pts]
+    disc_ = [(cx + 38 + (r - 20) * math.cos(t / 12 * 6.283), cy + 38 + (r - 20) * math.sin(t / 12 * 6.283)) for t in range(12)]
+    return mirror(arc), mirror(head), mirror(disc_)
+
+def undo_icon(seed, flip=False):
+    # A finer line than the section icons': the arrowhead has to stay open at 30 px.
+    p = Pen(seed, w=62, wob=1.1)
+    arc, head, disc_ = _undo_parts(flip)
+    p.blob(disc_, rough=8, corner=.32)
+    p.line(arc)
+    p.line(head)
+    return p
+
+def redo_icon(seed):
+    return undo_icon(seed, flip=True)
+
+ICONS.update({
+    'undo': {'still': undo_icon, 'parts': {}},
+    'redo': {'still': redo_icon, 'parts': {}},
+})

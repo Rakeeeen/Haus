@@ -23,7 +23,9 @@ import { isFocusNightLockedFor, isWaterClosedFor } from '@/domain/dayRules';
 import { getDateParts } from '@/domain/month';
 import { dayKey, filterTasks, sortTasks } from '@/domain/work/tasks';
 import { oldestCarried, taskProgress } from '@/domain/work/progress';
+import { pushUndo, valueStep } from '@/lib/undoStack';
 import { useCheer } from '@/features/home/useCheer';
+import { useTaskMenu } from '@/features/work/useTaskMenu';
 import { lookerKey, peopleOf } from '@/domain/work/people';
 import type { Task } from '@/domain/work/types';
 import { BigCard } from '@/features/home/BigCard';
@@ -90,6 +92,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
   const progress = useMemo(() => taskProgress(work?.tasks ?? [], forMe, now), [work, forMe, today]);  // eslint-disable-line react-hooks/exhaustive-deps
   const oldTask = useMemo(() => (dueToday.length === 0 ? oldestCarried(work?.tasks ?? [], forMe, now) : null), [work, forMe, dueToday, today]);  // eslint-disable-line react-hooks/exhaustive-deps
   const cheer = useCheer(work?.ready ? dueToday.length === 0 && oldTask === null : null);
+  const { onContextMenu: onTaskMenu, menu: taskMenu } = useTaskMenu(work);
   const projectName = (id: string | null) => work?.projects.find((p) => p.id === id)?.name ?? null;
 
   const [glasses, setGlasses] = useFirebaseSync<number>('hydration_glasses', 0);
@@ -178,7 +181,11 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
 
   const addWaterCup = (e: React.MouseEvent) => {
     e.stopPropagation(); // not a click on the card (which would open the page)
-    if (!waterLocked && glasses < GLASSES_PER_DAY) setGlasses(glasses + 1);
+    if (!waterLocked && glasses < GLASSES_PER_DAY) {
+      const before = glasses;
+      setGlasses(before + 1);
+      pushUndo({ label: 'A glass of water', undo: valueStep(setGlasses, before + 1, before) });
+    }
   };
 
   return (
@@ -258,7 +265,7 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
             />
           )}
           {displayedCardId === 'tasks' && (
-            <TasksCardBody today={dueToday} oldTask={oldTask} ready={!!work?.ready} cheer={cheer} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} />
+            <TasksCardBody today={dueToday} oldTask={oldTask} ready={!!work?.ready} cheer={cheer} projectName={projectName} peopleOf={peopleOfTask} onFinish={(task) => work?.setTaskStatus(task, 'done')} onDelete={work?.deleteTaskWithUndo} canDelete={work?.canDeleteTask} onContextMenu={onTaskMenu} />
           )}
           {displayedCardId === 'finance' && <FinanceCardBody totalPhysical={totalPhysical} />}
           {displayedCardId === 'time' && <TimeCardBody clock={clock} />}
@@ -294,7 +301,8 @@ export const Home: React.FC<HomeProps> = ({ navigate, viewer }) => {
         title="Timer is running"
         confirm={{ message: 'You have an active Pomodoro session. Logging out will stop your timer and unsaved progress will be lost.', confirmText: 'Log out', cancelText: 'Stay', onConfirm: () => { setLogoutModal(false); void signOutUser(); } }}
       />
-      <FingerprintModal isOpen={showFingerprint} onClose={() => setShowFingerprint(false)} now={now} dailyHistory={dailyHistory} />
+      {taskMenu}
+      <FingerprintModal isOpen={showFingerprint} onClose={() => setShowFingerprint(false)} year={now.getFullYear()} currentMonth={now.getMonth()} dailyHistory={dailyHistory} />
     </div>
   );
 };

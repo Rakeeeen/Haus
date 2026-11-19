@@ -65,6 +65,7 @@ export function useFinance() {
 
   return {
     banks,
+    setBanks,
     buckets,
     setBuckets,
     splitTemplate,
@@ -81,6 +82,7 @@ export function useFinance() {
     updateBankBalance,
     updateBucketBalance,
     logs,
+    setLogs,
     addLog,
     removeLog,
   };

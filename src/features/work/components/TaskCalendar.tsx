@@ -11,8 +11,9 @@ const SHOWN_PER_DAY = 3;
 export const TaskCalendar: React.FC<{
   tasks: readonly Task[];
   onOpen: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
   onAddOnDay: (day: string) => void;
-}> = ({ tasks, onOpen, onAddOnDay }) => {
+}> = ({ tasks, onOpen, onAddOnDay, onContextMenu }) => {
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const today = dayKey(new Date());
   const weeks = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor]);
@@ -66,6 +67,7 @@ export const TaskCalendar: React.FC<{
                       <button
                         key={task.id}
                         onClick={(e) => { e.stopPropagation(); onOpen(task); }}
+                        onContextMenu={(e) => onContextMenu?.(e, task)}
                         dir="auto"
                         className={`w-full text-left truncate rounded-[6px] px-1.5 py-1 font-sans-main text-[12px] font-semibold transition-colors ${
                           task.status === 'done' ? 'bg-ink/6 text-ink/40 line-through' : task.status === 'dropped' ? 'bg-ink/6 text-ink/35 line-through' : task.status === 'doing' ? 'bg-[color-mix(in_srgb,var(--sepia-mark)_14%,transparent)] text-[var(--sepia-mark)]' : 'bg-ink/8 hover:bg-ink/14'

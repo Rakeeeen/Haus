@@ -15,7 +15,10 @@ import { Tabs } from '@/ui/Tabs';
 import { TaskBoard } from '@/features/work/components/TaskBoard';
 import { TaskCalendar } from '@/features/work/components/TaskCalendar';
 import { useTaskEditor } from '@/features/work/components/useTaskEditor';
+import { useTaskMenu } from '@/features/work/useTaskMenu';
 import { TaskTable } from '@/features/work/components/TaskTable';
+import { useProjectUse } from '@/features/work/useProjectUse';
+import { byRecentUse } from '@/domain/work/recentProjects';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
@@ -40,13 +43,16 @@ const readView = (): View => {
 };
 
 export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { tasks, projects, ready, canEditTask, setTaskStatus, toggleTaskDone, me } = useWork();
+  const { tasks, projects, ready, canEditTask, canDeleteTask, deleteTaskWithUndo, setTaskStatus, toggleTaskDone, me } = useWork();
   const [storedWhose, setWhose] = useWhoseTasks();
   const [view, setView] = useState<View>(readView);
   const [dayChoice, setDayChoice] = useStoredState<DayChoice>('work_tasks_day', 'all', oneOf(DAYS.map((d) => d.value)));
   const [picked, setPicked] = useStoredState('work_tasks_picked_day', dayKey(new Date()), isDay);
   const [statusChoice, setStatusChoice] = useStoredState<StatusChoice>('work_tasks_status', 'all', oneOf(STATUSES.map((s) => s.value)));
   const [projectChoice, setProjectChoice] = useState<string>('all');
+  // The project list opens with the one chosen last, so the usual one is a click away.
+  const { use: projectUse, markUsed } = useProjectUse();
+  const chooseProject = (id: string) => { setProjectChoice(id); if (id !== 'all' && id !== 'none') markUsed(id); };
   const [query, setQuery] = useState('');
   const editor = useTaskEditor(author, authorPhoto);
   const whoseChoices = useMemo(() => whoseOptions(editor.people, me), [editor.people, me]);
@@ -71,6 +77,8 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
   const dayForNew = day.kind === 'day' ? day.day : dayKey(new Date());
   const openNew = (defaults: Partial<Task> = {}) => editor.open({ kind: 'new', defaults: { date: dayForNew, ...defaults } });
   const openTask = (task: Task) => editor.open({ kind: 'edit', task });
+  const work = useWork();
+  const { onContextMenu, menu } = useTaskMenu(work, openTask);
 
   return (
     <WorkShell
@@ -88,9 +96,9 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
         <FilterSelect label="Status" options={STATUSES} value={statusChoice} onChange={setStatusChoice} />
         <FilterSelect
           label="Project"
-          options={[{ value: 'all', label: 'All' }, { value: 'none', label: 'No project' }, ...[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }))]}
+          options={[{ value: 'all', label: 'All' }, { value: 'none', label: 'No project' }, ...byRecentUse(projects, projectUse).map((p) => ({ value: p.id, label: p.name }))]}
           value={projectChoice}
-          onChange={setProjectChoice}
+          onChange={chooseProject}
         />
         <TextInput dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="!w-48 !py-2 !text-[14px]" aria-label="Search tasks" />
       </div>
@@ -108,15 +116,19 @@ export const Tasks: React.FC<{ navigate: (to: string) => void; author: string; a
           canEdit={canEditTask}
           onMove={setTaskStatus}
           onToggleDone={toggleTaskDone}
+          canDelete={canDeleteTask}
+          onDelete={deleteTaskWithUndo}
+          onContextMenu={onContextMenu}
           onAdd={(status) => openNew({ status })}
         />
       ) : view === 'table' ? (
-        <TaskTable tasks={shown} projectName={projectName} personOf={editor.personOf} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleTaskDone} onSetStatus={setTaskStatus} />
+        <TaskTable tasks={shown} projectName={projectName} personOf={editor.personOf} canEdit={canEditTask} onOpen={openTask} onToggleDone={toggleTaskDone} onSetStatus={setTaskStatus} canDelete={canDeleteTask} onDelete={deleteTaskWithUndo} onContextMenu={onContextMenu} />
       ) : (
-        <TaskCalendar tasks={calendarTasks} onOpen={openTask} onAddOnDay={(d) => openNew({ date: d })} />
+        <TaskCalendar tasks={calendarTasks} onOpen={openTask} onContextMenu={onContextMenu} onAddOnDay={(d) => openNew({ date: d })} />
       )}
 
       {editor.modal}
+      {menu}
     </WorkShell>
   );
 };

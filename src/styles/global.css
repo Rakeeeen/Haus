@@ -425,6 +425,18 @@ body.dark-theme [data-active] {
 .custom-cursor-wrapper[data-pressed] .custom-cursor-svg { transform: rotate(10deg) translate(-2px, -2px) scale(0.84); }
 @media (prefers-reduced-motion: reduce) { .custom-cursor-svg { transition: none; } }
 
+/* Trash: the bin's lid follows the swipe (--lift, 0 to 1) and tips open once letting go would delete (data-ready), on the system's
+   spring; the bin gives a small hop as it does. */
+.trash-lid { transform-origin: 5px 7px; transform: translate(0, calc(var(--lift, 0) * -1.5px)) rotate(calc(var(--lift, 0) * -14deg)); transition: transform 0.12s ease-out; }
+[data-ready] .trash-lid { transform: translate(-1px, -3px) rotate(-26deg); transition: transform 0.5s var(--spring); }
+.trash-body { transform-origin: 12px 21px; transition: transform 0.12s ease-out; }
+[data-ready] .trash-body { transform: scale(1.06, 0.96); transition: transform 0.5s var(--spring); }
+@media (prefers-reduced-motion: reduce) { .trash-lid, .trash-body { transition: none; } }
+
+/* The right-click menu opens out of the spot that was clicked (its transform-origin is set from there). */
+@keyframes contextMenuIn { from { opacity: 0; transform: scale(0.92); } }
+@media (prefers-reduced-motion: reduce) { [role="menu"] { animation: none !important; } }
+
 /* === Hand-drawn icons === ui's sketch icons (home/components/visuals.tsx). Three redraws of
    each, one showing at a time at four a second: the "line boil" of a hand-drawn film, slow
    enough to read as alive, not as flicker.

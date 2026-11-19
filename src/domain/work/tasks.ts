@@ -74,10 +74,29 @@ export function compareTasks(a: Task, b: Task): number {
 
 export const sortTasks = (tasks: readonly Task[]): Task[] => [...tasks].sort(compareTasks);
 
-/** The tasks of each status, in order, ready for the board's columns. */
+/** Soonest date first; a task with no date after the dated ones; then the usual order. */
+const byDate = (a: Task, b: Task): number => {
+  if (a.date !== b.date) {
+    if (a.date === null) return 1;
+    if (b.date === null) return -1;
+    return a.date < b.date ? -1 : 1;
+  }
+  return compareTasks(a, b);
+};
+
+/** Most recently finished first (a task finished before finish times were kept falls back to when it was last changed). */
+const byFinished = (a: Task, b: Task): number => (b.doneAt ?? b.updatedAt ?? '').localeCompare(a.doneAt ?? a.updatedAt ?? '') || compareTasks(a, b);
+
+/**
+ * The tasks of each status, in order, ready for the board's columns. To do goes by priority, then date. Doing goes by date, so
+ * what is due first is on top; Done by when it was finished, the latest on top — so a task moved into either lands where its
+ * date puts it, not wherever its priority would.
+ */
 export function groupByStatus(tasks: readonly Task[]): Record<TaskStatus, Task[]> {
   const groups: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [], dropped: [] };
   for (const task of sortTasks(tasks)) groups[task.status].push(task);
+  groups.doing.sort(byDate);
+  groups.done.sort(byFinished);
   return groups;
 }
 

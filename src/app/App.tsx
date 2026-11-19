@@ -16,6 +16,8 @@ import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
 import { WorkProvider } from '@/data/useWork';
+import { UndoShortcut } from '@/ui/UndoShortcut';
+import { UndoDeleteBar } from '@/features/work/components/UndoDeleteBar';
 import { DailyResetManager } from '@/app/DailyResetManager';
 import { GoldPriceRefresher } from '@/app/GoldPriceRefresher';
 import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
@@ -132,11 +134,12 @@ const AppRoutes: React.FC = () => {
   return (
     <div className="min-h-screen overflow-x-hidden">
       <CustomCursor />
+      <UndoShortcut />
       <DailyResetManager />
       {role === 'owner' && <GoldPriceRefresher />}
 
       {/* The work side's data: all of it for Hamed, a guest's own part for a guest. */}
-      <WorkProvider scope={role === 'owner' ? { kind: 'owner' } : { kind: 'guest', uid: user.uid, name: firstName }}>{routes}</WorkProvider>
+      <WorkProvider scope={role === 'owner' ? { kind: 'owner' } : { kind: 'guest', uid: user.uid, name: firstName }}>{routes}<UndoDeleteBar /></WorkProvider>
 
       <FloatingTimer currentPage={currentPage} onNavigate={() => nav('pomodoro')} />
       {role === 'owner' && <DeviceCodeBanner user={user} />}

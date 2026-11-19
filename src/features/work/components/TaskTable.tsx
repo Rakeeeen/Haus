@@ -8,6 +8,7 @@ import type { PersonOf } from '@/features/work/components/TaskBoard';
 import { StatusPicker } from '@/features/work/components/StatusPicker';
 import { DoneTick } from '@/features/work/components/DoneTick';
 import { PriorityChip, shortDate } from '@/features/work/components/chips';
+import { SwipeRow } from '@/ui/SwipeRow';
 
 /** The tasks as rows: the tick, the title, and what each is about. Opens a task on click. */
 export const TaskTable: React.FC<{
@@ -18,7 +19,12 @@ export const TaskTable: React.FC<{
   personOf?: PersonOf;
   onSetStatus?: (task: Task, status: TaskStatus) => void;
   onToggleDone: (task: Task) => void;
-}> = ({ tasks, projectName, personOf, canEdit = () => true, onOpen, onToggleDone, onSetStatus }) => {
+  /** Swiping a row left deletes it (with a way back), for the tasks this says may be deleted. */
+  canDelete?: (task: Task) => boolean;
+  onDelete?: (task: Task) => void;
+  /** A right click on a row (the screen's task menu). */
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
+}> = ({ tasks, projectName, personOf, canEdit = () => true, onOpen, onToggleDone, onSetStatus, canDelete = () => false, onDelete, onContextMenu }) => {
   const today = dayKey(new Date());
   const rows = sortTasks(tasks);
   if (rows.length === 0) return <p className="font-mono-main text-[13px] text-ink/40 py-10 text-center">Nothing here.</p>;
@@ -29,10 +35,11 @@ export const TaskTable: React.FC<{
         <span /> <span>Task</span> <span>Project</span> <span>Status</span> <span>Date</span> <span>Priority</span>
       </div>
       {rows.map((task) => (
+        <SwipeRow key={task.id} radius="rounded-none" enabled={!!onDelete && canDelete(task)} onDelete={() => onDelete?.(task)}>
         <div
-          key={task.id}
           onClick={() => onOpen(task)}
-          className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1.6fr)_minmax(0,1fr)_150px_96px_80px] items-center gap-x-4 gap-y-1 px-5 py-3 border-b border-ink/6 last:border-b-0 cursor-pointer hover:bg-ink/4 transition-colors"
+          onContextMenu={(e) => onContextMenu?.(e, task)}
+          className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1.6fr)_minmax(0,1fr)_150px_96px_80px] items-center gap-x-4 gap-y-1 px-5 py-3 border-b border-ink/6 cursor-pointer bg-paper-dark hover:bg-ink/4 transition-colors"
         >
           {canEdit(task) ? <DoneTick done={task.status === 'done'} onToggle={() => onToggleDone(task)} /> : <span />}
           <span dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed truncate text-left ${task.status === 'done' || task.status === 'dropped' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</span>
@@ -44,6 +51,7 @@ export const TaskTable: React.FC<{
           <span className={`hidden md:block font-mono-main text-[12px] uppercase tracking-wider ${isOverdue(task, today) ? 'text-rust' : 'text-ink/50'}`}>{shortDate(task.date) || '—'}</span>
           <span className="hidden md:block"><PriorityChip priority={task.priority} /></span>
         </div>
+        </SwipeRow>
       ))}
     </div>
     </AutoHeight>

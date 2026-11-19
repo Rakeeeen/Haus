@@ -5,21 +5,26 @@ import { statusLabel } from '@/domain/work/tasks';
 import type { Person } from '@/domain/work/people';
 import { projectLabel } from '@/domain/work/projects';
 import type { Task } from '@/domain/work/types';
+import { SwipeRow } from '@/ui/SwipeRow';
 import { CheerVector, TasksVector } from '@/features/home/components/visuals';
 
 type RowProps = {
   task: Task;
+  /** Swiping the row left deletes the task (with a way back), where this allows it. */
+  onDelete?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
   projectName: (id: string | null) => string | null;
   peopleOf: (task: Task) => Person[];
   onFinish: (task: Task) => void;
 };
 
 /** One task: a tick to finish it, its title, its status, who it is for and its project. */
-const TaskRow: React.FC<RowProps> = ({ task, projectName, peopleOf, onFinish }) => {
+const TaskRow: React.FC<RowProps> = ({ task, projectName, peopleOf, onFinish, onDelete, onContextMenu }) => {
   const project = projectLabel(task, projectName);
   const people = peopleOf(task);
   return (
-    <div className="flex items-center gap-3 min-w-0 rounded-box bg-ink/5 px-3.5 py-2.5">
+    <SwipeRow enabled={!!onDelete} onDelete={() => onDelete?.(task)}>
+    <div className="flex items-center gap-3 min-w-0 rounded-box bg-ink/5 px-3.5 py-2.5" onContextMenu={(e) => onContextMenu?.(e, task)}>
       <button
         type="button"
         aria-label="Mark as done"
@@ -36,6 +41,7 @@ const TaskRow: React.FC<RowProps> = ({ task, projectName, peopleOf, onFinish }) 
       )}
       {project && <Chip tone="neutral" className="hidden sm:inline-flex shrink-0 max-w-[160px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{project}</span></Chip>}
     </div>
+    </SwipeRow>
   );
 };
 
@@ -56,7 +62,11 @@ export const TasksCardBody: React.FC<{
   /** Who a task is for; only their photos are shown. */
   peopleOf: (task: Task) => Person[];
   onFinish: (task: Task) => void;
-}> = ({ today, oldTask, ready, cheer, projectName, peopleOf, onFinish }) => (
+  /** Where given, a task may be deleted by swiping its row. `canDelete` says which. */
+  onDelete?: (task: Task) => void;
+  canDelete?: (task: Task) => boolean;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
+}> = ({ today, oldTask, ready, cheer, projectName, peopleOf, onFinish, onDelete, canDelete = () => true, onContextMenu }) => (
   <div className="flex-1 flex flex-col justify-between">
     <div className="flex justify-between items-start">
       <h2 className="text-silver text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-1">TASKS</h2>
@@ -69,13 +79,13 @@ export const TasksCardBody: React.FC<{
       <div className="flex flex-col gap-3 min-w-0 flex-1">
         {today.length > 0 ? (
           <>
-            {today.slice(0, 5).map((task) => <TaskRow key={task.id} task={task} projectName={projectName} peopleOf={peopleOf} onFinish={onFinish} />)}
+            {today.slice(0, 5).map((task) => <TaskRow key={task.id} task={task} projectName={projectName} peopleOf={peopleOf} onFinish={onFinish} onDelete={onDelete && canDelete(task) ? onDelete : undefined} onContextMenu={onContextMenu} />)}
             {today.length > 5 && <span className="font-mono-main text-[12px] text-ink/45">+{today.length - 5} more today</span>}
           </>
         ) : oldTask ? (
           <>
             <span className="font-mono-main text-[11px] font-bold uppercase tracking-widest text-ink/45">Old task — from before</span>
-            <TaskRow task={oldTask} projectName={projectName} peopleOf={peopleOf} onFinish={onFinish} />
+            <TaskRow task={oldTask} projectName={projectName} peopleOf={peopleOf} onFinish={onFinish} onDelete={onDelete && canDelete(oldTask) ? onDelete : undefined} onContextMenu={onContextMenu} />
           </>
         ) : !ready ? null : (
           <div className="flex items-center gap-2.5 min-w-0">

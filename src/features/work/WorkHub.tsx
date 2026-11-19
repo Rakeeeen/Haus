@@ -5,6 +5,10 @@ import { Avatar } from '@/ui/Avatar';
 import { isDay, manyOf, oneOf, useStoredState } from '@/lib/useStoredState';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
+import { useProjectUse } from '@/features/work/useProjectUse';
+import { SwipeRow } from '@/ui/SwipeRow';
+import { useTaskMenu } from '@/features/work/useTaskMenu';
+import { byMostOpened } from '@/domain/work/recentProjects';
 import { projectLabel, countTasks, filterProjectsByStatus, progressOf, PROJECT_STATUSES, tasksByProject } from '@/domain/work/projects';
 import { addDays, dayKey, filterTasks, sortTasks, type DayFilter } from '@/domain/work/tasks';
 import type { ProjectStatus, TaskStatus } from '@/domain/work/types';
@@ -31,9 +35,11 @@ const TASK_STATUS_OPTIONS = [{ value: 'todo', label: 'To do' }, { value: 'doing'
 
 /** The way into the work side: Projects, Tasks, Notes; the projects and the tasks, each narrowed the way you choose. */
 export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
-  const { role, me, projects, tasks, privates, ready, canEditTask, toggleTaskDone, setTaskStatus } = useWork();
+  const { role, me, projects, tasks, privates, ready, canEditTask, canDeleteTask, deleteTaskWithUndo, toggleTaskDone, setTaskStatus } = useWork();
   const [storedWhose, setWhose] = useWhoseTasks();
   const editor = useTaskEditor(author, authorPhoto);
+  const work = useWork();
+  const { onContextMenu, menu } = useTaskMenu(work, (task) => editor.open({ kind: 'edit', task }));
   const whoseChoices = useMemo(() => whoseOptions(editor.people, me), [editor.people, me]);
   const whose = validWhose(storedWhose, whoseChoices);
   // What is chosen here is remembered (even after a refresh); "Today" is remembered as "Today", not as one date.
@@ -45,7 +51,9 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
   useEffect(() => { document.title = `${NAME} — Tasks`; }, []);
 
   const byProject = useMemo(() => tasksByProject(tasks), [tasks]);
-  const shownProjects = filterProjectsByStatus(projects, projectStatuses);
+  // The projects opened most come first — the ones in use are on top.
+  const { use: projectUse } = useProjectUse();
+  const shownProjects = byMostOpened(filterProjectsByStatus(projects, projectStatuses), projectUse);
   // "Today" and "Tomorrow" are worked out as the page draws, so they follow the real date.
   const day: DayFilter = dayChoice === 'pick' ? { kind: 'day', day: picked }
     : dayChoice === 'tomorrow' ? { kind: 'day', day: addDays(dayKey(new Date()), 1) } : { kind: dayChoice };
@@ -83,7 +91,8 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
             <div className="flex flex-col max-h-[70vh] overflow-y-auto">
               {shownTasks.length === 0 && <p className="font-mono-main text-[13px] text-ink/40">No tasks match.</p>}
               {shownTasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-3 py-1.5 border-t border-ink/8 first:border-t-0">
+                <SwipeRow key={task.id} radius="rounded-none" enabled={canDeleteTask(task)} onDelete={() => deleteTaskWithUndo(task)}>
+                <div className="flex items-center gap-3 py-1.5 border-t border-ink/8" onContextMenu={(e) => onContextMenu(e, task)}>
                   {canEditTask(task) ? <DoneTick done={task.status === 'done'} onToggle={() => toggleTaskDone(task)} /> : <span className="w-5 h-5 shrink-0" />}
                   <div className="min-w-0 flex-1 cursor-pointer" onClick={() => editor.open({ kind: 'edit', task })}>
                     <p dir="auto" className={`font-sans-main text-[15px] font-semibold leading-relaxed text-left truncate ${task.status === 'done' ? 'line-through text-ink/40' : ''}`}>{task.title || 'Untitled'}</p>
@@ -95,6 +104,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
                   {projectLabel(task, projectName) && <Chip tone="neutral" className="max-w-[180px] !normal-case !tracking-normal"><span dir="auto" className="truncate">{projectLabel(task, projectName)}</span></Chip>}
                   {(task.status !== 'todo' || canEditTask(task)) && <StatusPicker status={task.status} editable={canEditTask(task)} onPick={(next) => setTaskStatus(task, next)} />}
                 </div>
+                </SwipeRow>
               ))}
               <Button tone="ghost" size="sm" onClick={() => editor.open({ kind: 'new', defaults: { date: day.kind === 'day' ? day.day : dayKey(new Date()) } })} className="justify-start !px-2 mt-2">
                 <Plus size={14} /> New task
@@ -132,6 +142,7 @@ export const WorkHub: React.FC<{ navigate: (to: string) => void; author: string;
         </div>
       )}
       {editor.modal}
+      {menu}
     </WorkShell>
   );
 };

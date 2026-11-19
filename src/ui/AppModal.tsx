@@ -1,33 +1,68 @@
-import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { Button } from '@/ui/Button';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { useBodyScrollLock } from '@/ui/useBodyScrollLock';
 import { AutoHeight } from '@/ui/AutoHeight';
 
-const PRESSABLE = 'button, a, [role="button"], [role="tab"]';
+const PRESSABLE = 'button, a, [role="button"], [role="tab"], [data-origin]';
 
-/** Where the control that was just pressed is, remembered at the press (Safari doesn't focus a clicked button), for a moment. */
-let lastPress: { x: number; y: number; at: number } | null = null;
+/**
+ * What was pressed last, remembered at the press (Safari doesn't focus a clicked button, and by the time a dialog opens the
+ * pointer may be elsewhere). `el` is kept, not only where it was: a word or a button can move (a greeting that changes, a list
+ * that re-sorts), and the dialog should come out of — and go back into — where it is *now*. `fixed` is for a big thing (a task's
+ * card, a row), which the dialog comes out of at the spot that was pressed on it, not at its middle.
+ */
+interface Press { el: Element | null; x: number; y: number; fixed: boolean; at: number }
+let lastPress: Press | null = null;
 if (typeof document !== 'undefined') {
   document.addEventListener('pointerdown', (e) => {
-    const el = (e.target as Element | null)?.closest?.(PRESSABLE);
-    if (!el) { lastPress = null; return; }
+    const el = (e.target as Element | null)?.closest?.(PRESSABLE) ?? null;
+    if (!el) { lastPress = { el: null, x: e.clientX, y: e.clientY, fixed: true, at: Date.now() }; return; }
     const r = el.getBoundingClientRect();
-    lastPress = { x: r.left + r.width / 2, y: r.top + r.height / 2, at: Date.now() };
+    const fixed = r.width > 260 || r.height > 110;
+    lastPress = { el, x: fixed ? e.clientX : r.left + r.width / 2, y: fixed ? e.clientY : r.top + r.height / 2, fixed, at: Date.now() };
   }, true);
 }
 
-/** The centre of the control that opened the dialog: the one just pressed, or — opened from the keyboard — the one with focus. */
-function triggerPoint(): { x: number; y: number } | null {
+/** The control that opened the dialog: the one just pressed, or — opened from the keyboard — the one with focus. */
+function pickTrigger(): Press | null {
   if (lastPress && Date.now() - lastPress.at < 1500) return lastPress;
   const el = document.activeElement;
   if (el && el !== document.body && el.matches?.(PRESSABLE)) {
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { el, x: r.left + r.width / 2, y: r.top + r.height / 2, fixed: false, at: Date.now() };
   }
   return null;
 }
+
+/** Where the trigger is now: the middle of its element if that is still on the page, else where it was. */
+function livePoint(t: Press): { x: number; y: number } {
+  if (!t.fixed && t.el?.isConnected) {
+    const r = t.el.getBoundingClientRect();
+    if (r.width > 0 || r.height > 0) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  return { x: t.x, y: t.y };
+}
+
+/** Where the dialog starts (and returns to), as an offset from the middle of the window where it sits. */
+type Origin = { x: number; y: number } | null;
+const originOf = (t: Press | null, still: boolean): Origin => {
+  if (!t || still) return null;
+  const p = livePoint(t);
+  return { x: p.x - window.innerWidth / 2, y: p.y - window.innerHeight / 2 };
+};
+
+interface DialogMotion { from: Origin; still: boolean }
+const EXIT_EASE = [0.23, 1, 0.32, 1] as const;
+/** Comes out of what opened it, small, and settles in the middle; goes back the same way. */
+const DIALOG_VARIANTS = {
+  initial: ({ from, still }: DialogMotion) => ({ x: from?.x ?? 0, y: from ? from.y : still ? 0 : 18, scale: from ? 0.4 : still ? 1 : 0.93, opacity: 0 }),
+  animate: { x: 0, y: 0, scale: 1, opacity: 1 },
+  exit: ({ from, still }: DialogMotion) => ({
+    x: from?.x ?? 0, y: from ? from.y : 0, scale: from ? 0.4 : still ? 1 : 0.95, opacity: 0, transition: { duration: 0.22, ease: EXIT_EASE },
+  }),
+};
 
 interface AppModalProps {
   isOpen: boolean;
@@ -64,20 +99,15 @@ export const AppModal: React.FC<AppModalProps> = ({
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
-  // The point the dialog grows from and shrinks back to, in its own coordinates (null: from the middle, as before).
-  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
-  const trigger = useRef<{ x: number; y: number } | null>(null);
+  // What the dialog comes out of and goes back into (null: from the middle, as before). Picked once per opening.
+  const trigger = useRef<Press | null>(null);
   const wasOpen = useRef(false);
-  if (isOpen && !wasOpen.current) trigger.current = triggerPoint();
+  if (isOpen && !wasOpen.current) trigger.current = pickTrigger();
   wasOpen.current = isOpen;
 
-  // Once laid out (its untransformed position, which a scale doesn't move), the trigger becomes a point inside the dialog.
-  useLayoutEffect(() => {
-    const el = dialogRef.current;
-    const point = trigger.current;
-    if (!isOpen || !el || !point) return;
-    setOrigin({ x: point.x - el.offsetLeft, y: point.y - el.offsetTop });
-  }, [isOpen]);
+  // Read afresh on every render, so a trigger that has moved is found where it is now — including on the render that closes the
+  // dialog, which is the one the exit animation uses (through `custom`, below).
+  const motionOf: DialogMotion = { from: originOf(trigger.current, !!still), still: !!still };
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -97,7 +127,7 @@ export const AppModal: React.FC<AppModalProps> = ({
   }, [isOpen]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence custom={motionOf}>
       {isOpen && (
         <motion.div
           key="app-modal-backdrop"
@@ -115,15 +145,16 @@ export const AppModal: React.FC<AppModalProps> = ({
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
             tabIndex={-1}
-            // Grows out of the button that opened it, from about half size, and goes back into it.
-            initial={{ scale: still ? 1 : trigger.current ? 0.5 : 0.93, opacity: 0, y: trigger.current || still ? 0 : 18 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: still ? 1 : trigger.current ? 0.55 : 0.95, opacity: 0, y: trigger.current || still ? 0 : 10, transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] } }}
+            // Comes out of what opened it, small, and settles in the middle; goes back the same way.
+            custom={motionOf}
+            variants={DIALOG_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             transition={{ ...SPRING, opacity: { duration: 0.2 } }}
             onClick={e => e.stopPropagation()}
             className={`relative w-full rounded-modal outline-none ${maxWidth}`}
             style={{
-              transformOrigin: origin ? `${origin.x}px ${origin.y}px` : 'center',
               background: 'var(--paper-dark)',
               border: '1px solid color-mix(in srgb, var(--ink) 12%, transparent)',
             }}

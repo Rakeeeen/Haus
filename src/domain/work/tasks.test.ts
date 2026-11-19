@@ -36,6 +36,25 @@ describe('ordering', () => {
   });
 });
 
+describe('groupByStatus — Doing by date, Done by when it was finished', () => {
+  it('Doing puts the soonest date first, undated last, whatever the priority', () => {
+    const groups = groupByStatus([
+      task({ id: 'late', status: 'doing', date: '2026-11-20', priority: 'high' }),
+      task({ id: 'none', status: 'doing', date: null }),
+      task({ id: 'soon', status: 'doing', date: '2026-11-10', priority: 'low' }),
+    ]);
+    expect(groups.doing.map((t) => t.id)).toEqual(['soon', 'late', 'none']);
+  });
+  it('Done puts the most recently finished first', () => {
+    const groups = groupByStatus([
+      task({ id: 'old', status: 'done', doneAt: '2026-11-01T10:00:00.000Z' }),
+      task({ id: 'new', status: 'done', doneAt: '2026-11-08T10:00:00.000Z' }),
+      task({ id: 'mid', status: 'done', doneAt: '2026-11-05T10:00:00.000Z' }),
+    ]);
+    expect(groups.done.map((t) => t.id)).toEqual(['new', 'mid', 'old']);
+  });
+});
+
 describe('groupByStatus', () => {
   it('fills each status in order', () => {
     const groups = groupByStatus([

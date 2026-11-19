@@ -1,3 +1,5 @@
+import { dropUndo, pushUndo, setUndoFallback, type Step, type UndoEntry } from '@/lib/undoStack';
+import { asNewTask, forget as forgetDeleted, isDeletedList, remember as rememberDeleted, restorable as restorableDeleted, type DeletedEntry } from '@/domain/work/deletedTasks';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   arrayUnion, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where, writeBatch, type Query,
@@ -12,7 +14,7 @@ import {
   blankNote, canDeleteNote as mayDeleteNote, canEditNote as mayEditNote, canRequestEdit as mayRequestEdit, detachedNote, noteAuthorKey, normalizeNote, noteTitle,
   requestId, staleNoteViewers, viewersOfNote, type NoteViewer,
 } from '@/domain/work/notes';
-import { blankTask, moveToStatus, nextTaskNo } from '@/domain/work/tasks';
+import { blankTask, moveToStatus, nextTaskNo, statusLabel } from '@/domain/work/tasks';
 import { adminProjectOf, assignableIn, canEditAsGuest, isAdminOf, isInProject, normalizeProject, normalizeTask, OWNER_KEY, staleViewers, viewersOf } from '@/domain/work/sharing';
 import type { Note, NoteEditRequest, Project, ProjectPrivate, Task, TaskComment, TaskStatus } from '@/domain/work/types';
 
@@ -68,13 +70,22 @@ interface WorkContextType {
   canDeleteTask: (task: Task) => boolean;
   /** Does this guest run the project (are they one of its admins)? Always false for Hamed's own screens — he can do everything. */
   isProjectAdmin: (projectId: string | null | undefined) => boolean;
-  addTask: (input: NewTask) => Promise<string>;
-  updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => Promise<void>;
+  /** `record: false` leaves it out of what ⌘Z can undo (for what an undo itself does). */
+  addTask: (input: NewTask, options?: { record?: boolean }) => Promise<string>;
+  updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>, options?: { record?: boolean }) => Promise<void>;
   /** Moves a task to a status (when the person may change it), stamping when it was finished or reopened. */
   setTaskStatus: (task: Task, status: TaskStatus) => Promise<void>;
   /** The tick: finishes an open task, reopens a finished one. */
   toggleTaskDone: (task: Task) => Promise<void>;
-  removeTask: (id: string) => Promise<void>;
+  removeTask: (id: string, options?: { record?: boolean; remember?: boolean }) => Promise<void>;
+  /**
+   * Deleting with a way back: the task leaves every list at once, and is really deleted `UNDO_MS` later unless `undoDelete` is
+   * called first. (A swipe is quick and can be wrong; the delete button's own confirmation stays as it was.)
+   */
+  deleteTaskWithUndo: (task: Task) => void;
+  undoDelete: () => void;
+  /** The task waiting to be deleted for real — what the "Undo" bar offers to bring back. */
+  pendingDelete: { id: string; title: string } | null;
   addProject: (input: NewProject, client?: string | null) => Promise<string>;
   updateProject: (id: string, patch: Partial<Omit<Project, 'id'>>) => Promise<void>;
   /** Who is on a project, and whether they see every task of it: also brings each task's viewers up to date. */
@@ -100,6 +111,9 @@ interface WorkContextType {
   /** Answers a request: yes puts the guest among the note's editors; either way the request is taken away. */
   answerEdit: (request: NoteEditRequest, allow: boolean) => Promise<void>;
 }
+
+/** How long a swiped-away task can still be brought back. */
+export const UNDO_MS = 6000;
 
 const WorkContext = createContext<WorkContextType | null>(null);
 
@@ -203,7 +217,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
   const canDeleteTask = useCallback((task: Task) => !uid || task.createdByUid === uid || adminProjectOf(task, projectsRef.current, uid) !== null, [uid]);
   const isProjectAdmin = useCallback((projectId: string | null | undefined) => !!uid && !!projectId && isAdminOf(projectsRef.current.find((p) => p.id === projectId), uid), [uid]);
 
-  const addTask = useCallback(async (input: NewTask) => {
+  const makeTask = useCallback(async (input: NewTask) => {
     const ref = doc(collection(db, TASKS));
     const { title, ...rest } = input;
     // The project a guest is making a task in, if they run it: there they may give the task to any member.
@@ -242,7 +256,7 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     return ref.id;
   }, [uid, guestName, note]);
 
-  const updateTask = useCallback(async (id: string, patch: Partial<Omit<Task, 'id'>>) => {
+  const writeTask = useCallback(async (id: string, patch: Partial<Omit<Task, 'id'>>) => {
     const stamped = { ...patch, updatedAt: patch.updatedAt ?? new Date().toISOString() };
     // The one place every way of finishing a task passes through (the tick, a drag to Done, the editor, the Home card).
     if (stamped.status === 'done' && tasksRef.current.find((t) => t.id === id)?.status !== 'done') playTaskDone();
@@ -285,18 +299,69 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     await setDoc(doc(db, TASKS, id), clean({ ...withViewers, updatedByUid: null }), { merge: true });
   }, [uid, note]);
 
+  // ── Making, changing and removing tasks. Each is remembered for ⌘Z / ⌘⇧Z as a step that hands back the step that takes it back ──
+  const stepsRef = useRef<{ removeStep: (id: string) => Step; addStep: (task: Task) => Step }>({ removeStep: () => async () => {}, addStep: () => async () => {} });
+  const addTask = useCallback(async (input: NewTask, options?: { record?: boolean }) => {
+    const id = await makeTask(input);
+    if (options?.record !== false) pushUndo({ label: `Added “${input.title || 'Untitled'}”`, undo: stepsRef.current.removeStep(id) });
+    return id;
+  }, [makeTask]);
+  /** Writes `put` over a task's fields, and hands back the step that writes `then` — and so on, back and forth. */
+  const fieldsStep = useCallback((id: string, put: Partial<Omit<Task, 'id'>>, then: Partial<Omit<Task, 'id'>>): Step => async () => {
+    await writeTask(id, put);
+    return fieldsStep(id, then, put);
+  }, [writeTask]);
+  const updateTask = useCallback(async (id: string, patch: Partial<Omit<Task, 'id'>>, options?: { record?: boolean }) => {
+    const before = tasksRef.current.find((t) => t.id === id);
+    await writeTask(id, patch);
+    if (options?.record === false || !before) return;
+    const keys = Object.keys(patch).filter((k) => k !== 'updatedAt');
+    const pick = (from: object) => Object.fromEntries(keys.map((k) => [k, (from as Record<string, unknown>)[k]])) as Partial<Omit<Task, 'id'>>;
+    const name = before.title || 'Untitled';
+    pushUndo({
+      label: patch.status && patch.status !== before.status ? `Moved “${name}” to ${statusLabel(patch.status)}` : `Edited “${name}”`,
+      undo: fieldsStep(id, pick(before), pick(patch)),
+    });
+  }, [writeTask, fieldsStep]);
+
   const setTaskStatus = useCallback(async (task: Task, status: TaskStatus) => {
     if (canEditTask(task)) await updateTask(task.id, moveToStatus(task, status));
   }, [canEditTask, updateTask]);
 
   const toggleTaskDone = useCallback((task: Task) => setTaskStatus(task, task.status === 'done' ? 'todo' : 'done'), [setTaskStatus]);
 
-  const removeTask = useCallback(async (id: string) => {
+  // The tasks deleted lately, as they were, kept on this device (a copy per person) so ⌘Z can bring one back.
+  const logKey = `work_deleted_tasks:${uid ?? 'owner'}`;
+  const readLog = useCallback((): DeletedEntry[] => {
+    try { const raw = JSON.parse(window.localStorage.getItem(logKey) ?? '[]'); return isDeletedList(raw) ? raw : []; } catch { return []; }
+  }, [logKey]);
+  const writeLog = useCallback((list: DeletedEntry[]) => {
+    try { window.localStorage.setItem(logKey, JSON.stringify(list)); } catch { /* no storage: it just can't be brought back later */ }
+  }, [logKey]);
+
+  const removeTask = useCallback(async (id: string, options?: { record?: boolean; remember?: boolean }) => {
     const gone = tasksRef.current.find((t) => t.id === id);
     await deleteDoc(doc(db, TASKS, id));
     void markDeleted(TASKS, id);
-    if (gone) note('task_deleted', deletedText(gone.title), id);
-  }, [note]);
+    if (!gone) return;
+    if (options?.remember !== false) writeLog(rememberDeleted(readLog(), gone));
+    note('task_deleted', deletedText(gone.title), id);
+    if (options?.record !== false) pushUndo({ label: `Deleted “${gone.title || 'Untitled'}”`, undo: stepsRef.current.addStep(gone) });
+  }, [note, readLog, writeLog]);
+
+  /** Deletes a task for good, and hands back the step that brings it back (as a new task, with a new id: see `asNewTask`). */
+  const removeStep = useCallback((id: string): Step => async () => {
+    const gone = tasksRef.current.find((t) => t.id === id);
+    await removeTask(id, { record: false, remember: false });
+    return gone ? stepsRef.current.addStep(gone) : undefined;
+  }, [removeTask]);
+  /** Brings a task back as a new one, and hands back the step that deletes that one again. */
+  const addStep = useCallback((task: Task): Step => async () => {
+    const newId = await makeTask(asNewTask(task));
+    writeLog(forgetDeleted(readLog(), task.id));
+    return stepsRef.current.removeStep(newId);
+  }, [makeTask, readLog, writeLog]);
+  stepsRef.current = { removeStep, addStep };
 
   const addProject = useCallback(async (input: NewProject, client: string | null = null) => {
     const ref = doc(collection(db, PROJECTS));
@@ -406,11 +471,74 @@ export const WorkProvider: React.FC<{ scope: WorkScope; children: React.ReactNod
     await batch.commit();
   }, []);
 
+  // ── Delete with a way back ──
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const pendingRef = useRef<{ id: string; title: string; timer: number } | null>(null);
+  const commitRef = useRef<() => void>(() => {});
+  commitRef.current = () => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    window.clearTimeout(pending.timer);
+    pendingRef.current = null;
+    setPendingDelete(null);
+    // If the delete is refused (the rules), the task comes back into the lists.
+    removeTask(pending.id, { record: false }).catch((error) => console.warn('Could not delete the task:', error)).finally(() => setHiddenIds((ids) => ids.filter((id) => id !== pending.id)));
+  };
+  /** Hides a task and deletes it for good in `UNDO_MS`, unless it is cancelled before. */
+  const startPending = useCallback((task: Task) => {
+    commitRef.current();   // one still waiting is deleted now, so only the latest can be cancelled
+    setHiddenIds((ids) => [...ids, task.id]);
+    pendingRef.current = { id: task.id, title: task.title, timer: window.setTimeout(() => commitRef.current(), UNDO_MS) };
+    setPendingDelete({ id: task.id, title: task.title });
+  }, []);
+  const cancelPending = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    window.clearTimeout(pending.timer);
+    pendingRef.current = null;
+    setPendingDelete(null);
+    setHiddenIds((ids) => ids.filter((id) => id !== pending.id));
+  }, []);
+  /** ⌘Z on a delete: while the task is still waiting, just don't delete it; once it is gone, bring it back as a new one. Taken back, it deletes again. */
+  const deleteUndoStep = useCallback((task: Task): Step => async () => {
+    if (pendingRef.current?.id === task.id) {
+      cancelPending();
+      return () => { startPending(task); return deleteUndoStep(task); };
+    }
+    return stepsRef.current.addStep(task)();
+  }, [cancelPending, startPending]);
+  const pendingEntryRef = useRef<UndoEntry | null>(null);
+  const deleteTaskWithUndo = useCallback((task: Task) => {
+    startPending(task);
+    pendingEntryRef.current = pushUndo({ label: `Deleted “${task.title || 'Untitled'}”`, undo: deleteUndoStep(task) });
+  }, [startPending, deleteUndoStep]);
+  /** The bar's "Undo": cancels the delete, and takes it off the pile of what ⌘Z undoes (it has been dealt with). */
+  const undoDelete = useCallback(() => {
+    cancelPending();
+    dropUndo(pendingEntryRef.current);
+    pendingEntryRef.current = null;
+  }, [cancelPending]);
+  // Leaving (signing out, say) with one still waiting: delete it, as was meant.
+  useEffect(() => () => commitRef.current(), []);
+
+  // After a reload the pile of what can be undone is empty, but a task deleted before still can be brought back (kept on this device).
+  useEffect(() => {
+    setUndoFallback(async () => {
+      const entry = restorableDeleted(readLog())[0];
+      if (!entry) return null;
+      await addStep(entry.task)();
+      return entry.task.title || 'Untitled';
+    });
+    return () => setUndoFallback(null);
+  }, [readLog, addStep]);
+  const visibleTasks = useMemo(() => (hiddenIds.length ? tasks.filter((t) => !hiddenIds.includes(t.id)) : tasks), [tasks, hiddenIds]);
+
   const value = useMemo<WorkContextType>(() => ({
-    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks, privates, notes, notesReady, loadNotes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
-    addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
+    role: scope.kind, guestUid: uid, me: uid ?? OWNER_KEY, projects, tasks: visibleTasks, privates, notes, notesReady, loadNotes, ready: answered.projects && answered.tasks, canEditTask, canDeleteTask, isProjectAdmin,
+    addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, deleteTaskWithUndo, undoDelete, pendingDelete, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote,
     canEditNote, canDeleteNote, canRequestEdit, requestsToAnswer: requestLists.toAnswer, myRequests: requestLists.mine, requestEdit, answerEdit,
-  }), [scope.kind, uid, projects, tasks, privates, notes, notesReady, loadNotes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote, canEditNote, canDeleteNote, canRequestEdit, requestLists, requestEdit, answerEdit]);
+  }), [scope.kind, uid, projects, visibleTasks, privates, notes, notesReady, loadNotes, answered, canEditTask, canDeleteTask, isProjectAdmin, addTask, updateTask, setTaskStatus, toggleTaskDone, removeTask, deleteTaskWithUndo, undoDelete, pendingDelete, addProject, updateProject, setSharing, setClient, removeProject, addNote, updateNote, removeNote, canEditNote, canDeleteNote, canRequestEdit, requestLists, requestEdit, answerEdit]);
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 };

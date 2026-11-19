@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { useProjectUse } from '@/features/work/useProjectUse';
+import { useTaskMenu } from '@/features/work/useTaskMenu';
 import { NAME } from '@/constants/brand';
 import { useWork } from '@/data/useWork';
 import { countTasks, progressOf } from '@/domain/work/projects';
@@ -28,16 +30,22 @@ const Property: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 /** One project: what it is, how far along, and its tasks in columns. */
 export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) => void; author: string; authorPhoto?: string | null }> = ({ navigate, author, authorPhoto = null }) => {
   const { id } = useParams<{ id: string }>();
-  const { role, tasks, notes, privates, ready, loadNotes, canEditTask, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
+  const { role, tasks, notes, privates, ready, loadNotes, canEditTask, canDeleteTask, deleteTaskWithUndo, isProjectAdmin, setTaskStatus, toggleTaskDone, addNote } = useWork();
   useEffect(() => { loadNotes?.(); }, [loadNotes]);
   const { guests, projects, clients, editing: projectEditing, setEditing: setProjectEditing, save, remove } = useProjectEditing();
   const editor = useTaskEditor(author, authorPhoto);
+  const work = useWork();
+  const { onContextMenu, menu } = useTaskMenu(work, (task) => editor.open({ kind: 'edit', task }));
 
   const project = projects.find((p) => p.id === id) ?? null;
   const mine = useMemo(() => tasks.filter((t) => t.projectId === id), [tasks, id]);
   const client = id ? privates[id]?.client ?? null : null;
 
   useEffect(() => { document.title = `${NAME} — ${project?.name ?? 'Project'}`; }, [project?.name]);
+  // Opening a project counts as using it: the lists put the ones opened most first.
+  const { markUsed } = useProjectUse();
+  const openedId = project?.id;
+  useEffect(() => { if (openedId) markUsed(openedId); }, [openedId, markUsed]);
   // A project that is gone (deleted, then Back pressed) sends you to the list, replacing this entry so Back doesn't return here.
   useEffect(() => { if (ready && !project) navigate('work/projects', true); }, [ready, project, navigate]);
 
@@ -91,6 +99,9 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
           canEdit={canEditTask}
           onMove={setTaskStatus}
           onToggleDone={toggleTaskDone}
+          canDelete={canDeleteTask}
+          onDelete={deleteTaskWithUndo}
+          onContextMenu={onContextMenu}
           onAdd={openNew}
         />
       )}
@@ -114,6 +125,7 @@ export const ProjectPage: React.FC<{ navigate: (to: string, replace?: boolean) =
       )}
 
       {editor.modal}
+      {menu}
       <ProjectModal
         editing={projectEditing}
         clients={clients}

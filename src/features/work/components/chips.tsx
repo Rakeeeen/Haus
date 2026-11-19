@@ -15,7 +15,8 @@ export const ProjectStatusChip: React.FC<{ status: ProjectStatus }> = ({ status 
 );
 /** The colour a priority wears wherever it is shown or chosen. */
 export const PRIORITY_COLOR: Partial<Record<Priority, string>> = {
-  high: '!bg-rust !text-white',
+  // The fill of a button lives on a layer behind its label (--chrome-bg, see global.css), so the colour is set there — for rest and for hover.
+  high: '![--chrome-bg:var(--rust)] hover:![--chrome-bg:var(--rust)] !text-white',
 };
 export const PriorityChip: React.FC<{ priority: Priority | null }> = ({ priority }) =>
   priority ? <Chip tone={PRIORITY_TONE[priority]}>{PRIORITY_LABEL[priority]}</Chip> : null;

@@ -46,7 +46,7 @@ export const HomeHeader: React.FC<{
             <>
               {greeting.achievement && <AchievementRow achievement={greeting.achievement} />}
               <span className="font-light">{greeting.before}</span>
-              <span className="font-medium cursor-pointer" onClick={onNameClick} style={{ borderBottom: '1px solid color-mix(in srgb, var(--ink) 20%, transparent)' }}>{greeting.name}</span>
+              <span data-origin className="font-medium cursor-pointer" onClick={onNameClick} style={{ borderBottom: '1px solid color-mix(in srgb, var(--ink) 20%, transparent)' }}>{greeting.name}</span>
               <span className="font-light">{greeting.after}</span>
             </>
           )}

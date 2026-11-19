@@ -1,3 +1,4 @@
+import { pushUndo, valueStep } from '@/lib/undoStack';
 import React, { useState } from 'react';
 import { Button } from '@/ui/Button';
 import { NAME } from '@/constants/brand';
@@ -50,7 +51,9 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
 
   const addGlass = () => {
     if (isLocked || fridayLocked) return;
-    setGlasses(glasses + 1);
+    const before = glasses;
+    setGlasses(before + 1);
+    pushUndo({ label: 'A glass of water', undo: valueStep(setGlasses, before + 1, before) });
   };
 
   // A glass drunk while water is closed still belongs to the day that just closed out.
@@ -60,19 +63,25 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   const addLateGlass = () => {
     if (!isLocked || fridayLocked) return;
     const next = applyLateGlass({ glasses, history }, lastResetDate, closedDayKey);
+    const before = { glasses, history };
     setGlasses(next.glasses);
     setHistory(next.history);
+    pushUndo({ label: 'A late glass of water', undo: valueStep((v: typeof before) => { setGlasses(v.glasses); setHistory(v.history); }, next, before) });
   };
 
   const reset = () => {
     if (isLocked) return;
+    const before = glasses;
     setGlasses(0);
+    if (before > 0) pushUndo({ label: 'Reset the glasses', undo: valueStep(setGlasses, 0, before) });
   };
 
   const undo = () => {
     if (isLocked) return;
     if (glasses <= 0) return;
-    setGlasses(glasses - 1);
+    const before = glasses;
+    setGlasses(before - 1);
+    pushUndo({ label: 'Removed a glass', undo: valueStep(setGlasses, before - 1, before) });
   };
 
   // --- ANALYTICS ---

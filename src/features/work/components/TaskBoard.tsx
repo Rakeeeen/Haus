@@ -11,6 +11,7 @@ import { AutoHeight } from '@/ui/AutoHeight';
 import { Button } from '@/ui/Button';
 import { IconPlus as Plus } from '@/ui/icons';
 import { DoneTick } from '@/features/work/components/DoneTick';
+import { SwipeRow } from '@/ui/SwipeRow';
 import { PriorityChip, shortDate } from '@/features/work/components/chips';
 
 export interface Person { name: string; photoUrl: string | null }
@@ -19,12 +20,13 @@ export type PersonOf = (task: Task) => Person[];
 
 const TaskCard: React.FC<{
   task: Task; projectName: string | null; people?: Person[]; editable?: boolean;
-  onOpen: () => void; onToggleDone: () => void; overlay?: boolean;
-}> = ({ task, projectName, people = [], editable = true, onOpen, onToggleDone, overlay = false }) => {
+  onOpen: () => void; onToggleDone: () => void; overlay?: boolean; onContextMenu?: (e: React.MouseEvent) => void;
+}> = ({ task, projectName, people = [], editable = true, onOpen, onToggleDone, overlay = false, onContextMenu }) => {
   const overdue = isOverdue(task, dayKey(new Date()));
   return (
     <div
       onClick={onOpen}
+      onContextMenu={onContextMenu}
       className={`rounded-box border border-ink/12 bg-paper-dark p-3 text-left select-none ${overlay ? 'rotate-1' : 'hover:border-ink/35'} transition-colors`}
     >
       <div className="flex items-start gap-2.5">
@@ -54,7 +56,7 @@ const TaskCard: React.FC<{
   );
 };
 
-const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard>> = (props) => {
+const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard> & { onSwipeDelete?: () => void }> = ({ onSwipeDelete, ...props }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id, disabled: props.editable === false });
   return (
     <div
@@ -63,7 +65,10 @@ const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard>> = (props) =
       {...listeners}
       style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined, opacity: isDragging ? 0 : 1, touchAction: 'manipulation' }}
     >
-      <TaskCard {...props} />
+      {/* On the board a sideways drag already moves a card to another column, so only the trackpad's two-finger swipe deletes. */}
+      <SwipeRow drag={false} enabled={!!onSwipeDelete} onDelete={() => onSwipeDelete?.()}>
+        <TaskCard {...props} />
+      </SwipeRow>
     </div>
   );
 };
@@ -71,7 +76,8 @@ const DraggableCard: React.FC<React.ComponentProps<typeof TaskCard>> = (props) =
 const Column: React.FC<{
   status: TaskStatus; label: string; tasks: Task[]; projectName: (id: string | null) => string | null; personOf?: PersonOf; canEdit: (task: Task) => boolean;
   onOpen: (task: Task) => void; onToggleDone: (task: Task) => void; onAdd?: (status: TaskStatus) => void;
-}> = ({ status, label, tasks, projectName, personOf, canEdit, onOpen, onToggleDone, onAdd }) => {
+  canDelete: (task: Task) => boolean; onDelete?: (task: Task) => void; onContextMenu?: (e: React.MouseEvent, task: Task) => void;
+}> = ({ status, label, tasks, projectName, personOf, canEdit, onOpen, onToggleDone, onAdd, canDelete, onDelete, onContextMenu }) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <div
@@ -85,7 +91,7 @@ const Column: React.FC<{
       <AutoHeight>
         <div className="flex flex-col gap-2.5">
           {tasks.map((task) => (
-          <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} people={personOf?.(task) ?? []} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} />
+          <DraggableCard key={task.id} task={task} projectName={projectLabel(task, projectName)} people={personOf?.(task) ?? []} editable={canEdit(task)} onOpen={() => onOpen(task)} onToggleDone={() => onToggleDone(task)} onSwipeDelete={onDelete && canDelete(task) ? () => onDelete(task) : undefined} onContextMenu={onContextMenu ? (e) => onContextMenu(e, task) : undefined} />
         ))}
         {onAdd && (
           <Button tone="ghost" size="sm" onClick={() => onAdd(status)} className="justify-start !px-2">
@@ -114,7 +120,12 @@ export const TaskBoard: React.FC<{
   onMove: (task: Task, status: TaskStatus) => void;
   onToggleDone: (task: Task) => void;
   onAdd?: (status: TaskStatus) => void;
-}> = ({ tasks, projectName, personOf, showDropped = false, canEdit = () => true, onOpen, onMove, onToggleDone, onAdd }) => {
+  /** A two-finger swipe left on a card deletes it (with a way back), when this says the task may be deleted. */
+  canDelete?: (task: Task) => boolean;
+  onDelete?: (task: Task) => void;
+  /** A right click on a card (the screen's task menu). */
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
+}> = ({ tasks, projectName, personOf, showDropped = false, canEdit = () => true, onOpen, onMove, onToggleDone, onAdd, canDelete = () => false, onDelete, onContextMenu }) => {
   const [dragging, setDragging] = useState<Task | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -149,7 +160,7 @@ export const TaskBoard: React.FC<{
       <div className={`grid grid-cols-1 gap-4 ${columns.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         {columns.map((c) => (
           <Column key={c.value} status={c.value} label={c.label} tasks={groups[c.value]} projectName={projectName} personOf={personOf} canEdit={canEdit}
-            onOpen={onOpen} onToggleDone={onToggleDone} onAdd={onAdd} />
+            onOpen={onOpen} onToggleDone={onToggleDone} onAdd={onAdd} canDelete={canDelete} onDelete={onDelete} onContextMenu={onContextMenu} />
         ))}
       </div>
       <DragOverlay dropAnimation={null}>

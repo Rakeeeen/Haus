@@ -9,6 +9,9 @@ import { OWNER_KEY } from '@/domain/work/sharing';
 import type { Priority, Project, Task, TaskStatus } from '@/domain/work/types';
 import { useComments } from '@/data/useWork';
 import { PRIORITY_COLOR, shortDate } from '@/features/work/components/chips';
+import { SwipeRow } from '@/ui/SwipeRow';
+import { byRecentUse } from '@/domain/work/recentProjects';
+import { useProjectUse } from '@/features/work/useProjectUse';
 
 /** What the editor is for: an existing task, or a new one that starts with `defaults`. */
 export type TaskEditing = { kind: 'edit'; task: Task } | { kind: 'new'; defaults: Partial<Task> };
@@ -47,7 +50,10 @@ export const TaskModal: React.FC<{
   onCreate: (draft: Draft) => Promise<void>;
   onUpdate: (id: string, draft: Draft) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-}> = ({ editing, projects, author, guestUid, canEdit, canDelete, assigneesFor, onClose, onCreate, onUpdate, onDelete }) => {
+  /** A two-finger swipe left on the open task: deletes it, with a way back. */
+  onSwipeDelete?: (task: Task) => void;
+}> = ({ editing, projects, author, guestUid, canEdit, canDelete, assigneesFor, onClose, onCreate, onUpdate, onDelete, onSwipeDelete }) => {
+  const { use: projectUse, markUsed } = useProjectUse();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -103,12 +109,14 @@ export const TaskModal: React.FC<{
   const assignees = assigneesFor(draft?.projectIds[0]);
   const memberUids = projects.filter((p) => draft?.projectIds.includes(p.id)).flatMap((p) => p.memberUids);
   const choices = assignees.filter((a) => a.key === OWNER_KEY || !draft?.projectIds.length || memberUids.includes(a.key));
-  const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name }));
+  // The project chosen last comes first.
+  const projectOptions = byRecentUse(projects, projectUse).map((p) => ({ value: p.id, label: p.name }));
   const locked = !canEdit;
 
   return (
     <AppModal isOpen={editing !== null} onClose={onClose} title={editing?.kind === 'edit' ? `Task #${editing.task.no}` : 'New task'} maxWidth="max-w-2xl">
       {draft && editing && (
+        <SwipeRow drag={false} collapse={false} radius="rounded-none" enabled={editing.kind === 'edit' && canDelete && !!onSwipeDelete} onDelete={() => { if (editing.kind === 'edit') onSwipeDelete?.(editing.task); }}>
         <div className="flex flex-col gap-5 max-h-[72vh] overflow-y-auto pr-1">
           {restored && (
             <div className="flex items-center justify-between gap-3 rounded-box bg-ink/5 px-4 py-2.5 font-mono-main text-[13px] text-ink/60">
@@ -143,7 +151,7 @@ export const TaskModal: React.FC<{
                   ariaLabel="Project"
                   value={draft.projectIds[0] ?? ''}
                   disabled={locked || editing.kind === 'edit'}
-                  onChange={(v) => set('projectIds', v ? [v] : [])}
+                  onChange={(v) => { set('projectIds', v ? [v] : []); if (v) markUsed(v); }}
                   options={[{ value: '', label: 'No project' }, ...projectOptions]}
                 />
               ) : (
@@ -152,7 +160,7 @@ export const TaskModal: React.FC<{
                   empty="No project"
                   values={draft.projectIds}
                   disabled={locked}
-                  onChange={(v) => set('projectIds', v)}
+                  onChange={(v) => { set('projectIds', v); markUsed(...v.filter((id) => !draft.projectIds.includes(id))); }}
                   options={projectOptions}
                 />
               )}
@@ -220,6 +228,7 @@ export const TaskModal: React.FC<{
             {canEdit && <Button tone="primary" disabled={busy} onClick={save}>{editing.kind === 'edit' ? 'Save' : 'Add task'}</Button>}
           </div>
         </div>
+        </SwipeRow>
       )}
     </AppModal>
   );

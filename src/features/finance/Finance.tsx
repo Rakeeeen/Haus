@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NAME } from '@/constants/brand';
 import { PageHeader } from '@/ui/PageHeader';
 import { Tabs } from '@/ui/Tabs';
@@ -21,6 +21,7 @@ import { LogsTab } from '@/features/finance/components/LogsTab';
 import { MoneyMoveModal, type MoveDraft } from '@/features/finance/components/MoneyMoveModal';
 import { SplitModal, type SplitResult } from '@/features/finance/components/SplitModal';
 import { PrivacyToggle } from '@/features/finance/components/PrivacyToggle';
+import { pushUndo, type Step } from '@/lib/undoStack';
 
 interface FinanceProps {
   navigate: (to: string) => void;
@@ -33,7 +34,7 @@ const TAB_OPTIONS = (['overview', 'gold', 'subscriptions', 'debts', 'logs'] as c
 
 export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const {
-    banks, buckets, setBuckets,
+    banks, setBanks, buckets, setBuckets,
     splitTemplate, setSplitTemplate,
     gold, setGold,
     thndr, setThndr,
@@ -41,7 +42,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
     subscriptions, setSubscriptions,
     debts, setDebts,
     updateBankBalance, updateBucketBalance,
-    logs, addLog, removeLog,
+    logs, setLogs, addLog, removeLog,
   } = useFinance();
 
   const [tab, setTab] = useState<FinanceTab>('overview');
@@ -115,6 +116,42 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const thndrEntries = thndr ?? [];
   const thndrMoves = thndrFlows ?? [];
 
+  // ⌘Z for money: each change a person makes remembers how the parts it touches were just before. Undoing puts them back and hands
+  // back the step that puts back what was there a moment ago — so ⌘⇧Z does the change again.
+  type Part = 'banks' | 'buckets' | 'logs' | 'debts' | 'subscriptions' | 'gold' | 'split' | 'thndr';
+  const now = { banks, buckets, logs: logs ?? [], debts: debts ?? [], subscriptions: subscriptions ?? [], gold: gold ?? [], split: splitTemplate ?? {}, thndr: thndrEntries };
+  type Snapshot = typeof now;
+  const latest = useRef(now);
+  latest.current = now;
+  const putBack = async (parts: readonly Part[], snap: Partial<Snapshot>) => {
+    const put: Record<Part, () => unknown> = {
+      banks: () => setBanks(snap.banks as Snapshot['banks']), buckets: () => setBuckets(snap.buckets as Snapshot['buckets']), logs: () => setLogs(snap.logs as Snapshot['logs']),
+      debts: () => setDebts(snap.debts as Snapshot['debts']), subscriptions: () => setSubscriptions(snap.subscriptions as Snapshot['subscriptions']),
+      gold: () => setGold(snap.gold as Snapshot['gold']), split: () => setSplitTemplate(snap.split as Snapshot['split']), thndr: () => setThndr(snap.thndr as Snapshot['thndr']),
+    };
+    await Promise.all(parts.map((part) => put[part]()));
+  };
+  const pickParts = (from: Snapshot, parts: readonly Part[]) => Object.fromEntries(parts.map((p) => [p, from[p]])) as Partial<Snapshot>;
+  const snapshotStep = (parts: readonly Part[], put: Partial<Snapshot>): Step => async () => {
+    const current = pickParts(latest.current, parts);
+    await putBack(parts, put);
+    return snapshotStep(parts, current);
+  };
+  const undoable = <A extends unknown[], R>(label: string, parts: readonly Part[], fn: (...args: A) => R) => (...args: A): R => {
+    const before = pickParts(latest.current, parts);
+    const result = fn(...args);
+    pushUndo({ label, undo: snapshotStep(parts, before) });
+    return result;
+  };
+  const handleMoveU = undoable('Money move', ['banks', 'buckets', 'logs', 'debts'], handleMove);
+  const handleSplitU = undoable('Split', ['banks', 'buckets', 'logs', 'debts', 'split'], handleSplit);
+  const saveDebtU = undoable('Debt change', ['debts'], saveDebt);
+  const setDebtsU = undoable('Debt change', ['debts'], setDebts);
+  const setSubscriptionsU = undoable('Payit change', ['subscriptions'], setSubscriptions);
+  const setGoldU = undoable('Gold change', ['gold'], setGold);
+  const removeLogU = undoable('Removed a log', ['logs'], removeLog);
+  const saveThndrU = undoable('Thndr change', ['thndr'], saveThndr);
+
   return (
     <div className="min-h-screen text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main transition-colors duration-300">
 
@@ -146,21 +183,21 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
           />
         )}
         {tab === 'gold' && (
-          <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} privacyMode={privacyMode} />
+          <GoldTab gold={gold ?? []} setGold={setGoldU} prices={goldPrices} privacyMode={privacyMode} />
         )}
         {tab === 'subscriptions' && (
-          <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptions} privacyMode={privacyMode} />
+          <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptionsU} privacyMode={privacyMode} />
         )}
         {tab === 'debts' && (
           <DebtsTab
             debts={debts ?? []}
-            setDebts={setDebts}
+            setDebts={setDebtsU}
             privacyMode={privacyMode}
             onEdit={(debt) => setDebtModal({ open: true, debt, type: debt.type })}
             onAdd={(type) => setDebtModal({ open: true, debt: null, type })}
           />
         )}
-        {tab === 'logs' && <LogsTab logs={logs ?? []} removeLog={removeLog} />}
+        {tab === 'logs' && <LogsTab logs={logs ?? []} removeLog={removeLogU} />}
       </div>
 
       <DebtModal
@@ -168,7 +205,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         onClose={() => setDebtModal((m) => ({ ...m, open: false }))}
         initial={debtModal.debt}
         defaultType={debtModal.type}
-        onSave={saveDebt}
+        onSave={saveDebtU}
       />
 
       <SplitModal
@@ -179,14 +216,14 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         free={free}
         template={splitTemplate ?? {}}
         debts={debts ?? []}
-        onConfirm={handleSplit}
+        onConfirm={handleSplitU}
       />
 
       <ThndrHeldModal
         isOpen={thndrOpen}
         onClose={() => setThndrOpen(false)}
         current={currentThndrValue(thndrEntries, thndrMoves)}
-        onConfirm={saveThndr}
+        onConfirm={saveThndrU}
       />
 
       <MoneyMoveModal
@@ -195,7 +232,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         initial={moveModal.draft}
         banks={banks}
         buckets={buckets}
-        onConfirm={handleMove}
+        onConfirm={handleMoveU}
       />
     </div>
   );
