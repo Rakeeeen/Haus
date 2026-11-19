@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { FilterSelect } from '@/ui/FilterSelect';
 import { AppModal } from '@/ui/AppModal';
-import { formatEGP } from '@/domain/finance/money';
+import { to12Hour } from '@/domain/clock';
+import { TimePicker } from '@/ui/TimePicker';
+import { evalAmount, formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import { shareAfterSubscriptions, subMatchesFilter, type SubFilter } from '@/domain/finance/subscriptions';
 import { MONTHLY_SALARY_EGP } from '@/domain/finance/defaults';
 import { countdownLabel, upcomingRenewals } from '@/domain/finance/insights';
 import type { FinanceBanks, Subscription } from '@/domain/finance/types';
 import { BANK_KEYS, BANK_LABELS, MaskedValue } from '@/features/finance/components/visuals';
-import { ChoiceGrid, Field, ModalForm, TextInput } from '@/features/finance/components/forms';
+import { ChoiceGrid, Field, ModalForm, SumInput, TextInput } from '@/features/finance/components/forms';
 import { EmptyState, RowActions } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
 import { captionLabel } from '@/features/finance/components/labels';
@@ -22,8 +24,10 @@ const SUB_FILTERS: Array<{ value: SubFilter; label: string }> = [
   { value: 'year', label: 'Yearly' },
 ];
 
-const CYCLES = [1, 2, 3, 12] as const;
-const cycleName = (interval: number) => (interval === 1 ? 'Monthly' : interval === 12 ? 'Yearly' : `Every ${interval}m`);
+const CYCLES = [1, 3, 12] as const;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const cycleName = (interval: number) => (interval === 1 ? 'Monthly' : interval === 12 ? 'Yearly' : `Every ${interval} months`);
 
 const SubscriptionModal: React.FC<{ isOpen: boolean; onClose: () => void; initial: Subscription | null; onSave: (sub: Subscription) => void }> = ({ isOpen, onClose, initial, onSave }) => {
   const [name, setName] = useState('');
@@ -32,6 +36,8 @@ const SubscriptionModal: React.FC<{ isOpen: boolean; onClose: () => void; initia
   const [time, setTime] = useState('09:00');
   const [bank, setBank] = useState<BankKey>('cib');
   const [cycle, setCycle] = useState(1);
+  /** The month (0–11) a plan that bills every few months renews in — what its cycle is counted from. */
+  const [month, setMonth] = useState(new Date().getMonth());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -41,6 +47,7 @@ const SubscriptionModal: React.FC<{ isOpen: boolean; onClose: () => void; initia
     setTime(initial?.reminderTime || '09:00');
     setBank(initial ? bankKeyOf(initial.bank) : 'cib');
     setCycle(initial?.intervalMonths ?? 1);
+    setMonth(initial?.startDate ? Number(initial.startDate.split('-')[1]) - 1 : new Date().getMonth());
   }, [isOpen, initial]);
 
   const submit = (e: React.FormEvent) => {
@@ -50,36 +57,44 @@ const SubscriptionModal: React.FC<{ isOpen: boolean; onClose: () => void; initia
       ...initial,
       id: initial?.id ?? `${Date.now()}`,
       name: name.trim(),
-      cost: parseFloat(cost),
+      cost: evalAmount(cost),
       renewalDay: parseInt(day),
       reminderTime: time || '09:00',
       bank: BANK_LABELS[bank],
       intervalMonths: cycle,
-      startDate: initial?.startDate ?? new Date().toISOString().slice(0, 10),
+      // A plan billed every few months counts from the month it renews in, which the form asks for; a monthly one has no month to keep.
+      startDate: cycle > 1
+        ? `${new Date().getFullYear()}-${pad2(month + 1)}-${pad2(Math.min(31, Math.max(1, parseInt(day) || 1)))}`
+        : initial?.startDate ?? new Date().toISOString().slice(0, 10),
     });
     onClose();
   };
 
   return (
     <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Payit' : 'Add Payit'} raw maxWidth="max-w-sm">
-      <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Add Payit'}>
+      <ModalForm onSubmit={submit} scrollable submitLabel={initial ? 'Save Changes' : 'Add Payit'}>
         <Field label="Name">
           <TextInput type="text" placeholder="e.g. Netflix, Spotify" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
         </Field>
         <Field label="Cost — EGP">
-          <TextInput look="amount" type="number" step="0.01" placeholder="e.g. 250" value={cost} onChange={(e) => setCost(e.target.value)} required />
+          <SumInput look="amount" placeholder="e.g. 250" value={cost} onChange={(e) => setCost(e.target.value)} required />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Renewal day">
             <TextInput type="number" min="1" max="31" placeholder="e.g. 15" value={day} onChange={(e) => setDay(e.target.value)} required />
           </Field>
           <Field label="Reminder time">
-            <TextInput type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+            <TimePicker value={time} onChange={setTime} ariaLabel="Reminder time" />
           </Field>
         </div>
         <Field label="Billing cycle">
-          <ChoiceGrid columns={4} options={CYCLES.map((iv) => ({ value: iv, label: iv === 1 ? 'Monthly' : iv === 12 ? 'Yearly' : `${iv}m` }))} value={cycle} onChange={setCycle} />
+          <ChoiceGrid columns={3} options={CYCLES.map((iv) => ({ value: iv, label: iv === 1 ? 'Monthly' : iv === 12 ? 'Yearly' : `${iv} months` }))} value={cycle} onChange={setCycle} />
         </Field>
+        {cycle > 1 && (
+          <Field label="Renews in" hint="The month it bills — every cycle is counted from it.">
+            <ChoiceGrid columns={4} options={MONTHS.map((label, i) => ({ value: i, label }))} value={month} onChange={setMonth} />
+          </Field>
+        )}
         <Field label="Payment account">
           <ChoiceGrid options={BANK_KEYS.map((k) => ({ value: k, label: BANK_LABELS[k] }))} value={bank} onChange={setBank} />
         </Field>
@@ -149,7 +164,7 @@ export const SubscriptionsTab: React.FC<{
         <EmptyState>{filter === 'day' ? 'Nothing renews today.' : `No ${filter === 'month' ? 'monthly' : 'yearly'} Payit.`}</EmptyState>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-          {rows.map(({ sub, daysLeft }) => {
+          {rows.map(({ sub, daysLeft, next }) => {
             const interval = sub.intervalMonths ?? 1;
             const soon = daysLeft <= 5;
             return (
@@ -158,7 +173,7 @@ export const SubscriptionsTab: React.FC<{
                 <div>
                   <p className="font-sans-main font-black text-ink text-base">{sub.name}</p>
                   <p className="font-mono-main text-ink/40 mt-1 text-[11px]">
-                    {sub.bank} · Day {sub.renewalDay}{sub.reminderTime ? ` · ${sub.reminderTime}` : ''} · {cycleName(interval)}
+                    {sub.bank} · {interval > 1 ? `${sub.renewalDay} ${MONTHS[next.getMonth()]}` : `Day ${sub.renewalDay}`}{sub.reminderTime ? ` · ${to12Hour(sub.reminderTime)}` : ''} · {cycleName(interval)}
                   </p>
                   <p className="font-mono-main font-bold mt-1 text-[11px]" style={{ color: soon ? 'var(--rust)' : 'var(--ink)', opacity: soon ? 1 : 0.35 }}>{countdownLabel(daysLeft)}</p>
                 </div>

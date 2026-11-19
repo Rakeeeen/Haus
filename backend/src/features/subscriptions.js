@@ -3,13 +3,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendEmbed } from '../lib/alerts.js';
 import { NAME } from '../lib/brand.js';
+import { dashboardConfigured, watchDashboardValue } from '../lib/firestore.js';
 
-// Payit (subscription) renewal reminders. The web app owns the list; it pushes every edit to the
-// bot, which keeps it in memory and in a small file so a restart doesn't forget it.
+// Payit (subscription) renewal reminders. The list lives in Firestore (`finance_subscriptions`, what the Payit page saves);
+// the bot listens to it, so an edit from any device reaches it, and keeps a copy in memory and in a small file so a restart
+// doesn't forget it. The web app still pushes each edit to the local API too, which only makes the copy current a moment sooner.
 
 const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'subscriptions.json');
 const TIME_ZONE = 'Africa/Cairo';
 const DEFAULT_REMINDER_TIME = '09:00';
+/** How long after its minute a reminder may still go out — so a bot that was asleep or restarting then doesn't lose it. */
+const GRACE_MINUTES = 180;
+const SENT_FILE = path.join(path.dirname(FILE), 'subscriptions-sent.json');
 
 let subscriptions = loadFromFile();
 
@@ -27,6 +32,17 @@ function loadFromFile() {
 }
 
 export const getSubscriptions = () => subscriptions;
+
+/** Follows the list the Payit page saves in Firestore. Returns a function that stops listening (or null when Firestore isn't set up). */
+export function watchSubscriptions() {
+  if (!dashboardConfigured()) return null;
+  return watchDashboardValue('finance_subscriptions', (value) => {
+    if (Array.isArray(value)) {
+      replaceSubscriptions(value);
+      console.log(`🔄 Payit list updated from Firestore: ${value.length}`);
+    }
+  });
+}
 
 /** Replaces the list with what the web app just saved, and remembers it. */
 export function replaceSubscriptions(next) {
@@ -51,21 +67,57 @@ export function cairoClock(now = new Date()) {
 const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
 const pad = (n) => String(n).padStart(2, '0');
 
+/** "HH:MM" → minutes since midnight (NaN when it isn't a time). */
+const minutesOf = (hhmm) => {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + m;
+};
+
+/** The month a plan started in, as a month count (year × 12 + month, January = 0) — read from the "YYYY-MM-DD" text, not through a Date, so the machine's time zone can't move it a day. */
+const startMonthIndex = (startDate) => {
+  const [year, month] = String(startDate).split('-').map(Number);
+  return Number.isFinite(year) && Number.isFinite(month) ? year * 12 + (month - 1) : null;
+};
+
 /**
- * Whether a subscription's reminder is due at this minute: its renewal day (the last day of a
- * short month, if it falls on a 31st), its reminder time — and a month it actually renews in. A
- * quarterly or yearly plan only renews every `intervalMonths` from its start month.
+ * Whether a subscription's reminder is due now: it is its renewal day (the last day of a short
+ * month, if it falls on a 31st), its reminder time has come and no more than `GRACE_MINUTES` have
+ * passed — and it is a month it actually renews in. A quarterly or yearly plan only renews every
+ * `intervalMonths` from its start month. (That it goes out once is `remindDueSubscriptions`'s job.)
  */
 export function isDueAt(sub, clock) {
   const renewalDay = Math.min(Number(sub.renewalDay), daysInMonth(clock.year, clock.month));
   if (clock.day !== renewalDay) return false;
-  if ((sub.reminderTime || DEFAULT_REMINDER_TIME) !== `${pad(clock.hour)}:${pad(clock.minute)}`) return false;
+  const late = clock.hour * 60 + clock.minute - minutesOf(sub.reminderTime || DEFAULT_REMINDER_TIME);
+  if (!(late >= 0 && late < GRACE_MINUTES)) return false;
 
   const interval = sub.intervalMonths || 1;
-  if (!sub.startDate) return true;
-  const start = new Date(sub.startDate);
-  const monthsFromStart = (clock.year - start.getFullYear()) * 12 + (clock.month - 1 - start.getMonth());
+  const start = sub.startDate ? startMonthIndex(sub.startDate) : null;
+  if (start === null) return true;
+  const monthsFromStart = clock.year * 12 + (clock.month - 1) - start;
   return monthsFromStart >= 0 && monthsFromStart % interval === 0;
+}
+
+const dayKey = (clock) => `${clock.year}-${pad(clock.month)}-${pad(clock.day)}`;
+
+/** The reminders already sent today ("id:YYYY-MM-DD"), kept in a file so a restart doesn't send them again. */
+function loadSent() {
+  try {
+    const stored = JSON.parse(fs.readFileSync(SENT_FILE, 'utf8'));
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+}
+let sent = loadSent();
+
+function rememberSent(keys, today) {
+  sent = new Set([...keys].filter((k) => k.endsWith(`:${today}`)));
+  try {
+    fs.writeFileSync(SENT_FILE, JSON.stringify([...sent]), 'utf8');
+  } catch (error) {
+    console.error('⚠️ Failed to save the sent Payit reminders:', error.message);
+  }
 }
 
 /** Posts today's reminder for one subscription. */
@@ -86,11 +138,16 @@ async function sendSubscriptionAlert(client, channelId, sub, now = new Date()) {
   }, `**Payit Due: ${sub.name}**\n${amount} · ${sub.bank || 'Unknown'}\n${date}`);
 }
 
-/** Run once a minute: sends a reminder for every subscription that is due right now. */
+/** Run once a minute: sends a reminder for every subscription that is due and hasn't been told about today. */
 export async function remindDueSubscriptions(client, channelId, now = new Date()) {
   const clock = cairoClock(now);
-  const due = subscriptions.filter((sub) => isDueAt(sub, clock));
+  const today = dayKey(clock);
+  const due = subscriptions.filter((sub) => isDueAt(sub, clock) && !sent.has(`${sub.id ?? sub.name}:${today}`));
   if (!due.length) return;
   console.log(`[${pad(clock.hour)}:${pad(clock.minute)} Cairo] 🔔 ${due.length} Payit due`);
-  for (const sub of due) await sendSubscriptionAlert(client, channelId, sub, now);
+  for (const sub of due) {
+    // Marked before sending: a send that fails or takes long isn't started twice by the next minute.
+    rememberSent(new Set([...sent, `${sub.id ?? sub.name}:${today}`]), today);
+    await sendSubscriptionAlert(client, channelId, sub, now);
+  }
 }

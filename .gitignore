@@ -36,6 +36,7 @@ backend/serviceAccountKey.json
 
 # Backend runtime data (not source, regenerated at runtime)
 backend/subscriptions.json
+backend/subscriptions-sent.json
 backend/gold_cache.json
 
 # Serena (local code-intelligence cache)

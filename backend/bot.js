@@ -11,7 +11,7 @@ import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { watchMailNotifications } from './src/features/mailNotifications.js';
 import { sendDailyReport, sendGuestReport } from './src/features/report/send.js';
 import { reportRecipients } from './src/features/report/guest.js';
-import { remindDueSubscriptions } from './src/features/subscriptions.js';
+import { remindDueSubscriptions, watchSubscriptions } from './src/features/subscriptions.js';
 import { afterAttempt, afterGuestAttempt, afterMaghrib, guestsDue, readGuestState, readState, reportDue, writeGuestState, writeState } from './src/features/report/schedule.js';
 import { getMaghrib } from './src/lib/prayerTimes.js';
 import { startServer } from './src/server.js';
@@ -58,6 +58,7 @@ client.once('clientReady', async () => {
     const channel = await client.channels.fetch(CHANNEL_ID);
     console.log(`🧹 Cleaned the channel: ${await cleanChannel(channel)} messages removed`);
   }));
+  try { watchSubscriptions(); } catch (error) { console.error('❌ Could not follow the Payit list:', error.message); }
   cron.schedule('* * * * *', guarded('Payit reminders', () => remindDueSubscriptions(client, CHANNEL_ID)));
   // Maghrib moves every day (from the prayer API, like the water and focus locks), so the report is checked each minute.
   // It goes out at Maghrib, or when the Mac wakes if it was asleep then; the state file keeps it to once a day.

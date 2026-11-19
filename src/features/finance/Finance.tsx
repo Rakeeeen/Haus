@@ -9,13 +9,12 @@ import { applyMove, urgentDebtFor, type MoneyMove } from '@/domain/finance/moves
 import {
   BUCKET_ORDER, applyAssignment, applyIncome, freeMoneyOf, remainderOf, repayUrgent, toPercentages,
 } from '@/domain/finance/split';
-import { currentThndrParts, currentThndrValue } from '@/domain/finance/thndr';
+import { currentThndrValue } from '@/domain/finance/thndr';
 import type { Debt } from '@/domain/finance/types';
 import { BANK_LABELS, BUCKET_META } from '@/features/finance/components/visuals';
 import { OverviewTab, type FinanceTab } from '@/features/finance/components/OverviewTab';
 import { GoldTab } from '@/features/finance/components/GoldTab';
-import { ThndrTab } from '@/features/finance/components/ThndrTab';
-import { ThndrMoneyModal, type ThndrMoneyDraft } from '@/features/finance/components/ThndrMoneyModal';
+import { ThndrHeldModal } from '@/features/finance/components/ThndrHeldModal';
 import { SubscriptionsTab } from '@/features/finance/components/SubscriptionsTab';
 import { DebtModal, DebtsTab } from '@/features/finance/components/DebtsTab';
 import { LogsTab } from '@/features/finance/components/LogsTab';
@@ -29,7 +28,7 @@ interface FinanceProps {
 
 // Displayed as "Payit" — the tab id itself stays 'subscriptions' (it's just the UI label that changed).
 const TAB_LABELS: Partial<Record<FinanceTab, string>> = { subscriptions: 'Payit' };
-const TAB_OPTIONS = (['overview', 'gold', 'thndr', 'subscriptions', 'debts', 'logs'] as const)
+const TAB_OPTIONS = (['overview', 'gold', 'subscriptions', 'debts', 'logs'] as const)
   .map((value) => ({ value, label: TAB_LABELS[value] }));
 
 export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
@@ -38,7 +37,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
     splitTemplate, setSplitTemplate,
     gold, setGold,
     thndr, setThndr,
-    thndrFlows, setThndrFlows,
+    thndrFlows,
     subscriptions, setSubscriptions,
     debts, setDebts,
     updateBankBalance, updateBucketBalance,
@@ -49,7 +48,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const [privacyMode, setPrivacyMode] = useState(true);
   const [moveModal, setMoveModal] = useState<{ open: boolean; draft: MoveDraft }>({ open: false, draft: { type: 'deposit', bank: null } });
   const [splitModal, setSplitModal] = useState<{ open: boolean; mode: 'income' | 'assign' }>({ open: false, mode: 'income' });
-  const [thndrMoneyOpen, setThndrMoneyOpen] = useState(false);
+  const [thndrOpen, setThndrOpen] = useState(false);
   const [debtModal, setDebtModal] = useState<{ open: boolean; debt: Debt | null; type: Debt['type'] }>({ open: false, debt: null, type: 'owed_to_me' });
   // Refreshed at Fajr and Maghrib by `GoldPriceRefresher`; this only reads them.
   const goldPrices = useGoldPrices();
@@ -78,11 +77,9 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
     if (debt) await setDebts((prev) => [...(prev || []), debt]);
   };
 
-  /** Money into / out of Thndr: recorded as a flow (so it isn't a gain), and — if asked — moved out of / back into the bank. */
-  const handleThndrMoney = async ({ flow, move }: ThndrMoneyDraft) => {
-    if (move) await handleMove(move);
-    await setThndrFlows((prev) => [{ ...flow, id: crypto.randomUUID(), timestamp: new Date().toISOString() }, ...(prev || [])]);
-  };
+  /** Thndr's share of the Future fund was changed by hand: a new reading carries the new value. */
+  const saveThndr = (value: number) =>
+    setThndr((prev) => [...(prev || []), { id: crypto.randomUUID(), value, timestamp: new Date().toISOString() }]);
 
   const free = freeMoneyOf(banks, buckets);
 
@@ -125,7 +122,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         crumbs={[{ label: 'Home', to: 'home' }, { label: 'Finance' }]}
         title="Finances"
         navigate={navigate}
-        trailing={<PrivacyToggle privateMode={privacyMode} onToggle={() => setPrivacyMode((p) => !p)} disabled={tab === 'thndr'} />}
+        trailing={<PrivacyToggle privateMode={privacyMode} onToggle={() => setPrivacyMode((p) => !p)} />}
         aside={<Tabs layoutId="financeTab" ruled value={tab} onChange={setTab} options={TAB_OPTIONS} className="md:mb-1" />}
         className="max-w-[1400px] mb-10 md:mb-12"
       />
@@ -145,19 +142,11 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
             onMove={openMove}
             onSplit={(mode) => setSplitModal({ open: true, mode })}
             onOpenTab={setTab}
+            onEditThndr={() => setThndrOpen(true)}
           />
         )}
         {tab === 'gold' && (
           <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} privacyMode={privacyMode} />
-        )}
-        {tab === 'thndr' && (
-          <ThndrTab
-            entries={thndrEntries}
-            setEntries={setThndr}
-            flows={thndrMoves}
-            setFlows={setThndrFlows}
-            onAddMoney={() => setThndrMoneyOpen(true)}
-          />
         )}
         {tab === 'subscriptions' && (
           <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptions} privacyMode={privacyMode} />
@@ -193,14 +182,11 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         onConfirm={handleSplit}
       />
 
-      <ThndrMoneyModal
-        isOpen={thndrMoneyOpen}
-        onClose={() => setThndrMoneyOpen(false)}
-        banks={banks}
-        buckets={buckets}
-        parts={currentThndrParts(thndrEntries, thndrMoves)}
-        value={currentThndrValue(thndrEntries, thndrMoves)}
-        onConfirm={handleThndrMoney}
+      <ThndrHeldModal
+        isOpen={thndrOpen}
+        onClose={() => setThndrOpen(false)}
+        current={currentThndrValue(thndrEntries, thndrMoves)}
+        onConfirm={saveThndr}
       />
 
       <MoneyMoveModal

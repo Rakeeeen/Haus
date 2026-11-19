@@ -1,8 +1,7 @@
 import React from 'react';
 
 /** The PRIVATE / VISIBLE switch that hides or shows every amount on the Finance page.
- *  `disabled` is for tabs (Thndr) that don't honor it — their numbers are always on
- *  screen, so flipping the switch there would do nothing. */
+ *  `disabled` is for a view that doesn't honor it, so flipping the switch there would do nothing. */
 export const PrivacyToggle: React.FC<{ privateMode: boolean; onToggle: () => void; disabled?: boolean }> = ({ privateMode, onToggle, disabled = false }) => (
   <button
     onClick={disabled ? undefined : onToggle}

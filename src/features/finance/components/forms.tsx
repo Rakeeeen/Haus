@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/ui/Button';
+import { evalAmount, normalizeAmountText } from '@/domain/finance/money';
 
 /**
  * The finance modals' form pieces. Every add/edit modal is built from these, so a field,
@@ -23,6 +24,42 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & {
   look?: 'text' | 'amount';
 };
 
+/** The answer to what is typed, while it is being typed — only once it is a sum ("1500+250" → "1,750"), never for a plain number. */
+const liveResult = (value: unknown): string | null => {
+  const text = String(value ?? '');
+  if (!/[0-9.)][+\-*/×÷x−–]/i.test(text.replace(/[,\s]/g, ''))) return null;
+  const result = evalAmount(text);
+  return Number.isFinite(result) ? result.toLocaleString('en-US', { maximumFractionDigits: 2 }) : null;
+};
+
+const Result: React.FC<{ value: unknown; large?: boolean }> = ({ value, large }) => {
+  const result = liveResult(value);
+  // Always there, so the field below doesn't jump when the first operator is typed: only its text fades in.
+  return (
+    <p
+      aria-live="polite"
+      className={`font-mono-main font-black text-ink text-right mt-2 truncate transition-opacity duration-150 ease-out ${large ? 'h-8 text-[22px] leading-8' : 'h-5 text-[14px] leading-5'} ${result === null ? 'opacity-0' : 'opacity-100'}`}
+    >
+      {result === null ? '\u00a0' : `= ${result}`}
+    </p>
+  );
+};
+
+/** An onChange that hands over the text with Arabic digits turned into English ones, and nothing but a sum left in it. */
+const cleaned = (onChange: React.ChangeEventHandler<HTMLInputElement> | undefined): React.ChangeEventHandler<HTMLInputElement> => (e) => {
+  const text = normalizeAmountText(e.target.value);
+  if (text !== e.target.value) e.target.value = text;
+  onChange?.(e);
+};
+
+/** A sum is fine here too: "1+1" is read as 2 (see `evalAmount`), and the answer shows at the end of the field as it is typed. */
+export const SumInput: React.FC<Omit<InputProps, 'type' | 'inputMode'>> = ({ className = '', ...props }) => (
+  <div>
+    <TextInput {...props} onChange={cleaned(props.onChange)} type="text" inputMode="decimal" autoComplete="off" className={className} />
+    <Result value={props.value} large={props.look === 'amount'} />
+  </div>
+);
+
 export const TextInput: React.FC<InputProps> = ({ look = 'text', className = '', ...props }) => (
   <input
     {...props}
@@ -32,15 +69,20 @@ export const TextInput: React.FC<InputProps> = ({ look = 'text', className = '',
 
 /** Money entry with an EGP prefix. */
 export const AmountInput: React.FC<Omit<InputProps, 'look' | 'type'>> = (props) => (
-  <div className="relative">
+  <div>
+    <div className="relative">
     <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono-main select-none text-[11px] text-ink/25">EGP</span>
     <input
       {...props}
-      type="number"
-      step="0.01"
+      onChange={cleaned(props.onChange)}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
       placeholder="0.00"
       className={`${inputBase} pl-[50px] pr-4 py-4 text-[28px] font-bold`}
     />
+    </div>
+    <Result value={props.value} large />
   </div>
 );
 
@@ -63,7 +105,7 @@ export function ChoiceGrid<T extends string | number>({ options, value, onChange
             key={String(o.value)}
             type="button"
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer font-sans-main font-bold uppercase tracking-wide transition-colors text-left px-5 py-3 border rounded-full ${
+            className={`cursor-pointer font-sans-main font-bold uppercase tracking-wide transition-colors py-3 border rounded-full ${o.sub ? 'text-left px-5' : `text-center whitespace-nowrap ${columns === 4 ? 'px-1.5' : 'px-4'}`} ${
               selected ? 'bg-ink text-paper border-ink' : 'bg-transparent text-ink/40 border-ink/12 hover:bg-ink/5 hover:text-ink'
             }`}
           >
@@ -91,7 +133,8 @@ export function Segmented<T extends string | number>({ options, value, onChange 
             key={String(o.value)}
             type="button"
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer flex-1 rounded-full font-sans-main font-bold uppercase tracking-wide transition-colors py-2.5 text-[12px] ${selected ? 'bg-ink text-paper' : 'text-ink/40 hover:text-ink'}`}
+            style={{ '--chrome-bg': selected ? 'var(--ink)' : 'transparent' } as React.CSSProperties}
+            className={`push cursor-pointer flex-1 rounded-full font-sans-main font-bold uppercase tracking-wide transition-colors py-2.5 text-[12px] ${selected ? 'text-paper' : 'text-ink/40 hover:text-ink'}`}
           >
             {o.label}
           </button>

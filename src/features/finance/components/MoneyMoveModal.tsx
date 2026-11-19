@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { useBodyScrollLock } from '@/ui/useBodyScrollLock';
-import { formatEGP } from '@/domain/finance/money';
+import { evalAmount, formatEGP } from '@/domain/finance/money';
 import { moveError, type MoneyMove } from '@/domain/finance/moves';
 import { BUCKET_ORDER, matchMove } from '@/domain/finance/split';
 import type { FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
@@ -53,7 +53,7 @@ export const MoneyMoveModal: React.FC<{
   useBodyScrollLock(isOpen);
 
   const matching = type === 'match';
-  const value = parseFloat(amount);
+  const value = evalAmount(amount);
 
   // What confirming would do, and why it can't yet.
   let move: MoneyMove | null = null;

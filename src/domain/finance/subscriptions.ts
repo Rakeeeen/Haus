@@ -9,10 +9,10 @@ export type SubFilter = 'day' | 'month' | 'year';
  */
 export function nextRenewal(sub: Subscription, now: Date = new Date()): Date {
   const interval = sub.intervalMonths ?? 1;
-  const start = sub.startDate
-    ? new Date(sub.startDate)
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startMonthIdx = start.getFullYear() * 12 + start.getMonth();
+  // The start month is read from the "YYYY-MM-DD" text: `new Date('2026-01-01')` is midnight UTC, which a
+  // browser behind UTC would call December 31 — a month early.
+  const [startYear, startMonth] = sub.startDate ? sub.startDate.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1];
+  const startMonthIdx = startYear * 12 + (startMonth - 1);
   const [rh, rm] = (sub.reminderTime || '09:00').split(':').map(Number);
 
   for (let offset = 0; offset <= 24; offset++) {

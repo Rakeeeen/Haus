@@ -68,3 +68,14 @@ export function zoneOffsetMs(timeZone: string, at: number): number {
   const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
   return asUtc - Math.floor(at / 1000) * 1000;
 }
+
+/** "HH:MM" (24-hour, as stored) → "9:05 AM". Anything that isn't a time comes back unchanged. */
+export function to12Hour(hhmm: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!match) return hhmm;
+  const hour = Number(match[1]);
+  return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+/** A moment as "9:05 AM" on the device's clock. */
+export const clock12 = (at: Date): string => to12Hour(`${at.getHours()}:${String(at.getMinutes()).padStart(2, '0')}`);

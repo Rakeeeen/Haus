@@ -19,7 +19,7 @@ vi.mock('@/features/finance/useFinance', () => ({
   useFinance: () => ({
     banks: EMPTY_BANKS, buckets: EMPTY_BUCKETS, setBuckets: vi.fn(),
     splitTemplate: {}, setSplitTemplate: vi.fn(),
-    gold: [], setGold: vi.fn(), thndr: [], setThndr: vi.fn(), thndrFlows: [], setThndrFlows: vi.fn(),
+    gold: [], setGold: vi.fn(), thndr: [], setThndr: vi.fn(), thndrFlows: [],
     subscriptions: [], setSubscriptions: vi.fn(),
     debts: state.debts, setDebts: state.setDebts,
     updateBankBalance: vi.fn(), updateBucketBalance: vi.fn(),
@@ -151,7 +151,7 @@ describe('Finance page', () => {
     expect(saved).toEqual([expect.objectContaining({ id: 'd1', personName: 'Aly', amount: 300 })]);
   });
 
-  it.each(['gold', 'thndr', 'payit'])('renders the %s tab without breaking', async (name) => {
+  it.each(['gold', 'payit'])('renders the %s tab without breaking', async (name) => {
     open();
     await userEvent.click(screen.getByRole('tab', { name: new RegExp(name, 'i') }));
     expect(screen.getByRole('heading', { name: /Finances/i })).toBeTruthy();

@@ -7,11 +7,12 @@ import { parseDayKey } from '@/domain/work/tasks';
 import { Avatar } from '@/ui/Avatar';
 import { FilterSelect } from '@/ui/FilterSelect';
 import { WorkLoading } from '@/features/work/components/WorkLoading';
+import { clock12 } from '@/domain/clock';
 import { WorkShell } from '@/features/work/components/WorkShell';
 
 const dayTitle = (key: string): string =>
   parseDayKey(key).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-const clock = (iso: string): string => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const clock = (iso: string): string => clock12(new Date(iso));
 
 /** Hamed's log: what each guest did in Haus (signing in, adding or moving tasks, comments), newest first, for one person or everyone. */
 export const Activity: React.FC<{ navigate: (to: string) => void }> = ({ navigate }) => {

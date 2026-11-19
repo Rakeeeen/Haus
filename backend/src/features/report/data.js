@@ -6,6 +6,7 @@
 
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
+import { to12Hour } from '../../lib/format.js';
 
 export const WATER_GOAL = 12;
 export const FOCUS_TARGET_MINUTES = 10 * 60;
@@ -76,8 +77,8 @@ export function buildFocus(raw, now) {
 /** Next renewal of a subscription from `now` (see src/domain/finance/subscriptions.ts). */
 export function nextRenewal(sub, now) {
   const interval = sub.intervalMonths || 1;
-  const start = sub.startDate ? new Date(sub.startDate) : new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startMonthIdx = start.getFullYear() * 12 + start.getMonth();
+  const [startYear, startMonth] = sub.startDate ? String(sub.startDate).split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1];
+  const startMonthIdx = startYear * 12 + (startMonth - 1);
   const [rh, rm] = (sub.reminderTime || '09:00').split(':').map(Number);
   for (let offset = 0; offset <= 24; offset++) {
     const d = new Date(now.getFullYear(), now.getMonth() + offset, sub.renewalDay, rh, rm, 0);
@@ -261,7 +262,7 @@ export const describeDate = (now) => ({
   iso: isoKey(now),
   weekday: now.toLocaleDateString('en-GB', { weekday: 'long' }),
   label: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-  time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+  time: to12Hour(`${now.getHours()}:${pad(now.getMinutes())}`),
 });
 
 /** Everything the report shows, from the raw dashboard values. */

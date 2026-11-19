@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clockLayout, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS, zoneOffsetMs } from '@/domain/clock';
+import { clockLayout, clockRowsThatFit, getClockParts, MAX_CLOCK_ROWS, to12Hour, zoneOffsetMs } from '@/domain/clock';
 
 describe('getClockParts', () => {
   // 2026-10-07 12:00 UTC
@@ -72,4 +72,11 @@ describe('zoneOffsetMs', () => {
     expect(zoneOffsetMs('Africa/Cairo', winter)).toBe(2 * hour);
     expect(zoneOffsetMs('Asia/Dubai', summer)).toBe(4 * hour);
   });
+});
+
+describe('to12Hour', () => {
+  it.each([['00:00', '12:00 AM'], ['09:05', '9:05 AM'], ['12:00', '12:00 PM'], ['13:30', '1:30 PM'], ['23:59', '11:59 PM']])('%s → %s', (input, expected) => {
+    expect(to12Hour(input)).toBe(expected);
+  });
+  it('leaves what is not a time alone', () => expect(to12Hour('soon')).toBe('soon'));
 });

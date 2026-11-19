@@ -1,8 +1,33 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '@/ui/Button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SPRING } from '@/ui/springPose';
 import { useBodyScrollLock } from '@/ui/useBodyScrollLock';
+import { AutoHeight } from '@/ui/AutoHeight';
+
+const PRESSABLE = 'button, a, [role="button"], [role="tab"]';
+
+/** Where the control that was just pressed is, remembered at the press (Safari doesn't focus a clicked button), for a moment. */
+let lastPress: { x: number; y: number; at: number } | null = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (e) => {
+    const el = (e.target as Element | null)?.closest?.(PRESSABLE);
+    if (!el) { lastPress = null; return; }
+    const r = el.getBoundingClientRect();
+    lastPress = { x: r.left + r.width / 2, y: r.top + r.height / 2, at: Date.now() };
+  }, true);
+}
+
+/** The centre of the control that opened the dialog: the one just pressed, or — opened from the keyboard — the one with focus. */
+function triggerPoint(): { x: number; y: number } | null {
+  if (lastPress && Date.now() - lastPress.at < 1500) return lastPress;
+  const el = document.activeElement;
+  if (el && el !== document.body && el.matches?.(PRESSABLE)) {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  return null;
+}
 
 interface AppModalProps {
   isOpen: boolean;
@@ -38,6 +63,21 @@ export const AppModal: React.FC<AppModalProps> = ({
 }) => {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const still = useReducedMotion();
+  // The point the dialog grows from and shrinks back to, in its own coordinates (null: from the middle, as before).
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  const trigger = useRef<{ x: number; y: number } | null>(null);
+  const wasOpen = useRef(false);
+  if (isOpen && !wasOpen.current) trigger.current = triggerPoint();
+  wasOpen.current = isOpen;
+
+  // Once laid out (its untransformed position, which a scale doesn't move), the trigger becomes a point inside the dialog.
+  useLayoutEffect(() => {
+    const el = dialogRef.current;
+    const point = trigger.current;
+    if (!isOpen || !el || !point) return;
+    setOrigin({ x: point.x - el.offsetLeft, y: point.y - el.offsetTop });
+  }, [isOpen]);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -75,13 +115,15 @@ export const AppModal: React.FC<AppModalProps> = ({
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
             tabIndex={-1}
-            initial={{ scale: 0.93, opacity: 0, y: 18 }}
+            // Grows out of the button that opened it, from about half size, and goes back into it.
+            initial={{ scale: still ? 1 : trigger.current ? 0.5 : 0.93, opacity: 0, y: trigger.current || still ? 0 : 18 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+            exit={{ scale: still ? 1 : trigger.current ? 0.55 : 0.95, opacity: 0, y: trigger.current || still ? 0 : 10, transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] } }}
             transition={{ ...SPRING, opacity: { duration: 0.2 } }}
             onClick={e => e.stopPropagation()}
             className={`relative w-full rounded-modal outline-none ${maxWidth}`}
             style={{
+              transformOrigin: origin ? `${origin.x}px ${origin.y}px` : 'center',
               background: 'var(--paper-dark)',
               border: '1px solid color-mix(in srgb, var(--ink) 12%, transparent)',
             }}
@@ -139,10 +181,10 @@ export const AppModal: React.FC<AppModalProps> = ({
                 </div>
               </div>
             ) : raw ? (
-              <>{children}</>
+              <AutoHeight>{children}</AutoHeight>
             ) : (
               /* Content mode */
-              <div className="px-8 pb-8 pt-6">{children}</div>
+              <AutoHeight><div className="px-8 pb-8 pt-6">{children}</div></AutoHeight>
             )}
           </motion.div>
         </motion.div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatEGP, formatSignedEGP, formatSignedPercent } from '@/domain/finance/money';
+import { evalAmount, formatEGP, normalizeAmountText } from '@/domain/finance/money';
 
 describe('formatEGP', () => {
   it('rounds to whole pounds with thousands separators', () => {
@@ -8,19 +8,22 @@ describe('formatEGP', () => {
   });
 });
 
-describe('formatSignedEGP', () => {
-  it('always shows the sign, using a real minus', () => {
-    expect(formatSignedEGP(1200)).toBe('+1,200 EGP');
-    expect(formatSignedEGP(-300)).toBe('−300 EGP');
-  });
-  it('zero counts as a gain, not a loss', () => {
-    expect(formatSignedEGP(0)).toBe('+0 EGP');
-  });
+describe('evalAmount', () => {
+  it.each([
+    ['1+1', 2], ['250*3-40', 710], ['(100+50)/3', 50], ['1,200', 1200], ['2×5', 10], ['9÷3', 3],
+    ['10-2-3', 5], ['-5+10', 5], ['1.5+1.5', 3], ['100', 100], ['2+3*4', 14],
+  ])('%s → %s', (text, expected) => expect(evalAmount(text)).toBe(expected));
+
+  it.each(['', '1+', 'abc', '(1+2', '1/0', '1..2', '5)'])('%j is not a number', (text) => expect(evalAmount(text)).toBeNaN());
 });
 
-describe('formatSignedPercent', () => {
-  it('one decimal, with its sign', () => {
-    expect(formatSignedPercent(7.34)).toBe('+7.3%');
-    expect(formatSignedPercent(-0.5)).toBe('−0.5%');
+describe('Arabic digits', () => {
+  it('are read as English ones', () => {
+    expect(normalizeAmountText('١٢٣٫٥')).toBe('123.5');
+    expect(normalizeAmountText('۱۰۰')).toBe('100');
+    expect(evalAmount('١٥٠٠+٢٥٠')).toBe(1750);
+  });
+  it('and letters are dropped', () => {
+    expect(normalizeAmountText('مية 50 EGP')).toBe(' 50 ');
   });
 });

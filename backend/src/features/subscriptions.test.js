@@ -5,10 +5,25 @@ const sub = (over = {}) => ({ name: 'Netflix', cost: 300, renewalDay: 15, remind
 const clock = (year, month, day, hour = 9, minute = 0) => ({ year, month, day, hour, minute });
 
 describe('isDueAt', () => {
-  it('fires on the renewal day at the reminder time, and not a minute either side', () => {
+  it('fires on the renewal day from the reminder time, not before it and not on another day', () => {
     expect(isDueAt(sub(), clock(2026, 10, 15, 9, 0))).toBe(true);
-    expect(isDueAt(sub(), clock(2026, 10, 15, 9, 1))).toBe(false);
+    expect(isDueAt(sub(), clock(2026, 10, 15, 8, 59))).toBe(false);
     expect(isDueAt(sub(), clock(2026, 10, 14, 9, 0))).toBe(false);
+    expect(isDueAt(sub(), clock(2026, 10, 16, 9, 0))).toBe(false);
+  });
+
+  it('still fires for a bot that was away at that minute — for three hours', () => {
+    expect(isDueAt(sub(), clock(2026, 10, 15, 9, 1))).toBe(true);
+    expect(isDueAt(sub(), clock(2026, 10, 15, 11, 59))).toBe(true);
+    expect(isDueAt(sub(), clock(2026, 10, 15, 12, 0))).toBe(false);
+  });
+
+  it('reads the start month from the text, whatever the machine zone', () => {
+    // 2026-01-01 is midnight UTC: a Date in a zone behind UTC would call it December 2025.
+    const quarterly = sub({ intervalMonths: 3, startDate: '2026-01-01', renewalDay: 5 });
+    expect(isDueAt(quarterly, clock(2026, 1, 5))).toBe(true);
+    expect(isDueAt(quarterly, clock(2026, 4, 5))).toBe(true);
+    expect(isDueAt(quarterly, clock(2026, 2, 5))).toBe(false);
   });
 
   it('defaults the reminder to 09:00', () => {

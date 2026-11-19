@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
-import { formatEGP } from '@/domain/finance/money';
+import { evalAmount, formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import type { StoredGoldPrices } from '@/domain/finance/goldRefresh';
 import { goldAssetValue, goldSummary, type GoldPrices } from '@/domain/finance/insights';
 import type { GoldAsset } from '@/domain/finance/types';
 import { AnimatedValue, MaskedValue } from '@/features/finance/components/visuals';
-import { Field, ModalForm, Segmented, TextInput } from '@/features/finance/components/forms';
+import { Field, ModalForm, Segmented, SumInput, TextInput } from '@/features/finance/components/forms';
 import { EmptyState, InlineActions, ListCard, ListRow } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
+import { clock12 } from '@/domain/clock';
 import { captionLabel } from '@/features/finance/components/labels';
 
 type Carat = 24 | 21;
 
-/** When the prices were fetched, as "2026-10-28 06:10". */
+/** When the prices were fetched, as "2026-10-28 6:10 AM". */
 const updatedAt = (epochMs: number) => {
   const d = new Date(epochMs);
   const two = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`;
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${clock12(d)}`;
 };
 
 /** Add and edit share one form: pass `initial` to edit. */
@@ -45,10 +46,10 @@ const GoldModal: React.FC<{
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = parseFloat(quantity);
+    const qty = evalAmount(quantity);
     if (!qty || qty <= 0) return;
     // A new asset with no price typed is booked at today's spot.
-    const price = purchasePrice ? parseFloat(purchasePrice) : initial ? undefined : spot;
+    const price = purchasePrice ? evalAmount(purchasePrice) : initial ? undefined : spot;
     onSave({
       id: initial?.id ?? `${Date.now()}`,
       quantity: qty,
@@ -63,7 +64,7 @@ const GoldModal: React.FC<{
     <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Gold' : 'Add Gold Asset'} raw maxWidth="max-w-sm">
       <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Add Asset'}>
         <Field label="Weight in grams">
-          <TextInput look="amount" type="number" step="0.001" placeholder="e.g. 10.500" value={quantity} onChange={(e) => setQuantity(e.target.value)} required autoFocus />
+          <SumInput look="amount" placeholder="e.g. 10.500" value={quantity} onChange={(e) => setQuantity(e.target.value)} required autoFocus />
         </Field>
         <Field label="Carat">
           <Segmented options={[{ value: 24, label: '24K' }, { value: 21, label: '21K' }]} value={carat} onChange={setCarat} />
@@ -73,7 +74,7 @@ const GoldModal: React.FC<{
           optional
           hint={!initial && spot && !purchasePrice ? `Auto-saves spot price (${formatEGP(spot)} / g)` : undefined}
         >
-          <TextInput type="number" step="0.01" placeholder={spot ? `Current: ${spot}` : 'e.g. 3800'} value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
+          <SumInput placeholder={spot ? `Current: ${spot}` : 'e.g. 3800'} value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
         </Field>
         <Field label="Notes / label" optional>
           <TextInput type="text" placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} />

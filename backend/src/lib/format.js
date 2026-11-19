@@ -18,6 +18,14 @@ export function formatDurationText(totalMinutes) {
   return `${h}h ${m}m`;
 }
 
+/** "HH:MM" (24-hour) → "9:05 AM" — every time the bot shows is 12-hour. Anything that isn't a time comes back unchanged. */
+export function to12Hour(hhmm) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm));
+  if (!match) return hhmm;
+  const hour = Number(match[1]);
+  return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
 /** Egyptian pounds, rounded, with thousands separators: 12345.6 → "12,346 EGP". */
 export function formatEGP(value) {
   return `${Math.round(value).toLocaleString('en-EG')} EGP`;

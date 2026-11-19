@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { THNDR_PARTS, egp, signedEgp, duration, countdown } from './data.js';
 import { NAME } from '../../lib/brand.js';
+import { to12Hour } from '../../lib/format.js';
 import { textImage } from '../../lib/textImage.js';
 
 // The daily report as a PDF, kept as quiet as the dashboard itself: no boxes, just hairlines and
@@ -251,7 +252,7 @@ function futureFund(doc, report, y) {
 function thndr(doc, report, y) {
   const t = report.finance.thndr;
   if (!t) {
-    note(doc, 'No readings yet. Add one from Finance > Thndr.', M, y, { size: 8 });
+    note(doc, 'No Thndr value yet. Set it from Finance > Overview.', M, y, { size: 8 });
     return y + 20;
   }
   bigAmount(doc, t.value, M, y, 26);
@@ -344,8 +345,8 @@ function logs(doc, report, y) {
     today.entries.forEach((l) => {
       const t = new Date(l.timestamp);
       const out = l.type === 'withdraw';
-      doc.font(F.mono).fontSize(8).fillColor(C.muted).text(`${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`, x, cy + 6, { lineBreak: false });
-      doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(out ? 'Withdraw' : 'Deposit', x + 40, cy + 5, { lineBreak: false });
+      doc.font(F.mono).fontSize(8).fillColor(C.muted).text(to12Hour(`${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')}`), x, cy + 6, { lineBreak: false });
+      doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(out ? 'Withdraw' : 'Deposit', x + 54, cy + 5, { lineBreak: false });
       doc.font(F.sans).fontSize(9.5).fillColor(out ? C.warn : C.gain).text(`${out ? '-' : '+'}${egp(l.amount)}`, x, cy + 5, { lineBreak: false, width: w, align: 'right' });
       line(doc, x, cy + ROW, x + w);
       cy += ROW;

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { useBodyScrollLock } from '@/ui/useBodyScrollLock';
-import { formatEGP } from '@/domain/finance/money';
+import { evalAmount, formatEGP } from '@/domain/finance/money';
 import {
   BUCKET_ORDER, assignmentError, incomeError, remainderOf, suggestAllocations, urgentDebtTotal,
   type Allocations, type Percentages,
 } from '@/domain/finance/split';
 import type { Debt, FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
 import { BANK_KEYS, BANK_LABELS, BUCKET_META } from '@/features/finance/components/visuals';
-import { AmountInput, ChoiceGrid, Field, ModalForm, TextInput } from '@/features/finance/components/forms';
+import { AmountInput, ChoiceGrid, Field, ModalForm, SumInput } from '@/features/finance/components/forms';
 
 export type SplitResult =
   | { kind: 'income'; bank: keyof FinanceBanks; amount: number; allocations: Allocations; repayUrgent: boolean }
@@ -22,7 +22,7 @@ const toTexts = (a: Allocations): BucketTexts =>
 const toAllocations = (texts: BucketTexts): Allocations => {
   const out: Allocations = {};
   for (const key of BUCKET_ORDER) {
-    const value = parseFloat(texts[key]);
+    const value = evalAmount(texts[key]);
     if (value > 0) out[key] = value;
   }
   return out;
@@ -63,7 +63,7 @@ export const SplitModal: React.FC<{
 
   const taking = mode === 'assign' && free < 0;
   /** The sum being divided: the income typed in, or the free money (or shortfall) being sorted. */
-  const base = mode === 'income' ? parseFloat(amount) || 0 : Math.abs(free);
+  const base = mode === 'income' ? evalAmount(amount) || 0 : Math.abs(free);
   const texts = typed ?? toTexts(mode === 'income' ? suggestAllocations(base, template) : {});
   const allocations = toAllocations(texts);
   const left = remainderOf(base, allocations);
@@ -131,10 +131,7 @@ export const SplitModal: React.FC<{
                   {base > 0 && value > 0 && (
                     <span className="font-mono-main text-[10px] w-10 text-right text-ink/40">{Math.round((value / base) * 100)}%</span>
                   )}
-                  <TextInput
-                    type="number"
-                    min="0"
-                    step="1"
+                  <SumInput
                     placeholder="0"
                     value={texts[key]}
                     onChange={(e) => setTyped({ ...texts, [key]: e.target.value })}

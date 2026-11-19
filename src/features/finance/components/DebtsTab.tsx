@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
-import { formatEGP } from '@/domain/finance/money';
+import { evalAmount, formatEGP } from '@/domain/finance/money';
 import { removeById } from '@/domain/finance/collections';
 import { debtTotals } from '@/domain/finance/insights';
 import type { Debt } from '@/domain/finance/types';
 import { MaskedValue } from '@/features/finance/components/visuals';
-import { Field, ModalForm, Segmented, TextInput } from '@/features/finance/components/forms';
+import { Field, ModalForm, Segmented, SumInput, TextInput } from '@/features/finance/components/forms';
 import { EmptyState, InlineActions, ListCard, ListRow } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
 import { captionLabel } from '@/features/finance/components/labels';
@@ -34,11 +34,11 @@ export const DebtModal: React.FC<{
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !amount) return;
+    if (!name.trim() || !Number.isFinite(evalAmount(amount))) return;
     onSave({
       id: initial?.id ?? `${Date.now()}`,
       personName: name.trim(),
-      amount: parseFloat(amount),
+      amount: evalAmount(amount),
       type,
       notes: notes.trim() || undefined,
     });
@@ -55,7 +55,7 @@ export const DebtModal: React.FC<{
           <TextInput type="text" placeholder="e.g. Aly, Hamed" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
         </Field>
         <Field label="Amount — EGP">
-          <TextInput look="amount" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <SumInput look="amount" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </Field>
         <Field label="Notes" optional>
           <TextInput type="text" placeholder="e.g. Dinner cash back" value={notes} onChange={(e) => setNotes(e.target.value)} />

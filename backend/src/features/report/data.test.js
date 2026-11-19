@@ -67,7 +67,7 @@ describe('buildReport', () => {
   const report = buildReport({ ...raw, goldPrices: { price24: 5000, price21: 4400 } }, now);
 
   it('puts the date in words', () => {
-    expect(report.date).toMatchObject({ iso: '2026-10-17', weekday: 'Saturday', time: '20:00' });
+    expect(report.date).toMatchObject({ iso: '2026-10-17', weekday: 'Saturday', time: '8:00 PM' });
   });
   it('banks, buckets and free money', () => {
     expect(report.finance.banksTotal).toBe(3500);

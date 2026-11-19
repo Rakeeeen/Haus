@@ -18,7 +18,7 @@ export function useFinance() {
   const [subscriptions, setSubscriptionsSynced] = useFirebaseSync<Subscription[]>('finance_subscriptions', []);
   const [thndr, setThndr] = useFirebaseSync<ThndrEntry[]>('finance_thndr', []);
   // Money the user put into / took out of Thndr — kept apart from the readings so a deposit never looks like a gain.
-  const [thndrFlows, setThndrFlows] = useFirebaseSync<ThndrFlow[]>('finance_thndr_flows', []);
+  const [thndrFlows] = useFirebaseSync<ThndrFlow[]>('finance_thndr_flows', []);
   const [debts, setDebts] = useFirebaseSync<Debt[]>('finance_debts', []);
   const [logs, setLogs] = useFirebaseSync<FinanceLog[]>('finance_logs', []);
   // How the last income was split (each bucket's share, in percent) — the next one starts from it.
@@ -76,7 +76,6 @@ export function useFinance() {
     thndr,
     setThndr,
     thndrFlows,
-    setThndrFlows,
     debts,
     setDebts,
     updateBankBalance,
